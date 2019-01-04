@@ -14,7 +14,7 @@ JNI without the JVM
 - Interceptors support
 - Threading support
 - GC utilities
-- Reflection
+- Reflection support
 
 ##### Licensing
 

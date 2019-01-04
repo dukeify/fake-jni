@@ -1,4 +1,4 @@
-#include "fake_jvm.h"
+#include "fake_jni.h"
 
 FakeJVM FakeJVM::instance;
 
