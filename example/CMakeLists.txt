@@ -1,5 +1,3 @@
-set(CMAKE_CXX_STANDARD 17)
-
 add_library(example_jni_agent SHARED example_jni_agent.cpp)
 
 add_executable(example example.cpp)

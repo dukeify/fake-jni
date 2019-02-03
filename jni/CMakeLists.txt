@@ -3,3 +3,5 @@ add_library(jni STATIC
     fake_jni.cpp
     agent.cpp
 )
+
+target_compile_options(jni PRIVATE -Werror -Wall -Wextra -pedantic)
