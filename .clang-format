@@ -6,4 +6,47 @@ PointerAlignment: Left
 SpaceAfterCStyleCast: true
 AccessModifierOffset: -2
 AlignAfterOpenBracket: DontAlign
+AllowShortBlocksOnASingleLine: false
+AllowShortFunctionsOnASingleLine: Empty
+AllowShortIfStatementsOnASingleLine: false
+AlignAfterOpenBracket: true
+AlignEscapedNewlines: Left
+AlignOperands: true
+AllowShortCaseLabelsOnASingleLine: true
+AllowShortLoopsOnASingleLine: true
+AlwaysBreakTemplateDeclarations: Yes
+BinPackArguments: false
+BinPackParameters: false
+BreakBeforeBinaryOperators: None
+BreakBeforeBraces: Custom
+BraceWrapping:
+ AfterClass: false
+ AfterControlStatement: false
+ AfterEnum: false
+ AfterFunction: false
+ AfterNamespace: false
+ AfterUnion: false
+ AfterExternBlock: true
+ BeforeCatch: false
+ BeforeElse: false
+ SplitEmptyFunction: false
+ SplitEmptyRecord: false
+ SplitEmptyNamespace: false
+BreakConstructorInitializers: AfterColon
+BreakInheritanceList: AfterColon
+CompactNamespaces: false
+CommentPragmas:  '^[^ ]'
+IndentCaseLabels: true
+IndentPPDirectives: AfterHash
+IndentWrappedFunctionNames: false
+KeepEmptyLinesAtTheStartOfBlocks: false
+NamespaceIndentation: All
+PointerAlignment: Left 
+SpaceAfterTemplateKeyword: false
+SpaceBeforeAssignmentOperators: true
+SpaceBeforeCpp11BracedList: true
+SpaceBeforeCtorInitializerColon: true
+SpaceBeforeParens: ControlStatements
+SpaceBeforeRangeBasedForLoopColon: true
+SpacesInAngles: false
 ...

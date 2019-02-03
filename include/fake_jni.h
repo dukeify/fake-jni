@@ -1,7 +1,7 @@
 #pragma once
 
 #include "agent.h"
-#include "jni/jni.h"
+#include "jni.h"
 
 #include <vector>
 
@@ -20,9 +20,13 @@ public:
 
   FakeJVM();
 
-  JavaVM* getFakeJVM() { return &vm_; }
+  JavaVM* getFakeJVM() {
+    return &vm_;
+  }
 
-  JNIEnv* getFakeEnv() { return &env_; }
+  JNIEnv* getFakeEnv() {
+    return &env_;
+  }
 
   void addAgent(Agent* agent) {
     agents_.push_back(agent);

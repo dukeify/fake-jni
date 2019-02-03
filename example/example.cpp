@@ -3,8 +3,8 @@
 #include <unistd.h>
 #include <iostream>
 
-#include "fake_jni.h"
 #include "agent.h"
+#include "fake_jni.h"
 
 using std::string;
 
@@ -14,7 +14,8 @@ string GetCurrentPath() {
 }
 
 int main(int argc, char* argv[]) {
-    Agent agent (GetCurrentPath() + "/libexample_jni_agent.so", { &dlopen, &dlsym, &dlclose });
-    FakeJVM::instance.close();
-    return 0;
+  Agent agent(GetCurrentPath() + "/libexample_jni_agent.so",
+              {&dlopen, &dlsym, &dlclose});
+  FakeJVM::instance.close();
+  return 0;
 }

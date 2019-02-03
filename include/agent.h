@@ -14,8 +14,10 @@ struct AgentOptions {
   int (*dlclose_)(void* handle);
 
   AgentOptions(void* (*dlopen_)(const char*, int),
-      void* (*dlsym_)(void*, const char*), int (*dlclose_)(void*))
-      : dlopen_(dlopen_), dlsym_(dlsym_), dlclose_(dlclose_) {}
+               void* (*dlsym_)(void*, const char*),
+               int (*dlclose_)(void*)) :
+      dlopen_(dlopen_),
+      dlsym_(dlsym_), dlclose_(dlclose_) {}
 };
 
 class Agent {

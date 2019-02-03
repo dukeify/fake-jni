@@ -5,8 +5,8 @@
 
 #include <iostream>
 
-Agent::Agent(std::string path, AgentOptions const& options)
-    : path_(std::move(path)), options_(options) {
+Agent::Agent(std::string path, AgentOptions const& options) :
+    path_(std::move(path)), options_(options) {
   FakeJVM::instance.addAgent(this);
 }
 

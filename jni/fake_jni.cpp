@@ -15,9 +15,7 @@ FakeJVM::FakeJVM() {
     return JNI_ERR;
   };
 
-  invoke_.DetachCurrentThread = [](JavaVM*) -> jint {
-    return JNI_ERR;
-  };
+  invoke_.DetachCurrentThread = [](JavaVM*) -> jint { return JNI_ERR; };
 
   invoke_.AttachCurrentThreadAsDaemon = [](JavaVM*, void**, void*) -> jint {
     return JNI_ERR;
