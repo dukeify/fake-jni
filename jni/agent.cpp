@@ -1,10 +1,12 @@
+#include <utility>
+
 #include "agent.h"
 #include "fake_jni.h"
 
 #include <iostream>
 
 Agent::Agent(std::string path, AgentOptions const& options)
-    : path_(path), options_(options) {
+    : path_(std::move(path)), options_(options) {
   FakeJVM::instance.addAgent(this);
 }
 
@@ -18,14 +20,17 @@ bool Agent::open() {
   (void*&) JNI_OnLoad_ = options_.dlsym_(handle_, "JNI_OnLoad");
   (void*&) JNI_OnUnload_ = options_.dlsym_(handle_, "JNI_OnUnload");
 
-  if (!JNI_OnLoad_ || !JNI_OnUnload_) {
-    throw std::runtime_error("JNI_OnLoad or JNI_OnUnload not found");
+  if (!JNI_OnLoad_) {
+    throw std::runtime_error("JNI_OnLoad not found");
   }
 
   return JNI_OnLoad_(FakeJVM::instance.getFakeJVM(), nullptr) > JNI_VERSION_1_8;
 }
 
 bool Agent::close() {
-  JNI_OnUnload_(FakeJVM::instance.getFakeJVM(), nullptr);
-  return options_.dlclose_(handle_) ? false : true;
+  if (JNI_OnUnload_) {
+    JNI_OnUnload_(FakeJVM::instance.getFakeJVM(), nullptr);
+  }
+
+  return !options_.dlclose_(handle_);
 }

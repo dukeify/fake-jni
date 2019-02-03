@@ -1,13 +1,18 @@
 #pragma once
 
 #include "agent.h"
-#include "jni.h"
+#include "jni/jni.h"
 
 #include <vector>
 
 class FakeJVM {
 private:
   JavaVM vm_;
+  JNIInvokeInterface_ invoke_;
+
+  JNIEnv env_;
+  JNINativeInterface_ native_;
+
   std::vector<Agent*> agents_;
 
 public:
@@ -16,6 +21,8 @@ public:
   FakeJVM();
 
   JavaVM* getFakeJVM() { return &vm_; }
+
+  JNIEnv* getFakeEnv() { return &env_; }
 
   void addAgent(Agent* agent) {
     agents_.push_back(agent);
