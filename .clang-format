@@ -1,0 +1,9 @@
+---
+Language: Cpp
+BasedOnStyle: LLVM
+IndentWidth: 2
+PointerAlignment: Left
+SpaceAfterCStyleCast: true
+AccessModifierOffset: -2
+AlignAfterOpenBracket: DontAlign
+...

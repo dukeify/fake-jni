@@ -2,6 +2,4 @@
 
 FakeJVM FakeJVM::instance;
 
-FakeJVM::FakeJVM() {
-
-}
+FakeJVM::FakeJVM() {}

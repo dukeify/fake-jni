@@ -9,18 +9,19 @@
 //
 //#pragma once
 //
-//template<typename R, typename... A>
-//using FuncRef = R (*)(A...);
+// template<typename R, typename... A>
+// using FuncRef = R (*)(A...);
 //
-//template<typename R, typename T, typename... A>
-//using MemberFuncRef = R (T::*)(A...);
+// template<typename R, typename T, typename... A>
+// using MemberFuncRef = R (T::*)(A...);
 //
-//class FakeClass : public _jclass {
-//private:
+// class FakeClass : public _jclass {
+// private:
 // //Global map of registered classes
 // inline static std::map<const std::string, FakeClass *> classes;
 // //Global map of static functions
-// //inline static std::map<FakeClass *, std::vector<std::pair<_jmethodID, void (*)()>>> staticFunctionTable;
+// //inline static std::map<FakeClass *, std::vector<std::pair<_jmethodID, void
+// (*)()>>> staticFunctionTable;
 //
 // std::map<jmethodID, MemberFuncRef<void, FakeClass>> memberFunctionTable;
 // std::map<jmethodID, FuncRef<void>> staticFunctionTable;
@@ -29,7 +30,7 @@
 // std::map<jfieldID, int FakeClass::*> memberFields;
 // std::map<jfieldID, void *> staticFields;
 //
-//public:
+// public:
 // explicit FakeClass(const std::string &fullyQualifiedName) {
 //  assert(registerClass(fullyQualifiedName, this));
 // }
@@ -76,14 +77,15 @@
 // static jclass getClass(const std::string &classpath);
 //};
 //
-//class _jfieldID {
-//private:
+// class _jfieldID {
+// private:
 // inline static std::vector<jfieldID> fields;
 //
-//public:
+// public:
 // const std::string name, sig;
 //
-// explicit _jfieldID(std::string name, std::string sig) : name(std::move(name)), sig(std::move(sig)) {
+// explicit _jfieldID(std::string name, std::string sig) :
+// name(std::move(name)), sig(std::move(sig)) {
 //  fields.push_back(this);
 // }
 //
@@ -96,16 +98,16 @@
 //};
 //
 ////dummy data structure to satisfy JNI
-//class _jmethodID {
-//private:
+// class _jmethodID {
+// private:
 // inline static std::vector<jmethodID> methods;
 //
 //// template<typename R, typename... A>
-//// _jmethodID(std::string name, FuncRef<R, A...> func) : name(std::move(name)), func(static_cast<void (*)()>(func)) {
-////  instances.push_back(this);
-//// }
+//// _jmethodID(std::string name, FuncRef<R, A...> func) :
+///name(std::move(name)), func(static_cast<void (*)()>(func)) { /
+///instances.push_back(this); / }
 //
-//public:
+// public:
 // _jmethodID() {
 //  methods.push_back(this);
 // }
@@ -128,7 +130,7 @@
 //
 ////BEGIN FakeClass DEFINITIONS
 //
-//std::string FakeClass::getFullyQualifiedName() {
+// std::string FakeClass::getFullyQualifiedName() {
 // std::string name;
 // for (const auto &[key, value] : classes) {
 //  if (value == this) {
@@ -138,8 +140,8 @@
 // return name;
 //}
 //
-//template<typename R, typename... A>
-//void FakeClass::registerMethod(jmethodID mid, FuncRef<R, A...> func) {
+// template<typename R, typename... A>
+// void FakeClass::registerMethod(jmethodID mid, FuncRef<R, A...> func) {
 // static_assert(
 //  std::is_base_of<R, _jobject>::value || std::is_base_of<R, void>::value,
 //  "The function's return type must inherit from _jobject!"
@@ -151,31 +153,35 @@
 // }
 //}
 //
-//template<typename R, typename... A>
-//void FakeClass::registerMethod(jmethodID mid, MemberFuncRef<R, FakeClass, A...> func) {
+// template<typename R, typename... A>
+// void FakeClass::registerMethod(jmethodID mid, MemberFuncRef<R, FakeClass,
+// A...> func) {
 //
 //}
 //
-//bool FakeClass::isMethodRegistered(jmethodID mid) {
-//// return memberFunctionTable[mid] != nullptr || staticFunctionTable[mid] != nullptr;
+// bool FakeClass::isMethodRegistered(jmethodID mid) {
+//// return memberFunctionTable[mid] != nullptr || staticFunctionTable[mid] !=
+///nullptr;
 // return memberFunctionTable[mid] || staticFunctionTable[mid];
 //}
 //
-//template<typename... A>
+// template<typename... A>
 //_jobject FakeClass::invokeStaticMethod(jmethodID mid, A... args) {
-// return reinterpret_cast<FuncRef<_jobject, A...>>(staticFunctionTable[mid])(args...);
+// return reinterpret_cast<FuncRef<_jobject,
+// A...>>(staticFunctionTable[mid])(args...);
 //}
 //
-//template<typename... A>
+// template<typename... A>
 //_jobject FakeClass::invokeMethod(jmethodID mid, A... args) {
-// return reinterpret_cast<MemberFuncRef<_jobject, FakeClass, A...>>(memberFunctionTable[mid])(args...);
+// return reinterpret_cast<MemberFuncRef<_jobject, FakeClass,
+// A...>>(memberFunctionTable[mid])(args...);
 //}
 //
-//template<typename F>
-//void FakeClass::registerField(const _jfieldID &fid, F *field) {
-// static_assert(std::is_base_of<F, _jobject>::value, "Fields must inherit from _jobject!");
-// jfieldID f = _jfieldID::getFieldInstance(fid);
-// if (f != nullptr) {
+// template<typename F>
+// void FakeClass::registerField(const _jfieldID &fid, F *field) {
+// static_assert(std::is_base_of<F, _jobject>::value, "Fields must inherit from
+// _jobject!"); jfieldID f = _jfieldID::getFieldInstance(fid); if (f != nullptr)
+// {
 //  throw std::runtime_error("This field is already registered!");
 // } else {
 //  memberFields[f] = field;
@@ -193,7 +199,7 @@
 ////// return false;
 ////}
 //
-//jfieldID FakeClass::getFieldID(const char *name, const char *sig) {
+// jfieldID FakeClass::getFieldID(const char *name, const char *sig) {
 // const std::string
 //  sname = std::string(name),
 //  ssig = std::string(sig);
@@ -205,17 +211,17 @@
 // return nullptr;
 //}
 //
-//template<typename F>
-//F * FakeClass::getField(jfieldID fid) {
+// template<typename F>
+// F * FakeClass::getField(jfieldID fid) {
 // return static_cast<F *>(memberFields[fid]);
 //}
 //
-//template<typename F>
-//void FakeClass::setField(jfieldID fid, const F &value) {
+// template<typename F>
+// void FakeClass::setField(jfieldID fid, const F &value) {
 // memberFields[fid] = value;
 //}
 //
-//bool FakeClass::registerClass(const std::string &fqn, FakeClass *fakeClass) {
+// bool FakeClass::registerClass(const std::string &fqn, FakeClass *fakeClass) {
 // if (!isClassRegistered(fakeClass)) {
 //  classes[fqn] = fakeClass;
 //  return true;
@@ -223,7 +229,7 @@
 // return false;
 //}
 //
-//bool FakeClass::isClassRegistered(FakeClass *fakeClass) {
+// bool FakeClass::isClassRegistered(FakeClass *fakeClass) {
 // for (const auto &[key, value]: classes) {
 //  if (value == fakeClass) {
 //   return true;
@@ -232,7 +238,7 @@
 // return false;
 //}
 //
-//jclass FakeClass::getClass(const std::string &classpath) {
+// jclass FakeClass::getClass(const std::string &classpath) {
 // for (auto const &[key, value]: classes) {
 //  if (key == classpath) {
 //   return value;
@@ -241,11 +247,11 @@
 // return nullptr;
 //}
 //
-//bool _jfieldID::operator==(const _jfieldID &rhs) const {
+// bool _jfieldID::operator==(const _jfieldID &rhs) const {
 // return name == rhs.name && sig == rhs.sig;
 //}
 //
-//template<typename A>
+// template<typename A>
 //_jfieldID _jfieldID::generateFieldID(const std::string &name, A *field) {
 // std::string sig;
 // //TODO all other type specifiers
@@ -258,7 +264,7 @@
 // return _jfieldID(name, sig);
 //}
 //
-//jfieldID _jfieldID::getFieldInstance(const _jfieldID &fid) {
+// jfieldID _jfieldID::getFieldInstance(const _jfieldID &fid) {
 // for (const auto &f : fields) {
 //  if (*f == fid) {
 //   return f;
@@ -272,7 +278,7 @@
 ////}
 //
 ////JNI Function Implementations
-//extern "C" {
+// extern "C" {
 // jclass GetObjectClass(JNIEnv *env, jobject obj) {
 //  assert(FakeClass::isClassRegistered(static_cast<FakeClass *>(obj)));
 //  //TODO how would you determine whether or not 'obj' is an instance of
@@ -282,13 +288,15 @@
 //  return (jclass)obj;
 // }
 //
-// jmethodID GetStaticMethodID(JNIEnv *env, jclass clazz, const char *name, const char *sig) {
+// jmethodID GetStaticMethodID(JNIEnv *env, jclass clazz, const char *name,
+// const char *sig) {
 //  return nullptr;
 // }
 //
 // //TODO Requires a stack to store returned values
 // jobject CallObjectMethod(jobject obj, jmethodID mid, ...) {
-//  //static_assert<std::is_base_of<>::value, "The jobject must inherit from FakeClass!">
+//  //static_assert<std::is_base_of<>::value, "The jobject must inherit from
+//  FakeClass!">
 //  /*
 //   FakeClass *fakeClass = dynamic_cast<FakeClass *>(obj);
 //   if (fakeClass == nullptr) {
@@ -307,7 +315,8 @@
 //
 // /*
 // //TODO
-// jfieldID GetFieldID(JNIEnv *env, jclass clazz, const char *name, const char *sig) {
+// jfieldID GetFieldID(JNIEnv *env, jclass clazz, const char *name, const char
+// *sig) {
 //  FakeClass *fakeClass = static_cast<FakeClass *>(clazz);
 //  if (!fakeClass) {
 //   //TODO error is placeholder
