@@ -154,7 +154,7 @@ typedef enum _jobjectType {
 #define JNI_TRUE 1
 
 /*
- * possible return values for JNI functions.
+ * possible return values for JNI methods.
  */
 
 #define JNI_OK           0                 /* success */
@@ -768,7 +768,7 @@ struct JNINativeInterface_ {
 };
 
 /*
- * We use inlined functions for C++ so that programmers can write:
+ * We use inlined methods for C++ so that programmers can write:
  *
  *    env->FindClass("java/lang/String")
  *
