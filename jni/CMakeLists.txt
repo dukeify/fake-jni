@@ -5,3 +5,4 @@ add_library(jni STATIC
 )
 
 target_compile_options(jni PRIVATE -Werror -Wall -Wextra -pedantic)
+target_include_directories(jni PUBLIC include)

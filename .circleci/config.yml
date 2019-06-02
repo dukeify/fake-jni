@@ -1,0 +1,19 @@
+version: 2
+
+jobs:
+  build:
+    docker:
+    - image: gcc:9.1.0
+    steps:
+      - checkout
+      - run: apt-get update
+      - run: apt-get install cmake
+      - run:
+          name: make
+          command: |
+            mkdir build && \
+            cd build && \
+            cmake .. && \
+            make -j4
+      - store_artifacts:
+          path: build/jni/libjni.a

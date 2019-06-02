@@ -1,5 +1,9 @@
 #include <dlfcn.h>
+#ifdef __APPLE__
+#include <sys/syslimits.h>
+#else
 #include <linux/limits.h>
+#endif
 #include <unistd.h>
 #include <iostream>
 
