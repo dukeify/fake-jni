@@ -7,7 +7,7 @@ jobs:
     steps:
       - checkout
       - run: apt-get update
-      - run: apt-get install cmake
+      - run: apt-get install -y cmake
       - run:
           name: make
           command: |
