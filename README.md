@@ -1,21 +1,12 @@
 # fake-jni
 
-JNI without the DefaultJvm
+JNI and JVMTI without the Jvm
 
-##### Goals
+## Goals
+- Binary compatability with JNI 1.8
+- Drop-in replacement for an actual JVM, allowing users to compile against `fake-jni` while retaining full functionality
+- The definition and linking of C++ classes through `fake-jni` to act as proxies for Java classes, that would otherwise be running on an actual JVM
+- Portability to other platforms and architectures
 
-- Be binary compatible with version 1.8 of the JNI (latest)
-- Allow users to compile their JNI applications against `fake-jni` to remove the need for the JNI (memory constraints, etc.)
-- Allow users to easily define Java classes to be used through the JNI using C++ classes with minimal
-  definitions beyond the class definition
-- Be highly portable (architecture-wise) and tight with dependencies
-
-##### Non-goals
-- Interceptors support
-- Threading support
-- GC utilities
-- Reflection support
-
-##### Licensing
-
-The JNI headers are licensed under the GPL, with the "classpath" exception, this means that we are free to use the JNI headers in this project, and implement them, but any changes made to `include/jni.h` or `include/jni_md.h` must be made under the GPL, and the rest of the project (even the portions that use the `jni.h` header) are under the MIT license
+## Licensing
+The JNI headers are licensed under the GPL, with the "classpath" exception, meaning that we are free to use and implement the JNI headers in `fake-jni`, however, any changes made to `include/jni.h` or `include/jni_md.h` will be made under the GPL, in complete compliance with the licensing. The rest of `fake-jni`, including implementations of other GPL licensed headers, are licensed under the GPLv3 license.
