@@ -14,6 +14,9 @@ jobs:
             mkdir build && \
             cd build && \
             cmake .. && \
-            make -j4
+            make -j`nproc`
       - store_artifacts:
-          path: build/jni/libjni.a
+          path: build/examples/example
+
+      - store_artifacts:
+          path: build/tests/tests

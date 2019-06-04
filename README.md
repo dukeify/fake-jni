@@ -1,6 +1,6 @@
 # fake-jni
 
-JNI without the JVM
+JNI without the DefaultJvm
 
 ##### Goals
 
