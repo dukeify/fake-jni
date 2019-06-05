@@ -9,7 +9,7 @@ open my ($env), $file;
 while (my $proto = <$env>) {
     my ($i, $j, $k) = ($proto =~ /(\w+\*?)\s+\(\*(\w+)\)(.+);/);
 
-    my $returnable = "\n    return ";
+    my $returnable = "return ";
 
     if ($i eq "void") { $returnable = ""; }
     elsif ($i eq "jint") { $returnable .= "0"; }
@@ -53,17 +53,36 @@ while (my $proto = <$env>) {
 
     if ($i ne "void") { $returnable .= ";" }
 
-    my $output = <<'EOF';
-//%s
-[]%s -> %s {
-#ifdef FAKE_JNI_DEBUG
-    fprintf(FAKE_JNI_DEBUG_FD, "DEBUG: %s\n");
-#endif
- throw std::runtime_error("FATAL: '%s' is unimplemented.");%s
-},
+#     my $output = <<'EOF';
+# %s = []%s -> %s {
+#  NativeInterface * const ni = (NativeInterface *)(env->functions);
+# #ifdef FAKE_JNI_DEBUG
+#  fprintf(ni->vm->getLog(), "DEBUG: JNINativeInterface_::%s\n");
+# #endif
+#  return ni->%s();
+# };
+# EOF
+#
+#     # print(sprintf($output, $j, $k, $i, $j, $returnable));
+#     print(sprintf($output, $j, $k, $i, $j, lcfirst($j)));
+
+#     my $testing = <<'EOF';
+# virtual %s %s%s const {
+#  throw std::runtime_error("FATAL: '%s' is unimplemented.");
+#  %s
+# }
+#
+# EOF
+    my $testing = <<'EOF';
+virtual %s %s%s const = 0;
 EOF
 
-    print(sprintf($output, $j, $k, $i, $j, $j, $returnable))
+
+    # $k =~ s/JNIEnv *env\,//g;
+    # $k =~ s/\(JNIEnv *env\)/()/g;
+
+    # print(sprintf($testing, $i, lcfirst($j), $k, $j, $returnable))
+    print(sprintf($testing, $i, lcfirst($j), $k))
 }
 
 close $env;

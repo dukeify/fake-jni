@@ -63,9 +63,6 @@ namespace FakeJVM {
   const LibraryOptions &options;
   const bool isStatic;
 
-  //TODO loads JNI/Agent library embedded in current binary
-//  explicit Library(Jvm * const vm, LibraryOptions const &options) {}
-
   explicit Library(Jvm * const vm, const std::string& path, LibraryOptions const &options):
    vm(vm),
    path(path),
@@ -111,19 +108,31 @@ namespace FakeJVM {
 #ifdef FAKE_JNI_DEBUG
    fprintf(vm->getLog(), "DEBUG: Closing handle for library '%s'", path.c_str());
 #endif
-   //TODO this is causing a SIGSEGV
-   const int status = options.dlclose_p(handle);
-   if (!status) {
-    //TODO is this fatal?
-#ifdef FAKE_JNI_DEBUG
-    fprintf(vm->getLog(), "WARNING: Failed to close dl handle for '%s', with error: %d", path.c_str(), status);
-#endif
-//    throw std::runtime_error("FATAL: Failed to close dl handle for library '" + path + "'!");
-   }
+//   const int status = options.dlclose_p(handle);
+//   if (status) {
+//    //TODO is this fatal?
+//#ifdef FAKE_JNI_DEBUG
+//    fprintf(vm->getLog(), "WARNING: Failed to close dl handle for '%s', with error: %s", path.c_str(), dlerror());
+//#endif
+////    throw std::runtime_error("FATAL: Failed to close dl handle for library '" + path + "'!");
+//   }
   }
 
   void * lsym(const char *symbol) {
-   return options.dlsym_p(handle, symbol);
+   void * const ret = options.dlsym_p(handle, symbol);
+   char * const err = dlerror();
+   if (err) {
+#ifdef FAKE_JNI_DEBUG
+    fprintf(
+     vm->getLog(),
+     "WARNING: Failed to load symbol '%s' in library '%s', with error: %s\n",
+     symbol,
+     path.c_str(),
+     err
+    );
+#endif
+   }
+   return ret;
   }
 
   bool agentBound() {

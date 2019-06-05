@@ -2,8 +2,23 @@
 
 #include "fake_jni/library.h"
 #include "fake_jni/types.h"
-#include "fake_jni/jvm_invoke.h"
-#include "fake_jni/jvm_native.h"
+//Invoke implementations
+#include "fake_jni/interface/invoke/invoke.h"
+#include "fake_jni/interface/invoke/thread.h"
+//Native implementations
+#include "fake_jni/interface/native/native.h"
+#include "fake_jni/interface/native/native_constructor.h"
+#include "fake_jni/interface/native/native_inlined.h"
+#include "fake_jni/interface/native/array.h"
+#include "fake_jni/interface/native/buffer.h"
+#include "fake_jni/interface/native/exception.h"
+#include "fake_jni/interface/native/field.h"
+#include "fake_jni/interface/native/method.h"
+#include "fake_jni/interface/native/misc.h"
+#include "fake_jni/interface/native/object.h"
+#include "fake_jni/interface/native/ref.h"
+#include "fake_jni/interface/native/reflect.h"
+#include "fake_jni/interface/native/string.h"
 
 #include "jni.h"
 
@@ -31,7 +46,7 @@ namespace FakeJVM {
   {}
 
   explicit DefaultJvm(FILE *log):
-   DefaultJvm(log, InvokeInterface(), NativeInterface())
+   DefaultJvm(log, InvokeInterface(), NativeInterface(this))
   {}
 
   explicit DefaultJvm(FILE *log, const InvokeInterface &invoke, const NativeInterface &native):

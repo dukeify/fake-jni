@@ -2,6 +2,8 @@
 
 #include "jni.h"
 
+#include "fake_jni/util/list.h"
+
 #include <string>
 #include <mutex>
 
@@ -12,6 +14,9 @@
 #define STATIC_LIB_SUFFIX std::string(".a")
 #define DYNAMIC_LIB_SUFFIX std::string(".so")
 #endif
+
+//TODO This is specific to fake_jni/native/
+#define _FETCH_ENV_ NativeInterface * const ni = (NativeInterface *)(env->functions);
 
 namespace FakeJVM {
  using dlopen_t = void* (* const)(const char *filename, int flags);
@@ -27,13 +32,6 @@ namespace FakeJVM {
 
  class Library;
  class LibraryOptions;
-
- template<typename T>
- class List {
- public:
-  T t;
-  List<T> *next;
- };
 
  class Jvm: public JavaVM {
  protected:

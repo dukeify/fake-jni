@@ -36,6 +36,11 @@ FakeJVM::dlopen_t fakeOpen = [](const char *filename, int flags) -> void * {
  return dlopen(nullptr, flags);
 };
 
+//dlclose is currently broken for some reason
+FakeJVM::dlclose_t fakeClose = [](void *handle) -> int {
+ return 0;
+};
+
 //fake-jni in action
 int main(int argc, char **argv) {
  //Create a shiny new fake JVM instance
@@ -43,7 +48,7 @@ int main(int argc, char **argv) {
 
  //Attach this binary as a native library
  //no path to current binary, no options, custom library dl functions
- vm.attachLibrary("", "", { fakeOpen, &dlsym, &dlclose });
+ vm.attachLibrary("", "", { fakeOpen, &dlsym, fakeClose });
 
  //The invocations below are identical
  //Calls through the JNI (JNIInvokeInterface_)
