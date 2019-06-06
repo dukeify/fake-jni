@@ -87,6 +87,11 @@ namespace FakeJni {
    return const_cast<JniEnv *>(&env);
   }
 
+  //TODO search through all registered native classes for one containing a main method, and invoke it
+  void start() override {
+   throw std::runtime_error("");
+  }
+
   void destroy() override {
    running = false;
   }

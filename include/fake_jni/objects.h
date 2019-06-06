@@ -1,87 +1,222 @@
-#include <utility>
-
-#include <utility>
-
 #pragma once
 
 #include <cstring>
+#include "cx/strings.h"
 
 //TODO JClass definitions
 #define DEFINE_ARRAY_TYPE(arrayType, componentType) \
 template<>\
-class TypeSelectorBase<arrayType> {\
+class ArrayTypeBase<arrayType> {\
 public:\
  using type = componentType;\
- const char * const name = #arrayType;\
+ inline static constexpr const char * const name = #arrayType;\
 };
+//TODO what is wrong with CX::concat
+//};\
+//template<>\
+//class JniTypeBase<arrayType> {\
+//public:\
+// inline static constexpr const bool isRegisteredType = true;\
+// inline static constexpr const char * signature = CX::concat<"[", JniTypeBase<componentType>::signature>();\
+//};
 
 #define DEFINE_JNI_TYPE(type, sig) \
 template<>\
 class JniTypeBase<type> {\
 public:\
- const bool isRegisteredType = true;\
- const char * const signature = #sig;\
+ inline static constexpr const bool isRegisteredType = true;\
+ inline static constexpr const char * signature = #sig;\
+};
+
+//TODO what is wrong with CX::concat
+#define DEFINE_NATIVE_TYPE(clazz) \
+namespace FakeJni::_CX {\
+ template<>\
+ class JniTypeBase<clazz> {\
+ public:\
+  inline static constexpr const bool isRegisteredType = true;\
+  inline static constexpr const char * const signature = CX::concat<"L", clazz::name, ";">();\
+ };\
 };
 
 namespace FakeJni {
+ //Stowaway namespace for template junk
+ namespace _CX {
+  template<typename T>
+  class JniTypeBase {
+  public:
+   const bool isRegisteredType = false;
+  };
+
+  //All primitives here
+  DEFINE_JNI_TYPE(JVoid, V)
+  DEFINE_JNI_TYPE(JBoolean, Z)
+  DEFINE_JNI_TYPE(JByte, B)
+  DEFINE_JNI_TYPE(JChar, C)
+  DEFINE_JNI_TYPE(JShort, S)
+  DEFINE_JNI_TYPE(JInt, I)
+  DEFINE_JNI_TYPE(JFloat, F)
+  DEFINE_JNI_TYPE(JLong, J)
+  DEFINE_JNI_TYPE(JDouble, D)
+
+  //TODO all other classes will have to be initialized in the _CX namespace block below JClass
+  DEFINE_JNI_TYPE(JClass, L)
+
+  //SFINAE functions to generate JNI function signatures
+  template<typename R, typename M, typename... Args>
+  constexpr const char * generateSignature(R (M::* const func)(Args...)) noexcept {
+   using namespace CX;
+   return concat<"(", (JniTypeBase<Args>::signature, ...), ");", JniTypeBase<R>::signature>();
+  }
+
+  template<typename R, typename... Args>
+  constexpr const char * generateSignature(R (* const func)(Args...)) noexcept {
+   using namespace CX;
+   return concat<"(", (JniTypeBase<Args>::signature, ...), ");", JniTypeBase<R>::signature>();
+  }
+
+  //SFINAE functions to generate JNI field signatures
+  template<typename T, typename M>
+  constexpr const char * generateSignature(T (M::* const field)()) noexcept {
+   return JniTypeBase<T>::signature;
+  }
+
+  template<typename T>
+  constexpr const char * generateSignature(T field) noexcept {
+   return JniTypeBase<T>::signature;
+  }
+ }
 
  struct _jmethodID {};
  struct _jfieldID {};
 
- //TODO
  class JMethodID: public _jmethodID, private JNINativeMethod {
  private:
-  //TODO finish breeder and impls
-  template<typename F>
-  inline static const char * generateSignature(F func) {
-   throw std::runtime_error("unimplemented");
-  }
-
   union {
    void (* const staticFunc)();
    void (JObject::* const memberFunc)();
   };
 
-  explicit JMethodID(char * const name, char * const signature, const bool isStatic):
-   _jmethodID(),
-   JNINativeMethod { name, signature, nullptr },
-   isStatic(isStatic)
-  {}
-
- public:
   const bool isStatic;
 
-  //that's not right
+ public:
+  const bool isJvmStatic;
+
   template<typename T>
-  JMethodID(const std::string name, void (T::* const func)()):
-   JMethodID(name, generateSignature(func), true)
+  constexpr JMethodID(const char *name, const bool isJvmStatic, void (T::* const func)()):
+   _jmethodID(),
+   JNINativeMethod { name, _CX::generateSignature(func), nullptr },
+   memberFunc(func),
+   isStatic(false),
+   isJvmStatic(isJvmStatic)
   {
-   static_assert(std::is_member_function_pointer<T>::value, "Argument is not a member function!");
+   static_assert(std::is_base_of<JObject, T>::value, "Function does not originate from a JObject derived class!");
   }
 
   template<typename F>
-  JMethodID(const std::string name, F * const func):
-   JMethodID(name, generateSignature(func), true)
+  constexpr JMethodID(const char *name, const bool isJvmStatic, const F func):
+   _jmethodID(),
+   JNINativeMethod { name, _CX::generateSignature(func), nullptr },
+   staticFunc(func),
+   isStatic(true),
+   isJvmStatic(isJvmStatic)
   {
    static_assert(std::is_function<F>::value, "Argument is not a function!");
   }
- };
 
- //TODO
- class JFieldID: public _jfieldID {
- public:
-  JFieldID(): _jfieldID() {
+  const char * getName() {
+   return name;
+  }
 
+  const char * getSignature() {
+   return signature;
+  }
+
+  //TODO
+  template<typename R>
+  R invoke(JObject *obj, va_list args) {
+   if (isStatic) {
+//    return staticFunc();
+   } else {
+//    return obj->*memberFunc(...);
+   }
+   throw std::runtime_error("unimplemented");
   }
  };
 
- class JObject: public _jobject {
- public:
-  JClass * const clazz;
+#define ASSERT_FIELD_JNI_COMPLIANCE static_assert(\
+ std::is_base_of<JObject, T>::value || _CX::JniTypeBase<T>::isRegisteredType,\
+ "Field type is not a valid JNI type!"\
+ );
 
-  explicit JObject(JClass * const clazz):
-   clazz(clazz)
+//TODO
+ class JObject: public _jobject {
+ protected:
+  explicit constexpr JObject(JClass * const clazz): clazz(clazz)
   {}
+
+ public:
+  const JClass * const clazz;
+ };
+
+ class JFieldID: public _jfieldID {
+ private:
+  union {
+   void * const staticProp;
+   int (JObject::* const memberProp)();
+  };
+
+  const bool isStatic;
+
+ public:
+  const char * const name;
+  const char * const signature;
+  const bool isJvmStatic;
+
+  template<typename T, typename M>
+  constexpr JFieldID(const char * const name, const bool isJvmStatic, T M::* const member):
+   _jfieldID(),
+   isStatic(false),
+   name(name),
+   signature(_CX::generateSignature(member)),
+   isJvmStatic(isJvmStatic)
+  {
+   ASSERT_FIELD_JNI_COMPLIANCE
+   static_assert(std::is_base_of<JObject, M>::value, "Encapsulating class is not derived from JObject!");
+  }
+
+  template<typename T>
+  constexpr JFieldID(const char * const name, const bool isJvmStatic, T * const staticMember):
+   _jfieldID(),
+   isStatic(true),
+   name(name),
+   signature(_CX::generateSignature(staticMember)),
+   isJvmStatic(isJvmStatic)
+  {
+   ASSERT_FIELD_JNI_COMPLIANCE
+  }
+
+  //TODO
+  template<typename T>
+  T get(JObject *obj) {
+   if (isStatic) {
+//    return *staticProp;
+   } else {
+//    return obj->*memberProp;
+   }
+   throw std::runtime_error("unimplemented");
+  }
+
+  //TODO
+  template<typename T>
+  void set(JObject *obj, T value) {
+   if (isStatic) {
+//    *staticProp = value;
+   } else {
+//    obj->*memberProp = value;
+   }
+   throw std::runtime_error("unimplemented");
+  }
  };
 
  class JClass: public JObject, _jclass {
@@ -89,23 +224,25 @@ namespace FakeJni {
   AllocStack<JMethodID *> functions;
   AllocStack<JFieldID *> fields;
 
-  //TODO
-  void assertNameCompliance(const std::string &name) {
-
+  bool isNameCompliant(const char *name) {
+   //TODO
+   return true;
   }
 
  public:
-  const std::string name;
+  const char * const name;
 
-  explicit JClass(): JObject(this) {
+  JClass(const char * name):
+   JObject(this),
+   name(name)
+  {}
 
-  }
+  virtual JObject * newInstance(va_list args) = 0;
  };
 
- //Stowaway namespace for template junk
- namespace _CX {
-  template<typename>
-  class TypeSelectorBase;
+ //This segment must be below the base definition for JClass
+ namespace _CX {template<typename>
+  class ArrayTypeBase;
 
   DEFINE_ARRAY_TYPE(_jbooleanArray, JBoolean)
   DEFINE_ARRAY_TYPE(_jbyteArray, JByte)
@@ -115,25 +252,10 @@ namespace FakeJni {
   DEFINE_ARRAY_TYPE(_jfloatArray, JFloat)
   DEFINE_ARRAY_TYPE(_jlongArray, JLong)
   DEFINE_ARRAY_TYPE(_jdoubleArray, JDouble)
-  DEFINE_ARRAY_TYPE(_jobjectArray, JObject)
-
-  template<typename T>
-  class JniTypeBase {
-  public:
-   const bool isRegisteredType = false;
-  };
-
-  DEFINE_JNI_TYPE(JBoolean, Z)
-  DEFINE_JNI_TYPE(JByte, B)
-  DEFINE_JNI_TYPE(JChar, C)
-  DEFINE_JNI_TYPE(JShort, S)
-  DEFINE_JNI_TYPE(JInt, I)
-  DEFINE_JNI_TYPE(JFloat, F)
-  DEFINE_JNI_TYPE(JLong, J)
-  DEFINE_JNI_TYPE(JDouble, D)
-  DEFINE_JNI_TYPE(JClass, L)
+//  DEFINE_ARRAY_TYPE(_jobjectArray, JObject)
  }
 
+//TODO finish
 template<typename T>
 class NativeObject: public JClass {
 public:
@@ -176,9 +298,13 @@ public:
  bool registerMethod(R (*func)(Args...)) {
   throw std::runtime_error("Unimplemented");
  }
+
+ JObject * newInstance(va_list args) override {
+  return (JObject *)new T();
+ }
 };
 
-// //TODO
+ //TODO
 // class JWeak: JObject {
 // public:
 //  explicit JWeak(const std::string name): JObject() {
@@ -186,10 +312,23 @@ public:
 //  }
 // };
 
+ template<typename>
+ class Array;
+
+ using JBooleanArray = Array<_jbooleanArray>;
+ using JByteArray = Array<_jbyteArray>;
+ using JCharArray = Array<_jcharArray>;
+ using JShortArray = Array<_jshortArray>;
+ using JIntArray = Array<_jintArray>;
+ using JFloatArray = Array<_jfloatArray>;
+ using JLongArray = Array<_jlongArray>;
+ using JDoubleArray = Array<_jdoubleArray>;
+ using JObjectArray = Array<_jobjectArray>;
+
  template<typename T>
  class Array: public T, JObject {
  private:
-  using meta = _CX::TypeSelectorBase<T>;
+  using meta = _CX::ArrayTypeBase<T>;
 
  public:
   using componentType = typename meta::type;
@@ -202,7 +341,9 @@ public:
 
   explicit Array(const uint32_t size, const std::string name):
    T(),
-   //TODO
+   //TODO Are all non-primitive, and multidimensional, arrays just object arrays?
+//   JObject(_CX::JniTypeBase<JObjectArray>::signature),
+//   JObject(_CX::JniTypeBase<T>::clazz),
    JObject(nullptr),
    size(size),
    array(new componentType[size])
@@ -221,16 +362,6 @@ public:
    return &(array[i]);
   }
  };
-
- using JBooleanArray = Array<_jbooleanArray>;
- using JByteArray = Array<_jbyteArray>;
- using JCharArray = Array<_jcharArray>;
- using JShortArray = Array<_jshortArray>;
- using JIntArray = Array<_jintArray>;
- using JFloatArray = Array<_jfloatArray>;
- using JLongArray = Array<_jlongArray>;
- using JDoubleArray = Array<_jdoubleArray>;
- using JObjectArray = Array<_jobjectArray>;
 
  class JString: public JCharArray, _jstring {
  public:

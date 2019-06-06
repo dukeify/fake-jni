@@ -42,6 +42,14 @@ FakeJni::dlclose_t fakeClose = [](void *handle) -> int {
  return 0;
 };
 
+//TODO
+//class ExampleClass: public FakeJni::NativeObject<ExampleClass> {
+//public:
+// inline static constexpr const char * const name = "com/example/ExampleClass";
+//};
+//
+//DEFINE_NATIVE_TYPE(ExampleClass)
+
 //fake-jni in action
 int main(int argc, char **argv) {
  std::cout << sizeof(JNINativeInterface_) << std::endl;
@@ -51,6 +59,9 @@ int main(int argc, char **argv) {
  //Attach this binary as a native library
  //no path to current binary, no options, custom library dl functions
  vm.attachLibrary("", "", {fakeOpen, &dlsym, fakeClose});
+
+ //TODO Register a native class on this JVM instance
+// vm.registerNativeClass(new ExampleClass());
 
  //The invocations below are identical
  //Calls through the JNI (JNIInvokeInterface_)

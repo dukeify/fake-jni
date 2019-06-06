@@ -20,6 +20,7 @@ namespace FakeJni {
  using dlsym_t = void* (* const)(void *handle, const char* symbol);
  using dlclose_t = int (* const)(void* handle);
 
+ using JVoid = void;
  using JBoolean = jboolean;
  using JByte = jbyte;
  using JChar = jchar;
@@ -103,6 +104,7 @@ namespace FakeJni {
   //Stable api
   virtual FILE * getLog() = 0;
   virtual JniEnv * getEnv() = 0;
+  virtual void start() = 0;
   virtual void destroy() = 0;
   virtual Library * getLibrary(const std::string &path) = 0;
   virtual Library * attachLibrary(

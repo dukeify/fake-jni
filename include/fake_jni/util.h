@@ -119,4 +119,9 @@ namespace FakeJni {
    return size;
   }
  };
+
+ //JNI Signature generation utils
+ namespace _CX {
+
+ }
 }
