@@ -2,6 +2,26 @@
 
 JNI and JVMTI without the Jvm
 
+## Cloning
+```sh
+git clone --depth 1 --recursive https://github.com/meme/fake-jni.git
+```
+
+## Usage
+To include `fake-jni` in your CMake project, clone it into your project's root directory and add the following lines to your `CMakeLists.txt`:
+```cmake
+add_subdirectory(fake-jni)
+target_link_libraries(fake-jni)
+```
+Then simply build as usual:
+```sh
+mkdir build
+cd build
+cmake ..
+make -j`nproc`
+```
+To compile `fake-jni` with debugging enabled, add the make flag `-DFAKE_JNI_DEBUG`
+
 ## Goals
 - Binary compatability with JNI 1.8
 - Drop-in replacement for an actual JVM, allowing users to compile against `fake-jni` while retaining full functionality
