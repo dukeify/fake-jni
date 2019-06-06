@@ -1,6 +1,6 @@
 #pragma once
 
-namespace FakeJVM {
+namespace FakeJni {
  jint InvokeInterface::attachCurrentThread(Jvm *vm, void **penv, void *args) const {
   throw std::runtime_error("FATAL: 'JVMInvokeInterface_::AttachCurrentThread' is unimplemented!");
   return JNI_ERR;

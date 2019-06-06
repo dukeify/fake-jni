@@ -1,24 +1,26 @@
 #pragma once
 
-#include "fake_jni/library.h"
-#include "fake_jni/types.h"
+#include "types.h"
+#include "util.h"
+#include "library.h"
+#include "objects.h"
 //Invoke implementations
-#include "fake_jni/interface/invoke/invoke.h"
-#include "fake_jni/interface/invoke/thread.h"
+#include "interface/invoke/invoke.h"
+#include "interface/invoke/thread.h"
 //Native implementations
-#include "fake_jni/interface/native/native.h"
-#include "fake_jni/interface/native/native_constructor.h"
-#include "fake_jni/interface/native/native_inlined.h"
-#include "fake_jni/interface/native/array.h"
-#include "fake_jni/interface/native/buffer.h"
-#include "fake_jni/interface/native/exception.h"
-#include "fake_jni/interface/native/field.h"
-#include "fake_jni/interface/native/method.h"
-#include "fake_jni/interface/native/misc.h"
-#include "fake_jni/interface/native/object.h"
-#include "fake_jni/interface/native/ref.h"
-#include "fake_jni/interface/native/reflect.h"
-#include "fake_jni/interface/native/string.h"
+#include "interface/native/native.h"
+#include "interface/native/native_constructor.h"
+#include "interface/native/native_inlined.h"
+#include "interface/native/array.h"
+#include "interface/native/buffer.h"
+#include "interface/native/exception.h"
+#include "interface/native/field.h"
+#include "interface/native/method.h"
+#include "interface/native/misc.h"
+#include "interface/native/object.h"
+#include "interface/native/ref.h"
+#include "interface/native/reflect.h"
+#include "interface/native/string.h"
 
 #include "jni.h"
 
@@ -27,14 +29,15 @@
 #include <algorithm>
 #include <memory>
 
-namespace FakeJVM {
+namespace FakeJni {
  //TODO all JVM calls should be blocking until execution completes to prevent race conditions from emerging
- class DefaultJvm: public Jvm {
+ template<typename Invoke, typename Native, typename Env>
+ class JvmImpl: public Jvm {
  private:
   FILE * const log;
-  const InvokeInterface invoke;
-  const NativeInterface native;
-  const JNIEnv env;
+  Invoke * const invoke;
+  Native * const native;
+  const Env env;
 
   //TODO on the first invocation of any JNI, JNIEnv or JVMTI functions, set this flag to true
   bool running;
@@ -42,26 +45,26 @@ namespace FakeJVM {
   std::vector<Library *> libraries;
 
  public:
-  explicit DefaultJvm(): DefaultJvm(stdout)
+  explicit JvmImpl(): JvmImpl(stdout)
   {}
 
-  explicit DefaultJvm(FILE *log):
-   DefaultJvm(log, InvokeInterface(), NativeInterface(this))
+  explicit JvmImpl(FILE *log):
+   JvmImpl(log, new Invoke(), new Native())
   {}
 
-  explicit DefaultJvm(FILE *log, const InvokeInterface &invoke, const NativeInterface &native):
+  explicit JvmImpl(FILE *log, Invoke * const invoke, Native * const native):
    Jvm(),
    log(log),
    invoke(invoke),
    native(native),
-   env { &(this->native) }
+   env(Env(this))
   {
-   functions = &(this->invoke);
+   functions = invoke;
    running = false;
   }
 
   //Upon DefaultJvm destruction, unload all libraries
-  ~DefaultJvm() {
+  ~JvmImpl() {
    for (const auto &l : libraries) {
     removeLibrary(l->path, "");
    }
@@ -72,16 +75,16 @@ namespace FakeJVM {
    return log;
   }
 
-  InvokeInterface getInvokeInterface() override {
+  Invoke * getInvokeInterface() override {
    return invoke;
   }
 
-  NativeInterface getNativeInterface() override {
+  Native * getNativeInterface() override {
    return native;
   }
 
-  JNIEnv * getEnv() override {
-   return const_cast<JNIEnv *>(&env);
+  JniEnv * getEnv() override {
+   return const_cast<JniEnv *>(&env);
   }
 
   void destroy() override {
@@ -161,4 +164,6 @@ namespace FakeJVM {
    return false;
   }
  };
+
+ using DefaultJvm = JvmImpl<InvokeInterface, NativeInterface, JniEnv>;
 }

@@ -3,14 +3,14 @@
 #include "jni.h"
 #include "jvmti.h"
 
-#include "fake_jni/types.h"
+#include "types.h"
 
 #include <dlfcn.h>
 
 #include <stdexcept>
 #include <string>
 
-namespace FakeJVM {
+namespace FakeJni {
  class LibraryOptions final {
  public:
   dlopen_t dlopen_p;
@@ -60,10 +60,10 @@ namespace FakeJVM {
  public:
   Jvm * const vm;
   const std::string path;
-  const LibraryOptions &options;
+  const LibraryOptions options;
   const bool isStatic;
 
-  explicit Library(Jvm * const vm, const std::string& path, LibraryOptions const &options):
+  Library(Jvm * const vm, const std::string& path, const LibraryOptions options):
    vm(vm),
    path(path),
    options(options),
@@ -108,14 +108,12 @@ namespace FakeJVM {
 #ifdef FAKE_JNI_DEBUG
    fprintf(vm->getLog(), "DEBUG: Closing handle for library '%s'", path.c_str());
 #endif
-//   const int status = options.dlclose_p(handle);
-//   if (status) {
-//    //TODO is this fatal?
-//#ifdef FAKE_JNI_DEBUG
-//    fprintf(vm->getLog(), "WARNING: Failed to close dl handle for '%s', with error: %s", path.c_str(), dlerror());
-//#endif
-////    throw std::runtime_error("FATAL: Failed to close dl handle for library '" + path + "'!");
-//   }
+   const int status = options.dlclose_p(handle);
+   if (status) {
+#ifdef FAKE_JNI_DEBUG
+    fprintf(vm->getLog(), "WARNING: Failed to close dl handle for '%s', with error: %s", path.c_str(), dlerror());
+#endif
+   }
   }
 
   void * lsym(const char *symbol) {

@@ -1,6 +1,6 @@
 #pragma once
 
-namespace FakeJVM {
+namespace FakeJni {
 //TODO implement
  jobjectRefType NativeInterface::getObjectRefType(jobject) const {
   throw std::runtime_error("FATAL: 'JVMNativeInterface_::getObjectRefType' is unimplemented!");

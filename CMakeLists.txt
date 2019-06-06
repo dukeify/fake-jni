@@ -9,7 +9,7 @@ set(CMAKE_C_FLAGS ${compiler_flags})
 add_library(fake-jni INTERFACE)
 
 target_include_directories(fake-jni INTERFACE include)
-target_compile_options(fake-jni INTERFACE -Wall -Wextra -pedantic -Wno-unused-parameter)
+target_compile_options(fake-jni INTERFACE -Werror -Wall -Wextra -pedantic -Wno-unused-parameter)
 
 add_subdirectory(tests)
 add_subdirectory(examples)

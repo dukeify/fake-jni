@@ -1,6 +1,6 @@
 #pragma once
 
-namespace FakeJVM {
+namespace FakeJni {
 //TODO implement
  jmethodID NativeInterface::fromReflectedMethod(jobject) const {
   throw std::runtime_error("FATAL: 'JVMNativeInterface_::fromReflectedMethod' is unimplemented!");

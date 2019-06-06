@@ -1,6 +1,6 @@
 #pragma once
 
-namespace FakeJVM {
+namespace FakeJni {
 //TODO implement
  jint NativeInterface::throw_(jthrowable) const {
   throw std::runtime_error("FATAL: 'JVMNativeInterface_::throw_' is unimplemented!");

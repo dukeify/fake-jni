@@ -1,6 +1,7 @@
 #pragma once
 
 #include "fake_jni/types.h"
+#include "fake_jni/objects.h"
 
 #ifdef FAKE_JNI_DEBUG
 #include <cstdio>
@@ -9,10 +10,10 @@
 #include <map>
 #include <mutex>
 
-namespace FakeJVM {
+namespace FakeJni {
  class NativeInterface : public JNINativeInterface_ {
  private:
-  //native_inlined.
+  //native_inlined.h
   inline static jobject _NewObject(JNIEnv *env, jclass clazz, jmethodID jmid, ...);
   inline static jobject _CallObjectMethod(JNIEnv *env, jobject obj, jmethodID jmid, ...);
   inline static jboolean _CallBooleanMethod(JNIEnv *env, jobject obj, jmethodID jmid, ...);
@@ -45,14 +46,16 @@ namespace FakeJVM {
   inline static jdouble _CallStaticDoubleMethod(JNIEnv *env, jclass clazz, jmethodID jmid, ...);
   inline static void _CallStaticVoidMethod(JNIEnv *env, jclass clazz, jmethodID jmid, ...);
 
+  //Allocation storage
+  AllocStack<JObject *> allocations;
+
  public:
-  Jvm *const vm;
-
   //native_constructor.h
-  explicit NativeInterface(Jvm * const vm);
+  explicit NativeInterface();
 
-  //TODO deallocate all JVM allocated memory
-  ~NativeInterface() {}
+  NativeInterface(const NativeInterface&) = delete;
+
+  virtual ~NativeInterface() = default;
 
   //TODO make all functions pure virtual
 
@@ -70,7 +73,7 @@ namespace FakeJVM {
   //object.h
   virtual jboolean isSameObject(jobject, jobject) const;
   virtual jobject allocObject(jclass) const;
-  virtual jobject newObject(jclass, jmethodID, ...) const;
+//  virtual jobject newObject(jclass, jmethodID, ...) const;
   virtual jobject newObjectV(jclass, jmethodID, va_list) const;
   virtual jobject newObjectA(jclass, jmethodID, const jvalue *) const;
   virtual jclass getObjectClass(jobject) const;
@@ -97,95 +100,95 @@ namespace FakeJVM {
 
   //method.h
   virtual jmethodID getMethodID(jclass, const char *, const char *) const;
-  virtual jobject callObjectMethod(jobject, jmethodID, ...) const;
+//  virtual jobject callObjectMethod(jobject, jmethodID, ...) const;
   virtual jobject callObjectMethodV(jobject, jmethodID, va_list) const;
   virtual jobject callObjectMethodA(jobject, jmethodID, const jvalue *) const;
-  virtual jboolean callBooleanMethod(jobject, jmethodID, ...) const;
+//  virtual jboolean callBooleanMethod(jobject, jmethodID, ...) const;
   virtual jboolean callBooleanMethodV(jobject, jmethodID, va_list) const;
   virtual jboolean callBooleanMethodA(jobject, jmethodID, const jvalue *) const;
-  virtual jbyte callByteMethod(jobject, jmethodID, ...) const;
+//  virtual jbyte callByteMethod(jobject, jmethodID, ...) const;
   virtual jbyte callByteMethodV(jobject, jmethodID, va_list) const;
   virtual jbyte callByteMethodA(jobject, jmethodID, const jvalue *) const;
-  virtual jchar callCharMethod(jobject, jmethodID, ...) const;
+//  virtual jchar callCharMethod(jobject, jmethodID, ...) const;
   virtual jchar callCharMethodV(jobject, jmethodID, va_list) const;
   virtual jchar callCharMethodA(jobject, jmethodID, const jvalue *) const;
-  virtual jshort callShortMethod(jobject, jmethodID, ...) const;
+//  virtual jshort callShortMethod(jobject, jmethodID, ...) const;
   virtual jshort callShortMethodV(jobject, jmethodID, va_list) const;
   virtual jshort callShortMethodA(jobject, jmethodID, const jvalue *) const;
-  virtual jint callIntMethod(jobject, jmethodID, ...) const;
+//  virtual jint callIntMethod(jobject, jmethodID, ...) const;
   virtual jint callIntMethodV(jobject, jmethodID, va_list) const;
   virtual jint callIntMethodA(jobject, jmethodID, const jvalue *) const;
-  virtual jlong callLongMethod(jobject, jmethodID, ...) const;
+//  virtual jlong callLongMethod(jobject, jmethodID, ...) const;
   virtual jlong callLongMethodV(jobject, jmethodID, va_list) const;
   virtual jlong callLongMethodA(jobject, jmethodID, const jvalue *) const;
-  virtual jfloat callFloatMethod(jobject, jmethodID, ...) const;
+//  virtual jfloat callFloatMethod(jobject, jmethodID, ...) const;
   virtual jfloat callFloatMethodV(jobject, jmethodID, va_list) const;
   virtual jfloat callFloatMethodA(jobject, jmethodID, const jvalue *) const;
-  virtual jdouble callDoubleMethod(jobject, jmethodID, ...) const;
+//  virtual jdouble callDoubleMethod(jobject, jmethodID, ...) const;
   virtual jdouble callDoubleMethodV(jobject, jmethodID, va_list) const;
   virtual jdouble callDoubleMethodA(jobject, jmethodID, const jvalue *) const;
-  virtual void callVoidMethod(jobject, jmethodID, ...) const;
+//  virtual void callVoidMethod(jobject, jmethodID, ...) const;
   virtual void callVoidMethodV(jobject, jmethodID, va_list) const;
   virtual void callVoidMethodA(jobject, jmethodID, const jvalue *) const;
-  virtual jobject callNonvirtualObjectMethod(jobject, jclass, jmethodID, ...) const;
+//  virtual jobject callNonvirtualObjectMethod(jobject, jclass, jmethodID, ...) const;
   virtual jobject callNonvirtualObjectMethodV(jobject, jclass, jmethodID, va_list) const;
   virtual jobject callNonvirtualObjectMethodA(jobject, jclass, jmethodID, const jvalue *) const;
-  virtual jboolean callNonvirtualBooleanMethod(jobject, jclass, jmethodID, ...) const;
+//  virtual jboolean callNonvirtualBooleanMethod(jobject, jclass, jmethodID, ...) const;
   virtual jboolean callNonvirtualBooleanMethodV(jobject, jclass, jmethodID, va_list) const;
   virtual jboolean callNonvirtualBooleanMethodA(jobject, jclass, jmethodID, const jvalue *) const;
-  virtual jbyte callNonvirtualByteMethod(jobject, jclass, jmethodID, ...) const;
+//  virtual jbyte callNonvirtualByteMethod(jobject, jclass, jmethodID, ...) const;
   virtual jbyte callNonvirtualByteMethodV(jobject, jclass, jmethodID, va_list) const;
   virtual jbyte callNonvirtualByteMethodA(jobject, jclass, jmethodID, const jvalue *) const;
-  virtual jchar callNonvirtualCharMethod(jobject, jclass, jmethodID, ...) const;
+//  virtual jchar callNonvirtualCharMethod(jobject, jclass, jmethodID, ...) const;
   virtual jchar callNonvirtualCharMethodV(jobject, jclass, jmethodID, va_list) const;
   virtual jchar callNonvirtualCharMethodA(jobject, jclass, jmethodID, const jvalue *) const;
-  virtual jshort callNonvirtualShortMethod(jobject, jclass, jmethodID, ...) const;
+//  virtual jshort callNonvirtualShortMethod(jobject, jclass, jmethodID, ...) const;
   virtual jshort callNonvirtualShortMethodV(jobject, jclass, jmethodID, va_list) const;
   virtual jshort callNonvirtualShortMethodA(jobject, jclass, jmethodID, const jvalue *) const;
-  virtual jint callNonvirtualIntMethod(jobject, jclass, jmethodID, ...) const;
+//  virtual jint callNonvirtualIntMethod(jobject, jclass, jmethodID, ...) const;
   virtual jint callNonvirtualIntMethodV(jobject, jclass, jmethodID, va_list) const;
   virtual jint callNonvirtualIntMethodA(jobject, jclass, jmethodID, const jvalue *) const;
-  virtual jlong callNonvirtualLongMethod(jobject, jclass, jmethodID, ...) const;
+//  virtual jlong callNonvirtualLongMethod(jobject, jclass, jmethodID, ...) const;
   virtual jlong callNonvirtualLongMethodV(jobject, jclass, jmethodID, va_list) const;
   virtual jlong callNonvirtualLongMethodA(jobject, jclass, jmethodID, const jvalue *) const;
-  virtual jfloat callNonvirtualFloatMethod(jobject, jclass, jmethodID, ...) const;
+//  virtual jfloat callNonvirtualFloatMethod(jobject, jclass, jmethodID, ...) const;
   virtual jfloat callNonvirtualFloatMethodV(jobject, jclass, jmethodID, va_list) const;
   virtual jfloat callNonvirtualFloatMethodA(jobject, jclass, jmethodID, const jvalue *) const;
-  virtual jdouble callNonvirtualDoubleMethod(jobject, jclass, jmethodID, ...) const;
+//  virtual jdouble callNonvirtualDoubleMethod(jobject, jclass, jmethodID, ...) const;
   virtual jdouble callNonvirtualDoubleMethodV(jobject, jclass, jmethodID, va_list) const;
   virtual jdouble callNonvirtualDoubleMethodA(jobject, jclass, jmethodID, const jvalue *) const;
-  virtual void callNonvirtualVoidMethod(jobject, jclass, jmethodID, ...) const;
+//  virtual void callNonvirtualVoidMethod(jobject, jclass, jmethodID, ...) const;
   virtual void callNonvirtualVoidMethodV(jobject, jclass, jmethodID, va_list) const;
   virtual void callNonvirtualVoidMethodA(jobject, jclass, jmethodID, const jvalue *) const;
   virtual jmethodID getStaticMethodID(jclass, const char *, const char *) const;
-  virtual jobject callStaticObjectMethod(jclass, jmethodID, ...) const;
+//  virtual jobject callStaticObjectMethod(jclass, jmethodID, ...) const;
   virtual jobject callStaticObjectMethodV(jclass, jmethodID, va_list) const;
   virtual jobject callStaticObjectMethodA(jclass, jmethodID, const jvalue *) const;
-  virtual jboolean callStaticBooleanMethod(jclass, jmethodID, ...) const;
+//  virtual jboolean callStaticBooleanMethod(jclass, jmethodID, ...) const;
   virtual jboolean callStaticBooleanMethodV(jclass, jmethodID, va_list) const;
   virtual jboolean callStaticBooleanMethodA(jclass, jmethodID, const jvalue *) const;
-  virtual jbyte callStaticByteMethod(jclass, jmethodID, ...) const;
+//  virtual jbyte callStaticByteMethod(jclass, jmethodID, ...) const;
   virtual jbyte callStaticByteMethodV(jclass, jmethodID, va_list) const;
   virtual jbyte callStaticByteMethodA(jclass, jmethodID, const jvalue *) const;
-  virtual jchar callStaticCharMethod(jclass, jmethodID, ...) const;
+//  virtual jchar callStaticCharMethod(jclass, jmethodID, ...) const;
   virtual jchar callStaticCharMethodV(jclass, jmethodID, va_list) const;
   virtual jchar callStaticCharMethodA(jclass, jmethodID, const jvalue *) const;
-  virtual jshort callStaticShortMethod(jclass, jmethodID, ...) const;
+//  virtual jshort callStaticShortMethod(jclass, jmethodID, ...) const;
   virtual jshort callStaticShortMethodV(jclass, jmethodID, va_list) const;
   virtual jshort callStaticShortMethodA(jclass, jmethodID, const jvalue *) const;
-  virtual jint callStaticIntMethod(jclass, jmethodID, ...) const;
+//  virtual jint callStaticIntMethod(jclass, jmethodID, ...) const;
   virtual jint callStaticIntMethodV(jclass, jmethodID, va_list) const;
   virtual jint callStaticIntMethodA(jclass, jmethodID, const jvalue *) const;
-  virtual jlong callStaticLongMethod(jclass, jmethodID, ...) const;
+//  virtual jlong callStaticLongMethod(jclass, jmethodID, ...) const;
   virtual jlong callStaticLongMethodV(jclass, jmethodID, va_list) const;
   virtual jlong callStaticLongMethodA(jclass, jmethodID, const jvalue *) const;
-  virtual jfloat callStaticFloatMethod(jclass, jmethodID, ...) const;
+//  virtual jfloat callStaticFloatMethod(jclass, jmethodID, ...) const;
   virtual jfloat callStaticFloatMethodV(jclass, jmethodID, va_list) const;
   virtual jfloat callStaticFloatMethodA(jclass, jmethodID, const jvalue *) const;
-  virtual jdouble callStaticDoubleMethod(jclass, jmethodID, ...) const;
+//  virtual jdouble callStaticDoubleMethod(jclass, jmethodID, ...) const;
   virtual jdouble callStaticDoubleMethodV(jclass, jmethodID, va_list) const;
   virtual jdouble callStaticDoubleMethodA(jclass, jmethodID, const jvalue *) const;
-  virtual void callStaticVoidMethod(jclass, jmethodID, ...) const;
+//  virtual void callStaticVoidMethod(jclass, jmethodID, ...) const;
   virtual void callStaticVoidMethodV(jclass, jmethodID, va_list) const;
   virtual void callStaticVoidMethodA(jclass, jmethodID, const jvalue *) const;
 

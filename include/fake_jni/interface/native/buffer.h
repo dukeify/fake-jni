@@ -1,6 +1,6 @@
 #pragma once
 
-namespace FakeJVM {
+namespace FakeJni {
  //TODO implement
  jobject NativeInterface::newDirectByteBuffer(void *, jlong) const {
   throw std::runtime_error("FATAL: 'JVMNativeInterface_::newDirectByteBuffer' is unimplemented!");

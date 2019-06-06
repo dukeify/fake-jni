@@ -1,9 +1,9 @@
 #pragma once
 
-namespace FakeJVM {
+namespace FakeJni {
 //TODO implement
- jstring NativeInterface::newString(const jchar *, jsize) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::newString' is unimplemented!");
+ jstring NativeInterface::newString(const jchar *chars, jsize size) const {
+
   return nullptr;
  }
 

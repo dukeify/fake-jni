@@ -1,21 +1,11 @@
 #pragma once
 
-namespace FakeJVM {
-//TODO implement
- jboolean NativeInterface::isSameObject(jobject, jobject) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::isSameObject' is unimplemented!");
-  return 0;
+namespace FakeJni {
+ jboolean NativeInterface::isSameObject(jobject obj1, jobject obj2) const {
+  return (jboolean)(obj1 == obj2);
  }
 
-//TODO implement
- jobject NativeInterface::allocObject(jclass) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::allocObject' is unimplemented!");
-  return nullptr;
- }
-
-//TODO implement
- jobject NativeInterface::newObject(jclass, jmethodID, ...) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::newObject' is unimplemented!");
+ jobject NativeInterface::allocObject(jclass clazz) const {
   return nullptr;
  }
 

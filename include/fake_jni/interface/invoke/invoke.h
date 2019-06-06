@@ -6,7 +6,7 @@
 #include <cstdio>
 #endif
 
-namespace FakeJVM {
+namespace FakeJni {
  class InvokeInterface : public JNIInvokeInterface_ {
  public:
   explicit InvokeInterface() : JNIInvokeInterface_() {
@@ -16,37 +16,41 @@ namespace FakeJVM {
 #ifdef FAKE_JNI_DEBUG
     fprintf(jvm->getLog(), "DEBUG: JNIInvokeInterface_::DestroyJavaVM\n");
 #endif
-    return jvm->getInvokeInterface().destroyJavaVm(jvm);
+    return jvm->getInvokeInterface()->destroyJavaVm(jvm);
    };
    AttachCurrentThread = [](JavaVM *vm, void **penv, void *args) -> jint {
     Jvm *const jvm = (Jvm *)vm;
 #ifdef FAKE_JNI_DEBUG
     fprintf(jvm->getLog(), "DEBUG: JNIInvokeInterface_::AttachCurrentThread\n");
 #endif
-    return jvm->getInvokeInterface().attachCurrentThread(jvm, penv, args);
+    return jvm->getInvokeInterface()->attachCurrentThread(jvm, penv, args);
    };
    DetachCurrentThread = [](JavaVM *vm) -> jint {
     Jvm *const jvm = (Jvm *)vm;
 #ifdef FAKE_JNI_DEBUG
     fprintf(jvm->getLog(), "DEBUG: JNIInvokeInterface_::DetachCurrentThread\n");
 #endif
-    return jvm->getInvokeInterface().detachCurrentThread((Jvm *)vm);
+    return jvm->getInvokeInterface()->detachCurrentThread((Jvm *)vm);
    };
    GetEnv = [](JavaVM *vm, void **penv, jint version) -> jint {
     Jvm *const jvm = (Jvm *)vm;
 #ifdef FAKE_JNI_DEBUG
     fprintf(jvm->getLog(), "DEBUG: JNIInvokeInterface_::GetEnv\n");
 #endif
-    return jvm->getInvokeInterface().getEnv(jvm, penv, version);
+    return jvm->getInvokeInterface()->getEnv(jvm, penv, version);
    };
    AttachCurrentThreadAsDaemon = [](JavaVM *vm, void **penv, void *args) -> jint {
     Jvm *const jvm = (Jvm *)vm;
 #ifdef FAKE_JNI_DEBUG
     fprintf(jvm->getLog(), "DEBUG: JNIInvokeInterface_::DetachCurrentThread\n");
 #endif
-    return jvm->getInvokeInterface().attachCurrentThread(jvm, penv, args);
+    return jvm->getInvokeInterface()->attachCurrentThread(jvm, penv, args);
    };
   }
+
+  InvokeInterface(const InvokeInterface &ii) = delete;
+
+  virtual ~InvokeInterface() = default;
 
   virtual jint getEnv(Jvm *vm, void **penv, jint version) const {
    *penv = vm->getEnv();

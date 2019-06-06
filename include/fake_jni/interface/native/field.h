@@ -1,6 +1,6 @@
 #pragma once
 
-namespace FakeJVM {
+namespace FakeJni {
 //TODO implement
  jfieldID NativeInterface::getFieldID(jclass, const char *, const char *) const {
   throw std::runtime_error("FATAL: 'JVMNativeInterface_::getFieldID' is unimplemented!");

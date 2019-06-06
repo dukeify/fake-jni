@@ -1,6 +1,6 @@
 #pragma once
 
-namespace FakeJVM {
+namespace FakeJni {
  //TODO implement
  void* NativeInterface::getPrimitiveArrayCritical(jarray, jboolean *) const {
   throw std::runtime_error("FATAL: 'JVMNativeInterface_::getPrimitiveArrayCritical' is unimplemented!");
