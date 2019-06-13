@@ -83,13 +83,13 @@ int main(int argc, char **argv) {
  //Create a shiny new fake JVM instance
  DefaultJvm vm;
 
- //Register ExampleClass on the VM)
+// //Register ExampleClass on the VM)
  vm.registerClass<ExampleClass>();
 
  //Attach this binary as a native library
  //no path to current binary, no options, custom library dl functions
 // vm.attachLibrary("/home/matthew/Git/fake-jni/build/examples/examples", "", {&dlopen, &dlsym, &dlclose});
-// vm.attachLibrary("", "", {&dlopen, &dlsym, &dlclose});
+ vm.attachLibrary("", "", {&dlopen, &dlsym, &dlclose});
 
  //Start fake-jni
 // vm.start();

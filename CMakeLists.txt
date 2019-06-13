@@ -19,8 +19,8 @@ target_compile_options(fake-jni INTERFACE
         -Wno-unused-function
 )
 
-set(BUILD_FAKE_JNI_TESTS OFF CACHE BOOL "Enables fake-jni tests")
-set(BUILD_FAKE_JNI_EXMAPLES OFF CACHE BOOL "Enables fake-jni examples")
+set(BUILD_FAKE_JNI_TESTS ON CACHE BOOL "Enables fake-jni tests")
+set(BUILD_FAKE_JNI_EXAMPLES ON CACHE BOOL "Enables fake-jni examples")
 
 if (BUILD_FAKE_JNI_TESTS)
     add_subdirectory(tests)
