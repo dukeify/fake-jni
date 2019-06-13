@@ -69,8 +69,9 @@ namespace FakeJni {
   const JInt length;
   componentType * const array;
 
-  explicit JArray(const JArray<T> &array) = delete;
-  explicit JArray(const JArray<T> &&array) = delete;
+  explicit JArray(const JArray<T> &arr) : JArray(arr.length) {
+   memcpy(array, arr.array, length);
+  };
 
   explicit JArray(const JInt size):
    T(),
@@ -89,7 +90,7 @@ namespace FakeJni {
    if (i >= length) {
     throw std::out_of_range("Requested index out of range!");
    }
-   return &(array[i]);
+   return array[i];
   }
 
   virtual const JClass * getDescriptor() noexcept = 0;
