@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.8)
 
-set(CMAKE_CXX_COMPILER "/usr/bin/clang++")
+#set(CMAKE_CXX_COMPILER "/usr/bin/clang++")
 set(CMAKE_CXX_STANDARD 17)
 set(compiler_flags "-g -DFAKE_JNI_DEBUG")
 set(CMAKE_CXX_FLAGS ${compiler_flags})
@@ -19,5 +19,13 @@ target_compile_options(fake-jni INTERFACE
         -Wno-unused-function
 )
 
-add_subdirectory(tests)
-add_subdirectory(examples)
+set(BUILD_FAKE_JNI_TESTS OFF CACHE BOOL "Enables fake-jni tests")
+set(BUILD_FAKE_JNI_EXMAPLES OFF CACHE BOOL "Enables fake-jni examples")
+
+if (BUILD_FAKE_JNI_TESTS)
+    add_subdirectory(tests)
+endif()
+
+if (BUILD_FAKE_JNI_EXAMPLES)
+    add_subdirectory(examples)
+endif()

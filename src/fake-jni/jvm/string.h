@@ -1,5 +1,7 @@
 #pragma once
 
+#include <string>
+
 namespace FakeJni {
  class JString: public _jstring, public JCharArray {
  public:
@@ -11,8 +13,12 @@ namespace FakeJni {
 
   JString(const JInt size): JCharArray(size) {}
 
-  JString(const char * const str): JString(strlen(str)) {
-   memcpy(array, str, length);
+  JString(const char * const str): JString((strlen(str) * (sizeof(char) / (sizeof(JChar)))) + 1) {
+   memcpy(array, str, strlen(str));
+  }
+
+  bool operator==(const JString& str) {
+   return strcmp((char *)array, (char *)str.array) == 0;
   }
 
   inline static JString * cast(_jobject *obj) {
