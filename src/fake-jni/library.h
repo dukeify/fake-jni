@@ -1,29 +1,52 @@
 #pragma once
 
-#include "jni.h"
-#include "jvmti.h"
-
-#include "types.h"
-
-#include <dlfcn.h>
-
-#include <stdexcept>
-#include <string>
+#ifdef _WIN32
+ #define STATIC_LIB_SUFFIX std::string(".lib")
+ #define DYNAMIC_LIB_SUFFIX std::string(".dll")
+#else
+ #define STATIC_LIB_SUFFIX std::string(".a")
+ #define DYNAMIC_LIB_SUFFIX std::string(".so")
+#endif
 
 namespace FakeJni {
+ using dlopen_t = void* (* const)(const char *filename, int flags);
+ using dlmopen_t = void* (* const)(Lmid_t lmid, const char *filename, int flags);
+ using dlsym_t = void* (* const)(void *handle, const char* symbol);
+ using dlclose_t = int (* const)(void *handle);
+ using dlerror_t = char* (* const)();
+ using dlinfo_t = int (* const)(void *handle, int request, void *info);
+ using dladdr_t = int (* const)(const void *addr, Dl_info *info);
+ using dladdr1_t = int (* const)(const void *addr, Dl_info *info, void **extra_info, int flags);
+
  class LibraryOptions final {
  public:
   dlopen_t dlopen_p;
+  dlmopen_t dlmopen_p;
   dlsym_t dlsym_p;
   dlclose_t dlclose_p;
+  dlerror_t dlerror_p;
+  dlinfo_t dlinfo_p;
+  dladdr_t dladdr_p;
+  dladdr1_t dladdr1_p;
 
-  //Link to whatever is available by default
-  LibraryOptions(): LibraryOptions(&dlopen, &dlsym, &dlclose) {}
-
-  LibraryOptions(dlopen_t dlopen_p, dlsym_t dlsym_p, dlclose_t dlclose_p) :
+  LibraryOptions(
+   dlopen_t dlopen_p = &dlopen,
+   dlsym_t dlsym_p = &dlsym,
+   dlclose_t dlclose_p = &dlclose,
+   dlerror_t dlerror_p = &dlerror,
+   dlinfo_t dlinfo_p = &dlinfo,
+   dladdr_t dladdr_p = &dladdr,
+   dlmopen_t dlmopen_p = &dlmopen,
+   dladdr1_t dladdr1_p = &dladdr1
+  ) :
    dlopen_p(dlopen_p),
+   dlmopen_p(dlmopen_p),
    dlsym_p(dlsym_p),
-   dlclose_p(dlclose_p)
+   dlclose_p(dlclose_p),
+   dlerror_p(dlerror_p),
+   dlinfo_p(dlinfo_p),
+   dladdr_p(dladdr_p),
+   dladdr1_p(dladdr1_p)
   {}
  };
 
@@ -63,13 +86,14 @@ namespace FakeJni {
   const LibraryOptions options;
   const bool isStatic;
 
-  Library(Jvm * const vm, const std::string& path, const LibraryOptions options):
+  Library(Jvm * const vm, const std::string path, const LibraryOptions options):
    vm(vm),
    path(path),
    options(options),
    isStatic(determineIsStatic(path))
   {
-   handle = options.dlopen_p(path.c_str(), RTLD_LAZY);
+   const char *name = (path == "(embedded)" ? nullptr : path.c_str());
+   handle = options.dlopen_p(name, RTLD_LAZY);
    if (!handle) {
     throw std::runtime_error("FATAL: Failed to open library: '" + path + "'!");
    }
@@ -111,19 +135,24 @@ namespace FakeJni {
    const int status = options.dlclose_p(handle);
    if (status) {
 #ifdef FAKE_JNI_DEBUG
-    fprintf(vm->getLog(), "WARNING: Failed to close dl handle for '%s', with error: %s", path.c_str(), dlerror());
+    fprintf(
+     vm->getLog(),
+     "WARNING: Failed to close dl handle for '%s', with error: %s",
+     path.c_str(),
+     options.dlerror_p()
+    );
 #endif
    }
   }
 
   void * lsym(const char *symbol) {
    void * const ret = options.dlsym_p(handle, symbol);
-   char * const err = dlerror();
+   const char * const err = options.dlerror_p();
    if (err) {
 #ifdef FAKE_JNI_DEBUG
     fprintf(
      vm->getLog(),
-     "WARNING: Failed to load symbol '%s' in library '%s', with error: %s\n",
+     "WARNING: Failed to load symbol '%s' in library '%s', with error: \n\t%s\n\n",
      symbol,
      path.c_str(),
      err

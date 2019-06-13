@@ -1,7 +1,5 @@
 #pragma once
 
-#include "fake_jni/jvm.h"
-
 #ifdef FAKE_JNI_DEBUG
 #include <cstdio>
 #endif

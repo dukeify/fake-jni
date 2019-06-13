@@ -1,14 +1,8 @@
 #pragma once
 
-#include "fake_jni/types.h"
-#include "fake_jni/objects.h"
-
 #ifdef FAKE_JNI_DEBUG
 #include <cstdio>
 #endif
-
-#include <map>
-#include <mutex>
 
 namespace FakeJni {
  class NativeInterface : public JNINativeInterface_ {
@@ -45,9 +39,6 @@ namespace FakeJni {
   inline static jfloat _CallStaticFloatMethod(JNIEnv *env, jclass clazz, jmethodID jmid, ...);
   inline static jdouble _CallStaticDoubleMethod(JNIEnv *env, jclass clazz, jmethodID jmid, ...);
   inline static void _CallStaticVoidMethod(JNIEnv *env, jclass clazz, jmethodID jmid, ...);
-
-  //Allocation storage
-  AllocStack<JObject *> allocations;
 
  public:
   //native_constructor.h

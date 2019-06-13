@@ -1,11 +1,15 @@
 #pragma once
 
-#include "fake_jni/interface/interface.h"
+#include "fake-jni/jni/common.h"
+
+#define _BEGIN_VA_LIST \
+va_list l;\
+va_start(l, jmid);
 
 namespace FakeJni {
  inline jobject NativeInterface::_NewObject(JNIEnv *env, jclass clazz, jmethodID jmid, ...) {
-  _FETCH_ENV_
-  va_list l;
+  _FETCH_JNI_ENV
+  _BEGIN_VA_LIST
 #ifdef FAKE_JNI_DEBUG
   fprintf(jenv->getVM()->getLog(), "DEBUG: JNINativeInterface_::NewObject\n");
 #endif
@@ -13,8 +17,8 @@ namespace FakeJni {
  }
 
  inline jobject NativeInterface::_CallObjectMethod(JNIEnv *env, jobject obj, jmethodID jmid, ...) {
-  _FETCH_ENV_
-  va_list l;
+  _FETCH_JNI_ENV
+  _BEGIN_VA_LIST
 #ifdef FAKE_JNI_DEBUG
   fprintf(jenv->getVM()->getLog(), "DEBUG: JNINativeInterface_::CallObjectMethod\n");
 #endif
@@ -22,8 +26,8 @@ namespace FakeJni {
  }
 
  inline jboolean NativeInterface::_CallBooleanMethod(JNIEnv *env, jobject obj, jmethodID jmid, ...) {
-  _FETCH_ENV_
-  va_list l;
+  _FETCH_JNI_ENV
+  _BEGIN_VA_LIST
 #ifdef FAKE_JNI_DEBUG
   fprintf(jenv->getVM()->getLog(), "DEBUG: JNINativeInterface_::CallBooleanMethod\n");
 #endif
@@ -31,8 +35,8 @@ namespace FakeJni {
  }
 
  inline jbyte NativeInterface::_CallByteMethod(JNIEnv *env, jobject obj, jmethodID jmid, ...) {
-  _FETCH_ENV_
-  va_list l;
+  _FETCH_JNI_ENV
+  _BEGIN_VA_LIST
 #ifdef FAKE_JNI_DEBUG
   fprintf(jenv->getVM()->getLog(), "DEBUG: JNINativeInterface_::CallByteMethod\n");
 #endif
@@ -40,8 +44,8 @@ namespace FakeJni {
  }
 
  inline jchar NativeInterface::_CallCharMethod(JNIEnv *env, jobject obj, jmethodID jmid, ...) {
-  _FETCH_ENV_
-  va_list l;
+  _FETCH_JNI_ENV
+  _BEGIN_VA_LIST
 #ifdef FAKE_JNI_DEBUG
   fprintf(jenv->getVM()->getLog(), "DEBUG: JNINativeInterface_::CallCharMethod\n");
 #endif
@@ -49,8 +53,8 @@ namespace FakeJni {
  }
 
  inline jshort NativeInterface::_CallShortMethod(JNIEnv *env, jobject obj, jmethodID jmid, ...) {
-  _FETCH_ENV_
-  va_list l;
+  _FETCH_JNI_ENV
+  _BEGIN_VA_LIST
 #ifdef FAKE_JNI_DEBUG
   fprintf(jenv->getVM()->getLog(), "DEBUG: JNINativeInterface_::CallShortMethod\n");
 #endif
@@ -58,8 +62,8 @@ namespace FakeJni {
  }
 
  inline jint NativeInterface::_CallIntMethod(JNIEnv *env, jobject obj, jmethodID jmid, ...) {
-  _FETCH_ENV_
-  va_list l;
+  _FETCH_JNI_ENV
+  _BEGIN_VA_LIST
 #ifdef FAKE_JNI_DEBUG
   fprintf(jenv->getVM()->getLog(), "DEBUG: JNINativeInterface_::CallIntMethod\n");
 #endif
@@ -67,8 +71,8 @@ namespace FakeJni {
  }
 
  inline jlong NativeInterface::_CallLongMethod(JNIEnv *env, jobject obj, jmethodID jmid, ...) {
-  _FETCH_ENV_
-  va_list l;
+  _FETCH_JNI_ENV
+  _BEGIN_VA_LIST
 #ifdef FAKE_JNI_DEBUG
   fprintf(jenv->getVM()->getLog(), "DEBUG: JNINativeInterface_::CallLongMethod\n");
 #endif
@@ -76,8 +80,8 @@ namespace FakeJni {
  }
 
  inline jfloat NativeInterface::_CallFloatMethod(JNIEnv *env, jobject obj, jmethodID jmid, ...) {
-  _FETCH_ENV_
-  va_list l;
+  _FETCH_JNI_ENV
+  _BEGIN_VA_LIST
 #ifdef FAKE_JNI_DEBUG
   fprintf(jenv->getVM()->getLog(), "DEBUG: JNINativeInterface_::CallFloatMethod\n");
 #endif
@@ -85,8 +89,8 @@ namespace FakeJni {
  }
 
  inline jdouble NativeInterface::_CallDoubleMethod(JNIEnv *env, jobject obj, jmethodID jmid, ...) {
-  _FETCH_ENV_
-  va_list l;
+  _FETCH_JNI_ENV
+  _BEGIN_VA_LIST
 #ifdef FAKE_JNI_DEBUG
   fprintf(jenv->getVM()->getLog(), "DEBUG: JNINativeInterface_::CallDoubleMethod\n");
 #endif
@@ -94,8 +98,8 @@ namespace FakeJni {
  }
 
  inline void NativeInterface::_CallVoidMethod(JNIEnv *env, jobject obj, jmethodID jmid, ...) {
-  _FETCH_ENV_
-  va_list l;
+  _FETCH_JNI_ENV
+  _BEGIN_VA_LIST
 #ifdef FAKE_JNI_DEBUG
   fprintf(jenv->getVM()->getLog(), "DEBUG: JNINativeInterface_::CallVoidMethod\n");
 #endif
@@ -103,8 +107,8 @@ namespace FakeJni {
  }
 
  inline jobject NativeInterface::_CallNonvirtualObjectMethod(JNIEnv *env, jobject obj, jclass clazz, jmethodID jmid, ...) {
-  _FETCH_ENV_
-  va_list l;
+  _FETCH_JNI_ENV
+  _BEGIN_VA_LIST
 #ifdef FAKE_JNI_DEBUG
   fprintf(jenv->getVM()->getLog(), "DEBUG: JNINativeInterface_::CallNonvirtualObjectMethod\n");
 #endif
@@ -112,8 +116,8 @@ namespace FakeJni {
  }
 
  inline jboolean NativeInterface::_CallNonvirtualBooleanMethod(JNIEnv *env, jobject obj, jclass clazz, jmethodID jmid, ...) {
-  _FETCH_ENV_
-  va_list l;
+  _FETCH_JNI_ENV
+  _BEGIN_VA_LIST
 #ifdef FAKE_JNI_DEBUG
   fprintf(jenv->getVM()->getLog(), "DEBUG: JNINativeInterface_::CallNonvirtualBooleanMethod\n");
 #endif
@@ -121,8 +125,8 @@ namespace FakeJni {
  }
 
  inline jbyte NativeInterface::_CallNonvirtualByteMethod(JNIEnv *env, jobject obj, jclass clazz, jmethodID jmid, ...) {
-  _FETCH_ENV_
-  va_list l;
+  _FETCH_JNI_ENV
+  _BEGIN_VA_LIST
 #ifdef FAKE_JNI_DEBUG
   fprintf(jenv->getVM()->getLog(), "DEBUG: JNINativeInterface_::CallNonvirtualByteMethod\n");
 #endif
@@ -130,8 +134,8 @@ namespace FakeJni {
  }
 
  inline jchar NativeInterface::_CallNonvirtualCharMethod(JNIEnv *env, jobject obj, jclass clazz, jmethodID jmid, ...) {
-  _FETCH_ENV_
-  va_list l;
+  _FETCH_JNI_ENV
+  _BEGIN_VA_LIST
 #ifdef FAKE_JNI_DEBUG
   fprintf(jenv->getVM()->getLog(), "DEBUG: JNINativeInterface_::CallNonvirtualCharMethod\n");
 #endif
@@ -139,8 +143,8 @@ namespace FakeJni {
  }
 
  inline jshort NativeInterface::_CallNonvirtualShortMethod(JNIEnv *env, jobject obj, jclass clazz, jmethodID jmid, ...) {
-  _FETCH_ENV_
-  va_list l;
+  _FETCH_JNI_ENV
+  _BEGIN_VA_LIST
 #ifdef FAKE_JNI_DEBUG
   fprintf(jenv->getVM()->getLog(), "DEBUG: JNINativeInterface_::CallNonvirtualShortMethod\n");
 #endif
@@ -148,8 +152,8 @@ namespace FakeJni {
  }
 
  inline jint NativeInterface::_CallNonvirtualIntMethod(JNIEnv *env, jobject obj, jclass clazz, jmethodID jmid, ...) {
-  _FETCH_ENV_
-  va_list l;
+  _FETCH_JNI_ENV
+  _BEGIN_VA_LIST
 #ifdef FAKE_JNI_DEBUG
   fprintf(jenv->getVM()->getLog(), "DEBUG: JNINativeInterface_::CallNonvirtualIntMethod\n");
 #endif
@@ -157,8 +161,8 @@ namespace FakeJni {
  }
 
  inline jlong NativeInterface::_CallNonvirtualLongMethod(JNIEnv *env, jobject obj, jclass clazz, jmethodID jmid, ...) {
-  _FETCH_ENV_
-  va_list l;
+  _FETCH_JNI_ENV
+  _BEGIN_VA_LIST
 #ifdef FAKE_JNI_DEBUG
   fprintf(jenv->getVM()->getLog(), "DEBUG: JNINativeInterface_::CallNonvirtualLongMethod\n");
 #endif
@@ -166,8 +170,8 @@ namespace FakeJni {
  }
 
  inline jfloat NativeInterface::_CallNonvirtualFloatMethod(JNIEnv *env, jobject obj, jclass clazz, jmethodID jmid, ...) {
-  _FETCH_ENV_
-  va_list l;
+  _FETCH_JNI_ENV
+  _BEGIN_VA_LIST
 #ifdef FAKE_JNI_DEBUG
   fprintf(jenv->getVM()->getLog(), "DEBUG: JNINativeInterface_::CallNonvirtualFloatMethod\n");
 #endif
@@ -175,8 +179,8 @@ namespace FakeJni {
  }
 
  inline jdouble NativeInterface::_CallNonvirtualDoubleMethod(JNIEnv *env, jobject obj, jclass clazz, jmethodID jmid, ...) {
-  _FETCH_ENV_
-  va_list l;
+  _FETCH_JNI_ENV
+  _BEGIN_VA_LIST
 #ifdef FAKE_JNI_DEBUG
   fprintf(jenv->getVM()->getLog(), "DEBUG: JNINativeInterface_::CallNonvirtualDoubleMethod\n");
 #endif
@@ -184,8 +188,8 @@ namespace FakeJni {
  }
 
  inline void NativeInterface::_CallNonvirtualVoidMethod(JNIEnv *env, jobject obj, jclass clazz, jmethodID jmid, ...) {
-  _FETCH_ENV_
-  va_list l;
+  _FETCH_JNI_ENV
+  _BEGIN_VA_LIST
 #ifdef FAKE_JNI_DEBUG
   fprintf(jenv->getVM()->getLog(), "DEBUG: JNINativeInterface_::CallNonvirtualVoidMethod\n");
 #endif
@@ -193,8 +197,8 @@ namespace FakeJni {
  }
 
  inline jobject NativeInterface::_CallStaticObjectMethod(JNIEnv *env, jclass clazz, jmethodID jmid, ...) {
-  _FETCH_ENV_
-  va_list l;
+  _FETCH_JNI_ENV
+  _BEGIN_VA_LIST
 #ifdef FAKE_JNI_DEBUG
   fprintf(jenv->getVM()->getLog(), "DEBUG: JNINativeInterface_::CallStaticObjectMethod\n");
 #endif
@@ -202,8 +206,8 @@ namespace FakeJni {
  }
 
  inline jboolean NativeInterface::_CallStaticBooleanMethod(JNIEnv *env, jclass clazz, jmethodID jmid, ...) {
-  _FETCH_ENV_
-  va_list l;
+  _FETCH_JNI_ENV
+  _BEGIN_VA_LIST
 #ifdef FAKE_JNI_DEBUG
   fprintf(jenv->getVM()->getLog(), "DEBUG: JNINativeInterface_::CallStaticBooleanMethod\n");
 #endif
@@ -211,8 +215,8 @@ namespace FakeJni {
  }
 
  inline jbyte NativeInterface::_CallStaticByteMethod(JNIEnv *env, jclass clazz, jmethodID jmid, ...) {
-  _FETCH_ENV_
-  va_list l;
+  _FETCH_JNI_ENV
+  _BEGIN_VA_LIST
 #ifdef FAKE_JNI_DEBUG
   fprintf(jenv->getVM()->getLog(), "DEBUG: JNINativeInterface_::CallStaticByteMethod\n");
 #endif
@@ -220,8 +224,8 @@ namespace FakeJni {
  }
 
  inline jchar NativeInterface::_CallStaticCharMethod(JNIEnv *env, jclass clazz, jmethodID jmid, ...) {
-  _FETCH_ENV_
-  va_list l;
+  _FETCH_JNI_ENV
+  _BEGIN_VA_LIST
 #ifdef FAKE_JNI_DEBUG
   fprintf(jenv->getVM()->getLog(), "DEBUG: JNINativeInterface_::CallStaticCharMethod\n");
 #endif
@@ -229,8 +233,8 @@ namespace FakeJni {
  }
 
  inline jshort NativeInterface::_CallStaticShortMethod(JNIEnv *env, jclass clazz, jmethodID jmid, ...) {
-  _FETCH_ENV_
-  va_list l;
+  _FETCH_JNI_ENV
+  _BEGIN_VA_LIST
 #ifdef FAKE_JNI_DEBUG
   fprintf(jenv->getVM()->getLog(), "DEBUG: JNINativeInterface_::CallStaticShortMethod\n");
 #endif
@@ -238,8 +242,8 @@ namespace FakeJni {
  }
 
  inline jint NativeInterface::_CallStaticIntMethod(JNIEnv *env, jclass clazz, jmethodID jmid, ...) {
-  _FETCH_ENV_
-  va_list l;
+  _FETCH_JNI_ENV
+  _BEGIN_VA_LIST
 #ifdef FAKE_JNI_DEBUG
   fprintf(jenv->getVM()->getLog(), "DEBUG: JNINativeInterface_::CallStaticIntMethod\n");
 #endif
@@ -247,8 +251,8 @@ namespace FakeJni {
  }
 
  inline jlong NativeInterface::_CallStaticLongMethod(JNIEnv *env, jclass clazz, jmethodID jmid, ...) {
-  _FETCH_ENV_
-  va_list l;
+  _FETCH_JNI_ENV
+  _BEGIN_VA_LIST
 #ifdef FAKE_JNI_DEBUG
   fprintf(jenv->getVM()->getLog(), "DEBUG: JNINativeInterface_::CallStaticLongMethod\n");
 #endif
@@ -256,8 +260,8 @@ namespace FakeJni {
  }
 
  inline jfloat NativeInterface::_CallStaticFloatMethod(JNIEnv *env, jclass clazz, jmethodID jmid, ...) {
-  _FETCH_ENV_
-  va_list l;
+  _FETCH_JNI_ENV
+  _BEGIN_VA_LIST
 #ifdef FAKE_JNI_DEBUG
   fprintf(jenv->getVM()->getLog(), "DEBUG: JNINativeInterface_::CallStaticFloatMethod\n");
 #endif
@@ -265,8 +269,8 @@ namespace FakeJni {
  }
 
  inline jdouble NativeInterface::_CallStaticDoubleMethod(JNIEnv *env, jclass clazz, jmethodID jmid, ...) {
-  _FETCH_ENV_
-  va_list l;
+  _FETCH_JNI_ENV
+  _BEGIN_VA_LIST
 #ifdef FAKE_JNI_DEBUG
   fprintf(jenv->getVM()->getLog(), "DEBUG: JNINativeInterface_::CallStaticDoubleMethod\n");
 #endif
@@ -274,8 +278,8 @@ namespace FakeJni {
  }
 
  inline void NativeInterface::_CallStaticVoidMethod(JNIEnv *env, jclass clazz, jmethodID jmid, ...) {
-  _FETCH_ENV_
-  va_list l;
+  _FETCH_JNI_ENV
+  _BEGIN_VA_LIST
 #ifdef FAKE_JNI_DEBUG
   fprintf(jenv->getVM()->getLog(), "DEBUG: JNINativeInterface_::CallStaticVoidMethod\n");
 #endif
