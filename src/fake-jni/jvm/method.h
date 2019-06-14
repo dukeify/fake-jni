@@ -1,12 +1,12 @@
 #pragma once
 
-//Internal macro
-#define _GET_VARG_REMAP(t, vararg) \
-template<>\
-[[gnu::always_inline]]\
-inline t getVArg<t>(va_list args) {\
- return (t)va_arg(args, vararg);\
-}
+////Internal macro
+//#define _GET_VARG_REMAP(t, vararg) \
+//template<>\
+//[[gnu::always_inline]]\
+//inline t getVArg<t>(va_list args) {\
+// return (t)va_arg(args, vararg);\
+//}
 
 //Internal macro
 #define _GET_AARG_MAP(t, member) \
@@ -90,17 +90,68 @@ namespace FakeJni {
    return JValueArgResolver<std::is_class<componentType>::value, T>::getAArg(values);
   }
 
-  //
+  template<
+   typename T,
+   bool IsClass = std::is_class<T>::value,
+   bool LargerThanInt = (sizeof(T) > sizeof(int))
+  >
+  class VArgResolver;
+
+  //VArgResolver for pointer types
+  template<typename T>
+  class VArgResolver<T*, false, (sizeof(T*) > sizeof(int))> {
+  public:
+   [[gnu::always_inline]]
+   inline static T* getVArg(va_list list) {
+    return va_arg(list, T*);
+   }
+  };
+
+  //VArgResolver for integral types smaller than int
+  //Promotes to int and lossy-casts
+  template<typename T>
+  class VArgResolver<T, false, false> {
+  public:
+   [[gnu::always_inline]]
+   inline static T getVArg(va_list list) {
+    return (T)va_arg(list, int);
+   }
+  };
+
+  //VArgResolver for integral types larger than int
+  //Promotes to double and lossy-casts
+  template<typename T>
+  class VArgResolver<T, false, true> {
+  public:
+   [[gnu::always_inline]]
+   inline static T getVArg(va_list list) {
+    return (T)va_arg(list, double);
+   }
+  };
+
+  //VArgResolver for object types
+  //Consuming an object type off of a va_list is undefined behaviour
+  template<typename T>
+  class VArgResolver<T, true, (sizeof(T) > sizeof(int))> {
+  public:
+   [[gnu::always_inline]]
+   inline static T getVArg(va_list list) {
+    //Static assertion will always fail in fault-conditions, uses sfinae to prevent
+    //compiler errors in non-fault conditions, since static_assert(false, ...); will
+    //always throw an error, even if the template is not instantiated
+    static_assert(
+     !std::is_class<T>::value,
+     "Consuming an object type off of a va_list is undefined behaviour!\n"
+     "Did you intend to consume a pointer-to-object type?"
+    );
+   }
+  };
+
   template<typename T>
   [[gnu::always_inline]]
   inline static T getVArg(va_list args) {
-   return va_arg(args, T);
+   return VArgResolver<T>::getVArg(args);
   }
-
-  //TODO add the rest of the va_arg type promotions
-  _GET_VARG_REMAP(char, int)
-  _GET_VARG_REMAP(short, int)
-  _GET_VARG_REMAP(float, double)
 
   //Type-to-member-name maps for the jvalue union
   _GET_AARG_MAP(JBoolean, z)
@@ -157,12 +208,7 @@ namespace FakeJni {
    template<typename... Args2>
    [[gnu::always_inline]]
    inline static R invokeV(void * const inst, erasedType func, va_list list, Args2... args) {
-//    static_assert(
-//     std::is_same<std::tuple<Args...>, std::tuple<Args2...>>::value,
-//     "Function argument list does not match base invoker arguments!"
-//    );
     va_end(list);
-//    return (((T*)inst)->*((R (T::*)(Args...))func))(args...);
     return invokeA(inst, func, nullptr, args...);
    }
 
@@ -218,13 +264,7 @@ namespace FakeJni {
    template<typename... Args2>
    [[gnu::always_inline]]
    inline static R invokeV(erasedType func, va_list list, Args2... args) {
-//    static_assert(
-//     std::is_same<std::tuple<Args...>, std::tuple<Args2...>>::value,
-//     "Function argument list does not match base invoker arguments!"
-//    );
     va_end(list);
-//    using f_t = R (* const)(Args...);
-//    return ((f_t)func)(args...);
     return invokeA(func, nullptr, args...);
    }
 

@@ -3,15 +3,21 @@
 #include <string>
 
 namespace FakeJni {
- class JString: public _jstring, public JCharArray {
+ class JString: public _jstring, public JCharArray, public virtual NativeObject<JString> {
  public:
   DEFINE_CLASS_NAME("java/lang/String")
 
-  JString(const JString &str): JCharArray(str.length) {
+  JString(const JString &str):
+   NativeObject<JString>(),
+   JCharArray(str.length)
+  {
    memcpy(array, str.array, length);
   }
 
-  JString(const JInt size): JCharArray(size) {}
+  JString(const JInt size):
+   NativeObject<JString>(),
+   JCharArray(size)
+  {}
 
   JString(const char * const str): JString((strlen(str) * (sizeof(char) / (sizeof(JChar)))) + 1) {
    memcpy(array, str, strlen(str));
@@ -22,7 +28,7 @@ namespace FakeJni {
   }
 
   inline static JString * cast(_jobject *obj) {
-   return _CX::DowncastingGenerator<JString, _jobject, JObject, JClass>::cast(obj);
+   return _CX::DowncastingGenerator<JString, _jobject, JObject, JClass, JCharArray>::cast(obj);
   }
  };
 }

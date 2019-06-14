@@ -163,6 +163,9 @@ namespace FakeJni {
   //Stub type for generating pointer-to-member types
   class AnyClass;
 
+  //TODO Move all following utilities to https://github.com/matthewacon/CX
+  //TODO if anybody asks for individual counters for reference and pointer type qualifications,
+  // implement it
   //N tracks the indirection count
   template<auto C, auto I, typename T>
   class _ComponentTypeResolver {
