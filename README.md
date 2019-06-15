@@ -1,5 +1,7 @@
 # fake-jni
 
+### `v0.1.0` work is in-progress on the `rewrite` branch, see https://github.com/meme/fake-jni/pull/5 for more details
+
 JNI without the JVM
 
 ##### Goals
