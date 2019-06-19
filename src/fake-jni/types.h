@@ -123,6 +123,8 @@ namespace FakeJni {
      "is at least one type removed from the derivation. ExplicitCastGenerator is intended to be used with three or "
      "more template parameters!"
     );
+    //Execution will never reach this line, it is simply here to avoid compiler errors
+    return nullptr;
    }
   };
 

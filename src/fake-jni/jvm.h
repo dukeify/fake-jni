@@ -116,16 +116,16 @@ namespace FakeJni {
    return log;
   }
 
-  IInvoke * getInvokeInterface() override {
-   return invoke;
+  InvokeInterface * getInvokeInterface() override {
+   return (InvokeInterface *)invoke;
   }
 
-  INative * getNativeInterface() override {
-   return native;
+  NativeInterface * getNativeInterface() override {
+   return (NativeInterface *)native;
   }
 
-  IJvmti * getJvmtiInterface() override {
-   return jvmti;
+  JvmtiInterface * getJvmtiInterface() override {
+   return (JvmtiInterface *)jvmti;
   }
 
   JniEnv * getEnv() override {

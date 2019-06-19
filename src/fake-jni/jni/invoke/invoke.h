@@ -51,7 +51,7 @@ namespace FakeJni {
   virtual ~InvokeInterface() = default;
 
   virtual jint getEnv(Jvm *vm, void **penv, jint version) const {
-   *penv = vm->getEnv();
+   *penv = (void *)((JNIEnv *)vm->getEnv());
    return JNI_OK;
   }
 

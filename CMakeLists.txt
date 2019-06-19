@@ -14,6 +14,7 @@ target_include_directories(fake-jni INTERFACE include src ${cx_SOURCE_DIR})
 target_compile_options(fake-jni INTERFACE
         -Wall
         -Wextra
+        -Werror
         -pedantic
         -Wno-unused-parameter
         -Wno-unused-function
