@@ -16,6 +16,7 @@
 //CX dependencies
 #include "cx/strings.h"
 #include "cx/templates.h"
+#include "cx/classes.h"
 //JNI dependencies
 #include "jni.h"
 #include "jvmti.h"
@@ -63,12 +64,14 @@
 
 namespace FakeJni {
  //TODO all JVM calls should be blocking until execution completes to prevent race conditions from emerging
- template<typename Invoke, typename Native, typename Env, typename JvmtiEnv>
+ template<typename IInvoke, typename INative, typename IJvmti, typename Env, typename JvmtiEnv>
  class JvmImpl: public Jvm {
  private:
   FILE * const log;
-  Invoke * const invoke;
-  Native * const native;
+  IInvoke * const invoke;
+  INative * const native;
+  IJvmti * const jvmti;
+
   const Env env;
   //TODO eventually implement hooks
   const JvmtiEnv jvmtiEnv;
@@ -85,19 +88,20 @@ namespace FakeJni {
   explicit JvmImpl(): JvmImpl(stdout) {}
 
   explicit JvmImpl(FILE *log):
-   JvmImpl(log, new Invoke(), new Native())
+   JvmImpl(log, new IInvoke(), new INative(), new IJvmti())
   {}
 
-  explicit JvmImpl(FILE *log, Invoke * const invoke, Native * const native):
+  explicit JvmImpl(FILE *log, IInvoke * const invoke, INative * const native, IJvmti * const jvmti):
    Jvm(),
    log(log),
    invoke(invoke),
    native(native),
+   jvmti(jvmti),
    env(Env(this)),
-   jvmtiEnv(JvmtiEnv(this))
+   jvmtiEnv(JvmtiEnv(this)),
+   running(false)
   {
    functions = invoke;
-   running = false;
   }
 
   virtual ~JvmImpl() {
@@ -112,12 +116,16 @@ namespace FakeJni {
    return log;
   }
 
-  Invoke * getInvokeInterface() override {
+  IInvoke * getInvokeInterface() override {
    return invoke;
   }
 
-  Native * getNativeInterface() override {
+  INative * getNativeInterface() override {
    return native;
+  }
+
+  IJvmti * getJvmtiInterface() override {
+   return jvmti;
   }
 
   JniEnv * getEnv() override {
@@ -254,5 +262,5 @@ namespace FakeJni {
   }
  };
 
- using DefaultJvm = JvmImpl<InvokeInterface, NativeInterface, JniEnv, JvmtiEnv>;
+ using DefaultJvm = JvmImpl<InvokeInterface, NativeInterface, JvmtiInterface, JniEnv, JvmtiEnv>;
 }

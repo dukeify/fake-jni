@@ -4,9 +4,13 @@
 namespace _CX {\
  template<>\
  class JniTypeBase<typename ComponentTypeResolver<target>::type> {\
+ private:\
+  using type = typename ComponentTypeResolver<target>::type;\
  public:\
   inline static constexpr const bool isRegisteredType = true;\
+  inline static constexpr const bool isClass = std::is_class<type>::value;\
   inline static constexpr const char signature[] = #sig;\
+  inline static constexpr const bool hasComplexHierarchy = CastDefined<type>::value;\
  };\
 }
 
@@ -17,76 +21,56 @@ namespace FakeJni {
   class JniTypeBase {
   public:
    inline static constexpr const bool isRegisteredType = false;
+   inline static constexpr const bool isClass = false;
    inline static constexpr const char signature[] = "[INVALID_TYPE]";
+   inline static constexpr const bool hasComplexHierarchy = false;
   };
 
   //Strip pointers off of JniTypeBase specializations and instantiations
   template<typename T>
-  class JniTypeBase<T*> {
-  private:
-   using type = JniTypeBase<typename ComponentTypeResolver<T*>::type>;
-  public:
-   inline static constexpr const auto isRegisteredType = type::isRegisteredType;
-   inline static constexpr const auto signature = type::signature;
-  };
+  class JniTypeBase<T*> : public JniTypeBase<typename ComponentTypeResolver<T*>::type> {};
 
   //Strip references off of JniTypeBase specializations and instantiations
   template<typename T>
-  class JniTypeBase<T&> {
-  private:
-   using type = JniTypeBase<typename ComponentTypeResolver<T&>::type>;
-  public:
-   inline static constexpr const auto isRegisteredType = type::isRegisteredType;
-   inline static constexpr const auto signature = type::signature;
-  };
+  class JniTypeBase<T&> : public JniTypeBase<typename ComponentTypeResolver<T&>::type> {};
 
   //Strip const qualifications off of JniTypeBase specializations and instantiations
   template<typename T>
-  class JniTypeBase<const T> {
-  private:
-   using type = JniTypeBase<typename ComponentTypeResolver<const T>::type>;
-  public:
-   inline static constexpr const auto isRegisteredType = type::isRegisteredType;
-   inline static constexpr const auto signature = type::signature;
-  };
+  class JniTypeBase<const T> : public JniTypeBase<typename ComponentTypeResolver<const T>::type> {};
 
-  //Ensures that all type arguments are valid JNI parameters
+  //Explicit casting generators to disambiguate casting with multiple inheritance JNI types
   template<typename...>
-  class VerifyJNIArguments;
+  class UpcastingGenerator;
 
-  template<typename T, typename... Args>
-  class VerifyJNIArguments<T, Args...> {
+  //JString, JCharArray, JClass, JObject
+  //JObject, JString, JCharArray, JClass
+  template<typename Target, typename Step, typename... Steps>
+  class UpcastingGenerator<Target, Step, Steps...> {
+  private:
+   using target_t = typename ComponentTypeResolver<Target>::type *;
+   using step_t = typename ComponentTypeResolver<Step>::type *;
+   using next_t = typename ComponentTypeResolver<typename CX::TemplateTypeIterator<0U, Steps...>::type>::type *;
+
   public:
    [[gnu::always_inline]]
-   inline static constexpr bool verify() {
-    return VerifyJNIArguments<T>::verify() && VerifyJNIArguments<Args...>::verify();
+   inline static target_t cast(step_t step) {
+    return UpcastingGenerator<Target, Steps...>::cast((next_t)step);
    }
   };
 
-  template<typename T>
-  class VerifyJNIArguments<T> {
+  template<typename Target, typename Step>
+  class UpcastingGenerator<Target, Step> {
+  private:
+   using target_t = typename ComponentTypeResolver<Target>::type *;
+   using step_t = typename ComponentTypeResolver<Step>::type *;
+
   public:
    [[gnu::always_inline]]
-   inline static constexpr bool verify() {
-    using resolver = ComponentTypeResolver<T>;
-    if constexpr(std::is_class<typename resolver::type>::value) {
-     return std::is_base_of<_jobject, typename resolver::type>::value && resolver::indirectionCount == 1U;
-    } else {
-     return JniTypeBase<T>::isRegisteredType && resolver::indirectionCount == 0U;
-    }
+   inline static target_t cast(step_t step) {
+    return (target_t)step;
    }
   };
 
-  template<>
-  class VerifyJNIArguments<> {
-  public:
-   [[gnu::always_inline]]
-   inline static constexpr bool verify() {
-    return true;
-   }
-  };
-
-  //Explicit downcasting generators to handle multiple inheritance from JNI types
   template<typename...>
   class DowncastingGenerator;
 
@@ -95,12 +79,12 @@ namespace FakeJni {
   private:
    using target_t = typename ComponentTypeResolver<Target>::type *;
    using step_t = typename ComponentTypeResolver<Step>::type *;
-   using arg_t = typename ComponentTypeResolver<typename CX::TemplateTypeIterator<0, Steps...>::type>::type *;
+   using next_t = typename ComponentTypeResolver<typename CX::TemplateTypeIterator<0U, Steps...>::type>::type *;
 
   public:
    [[gnu::always_inline]]
    inline static target_t cast(step_t step) {
-    return DowncastingGenerator<Target, Steps...>::cast((arg_t)step);
+    return DowncastingGenerator<Target, Steps...>::cast((next_t)step);
    }
   };
 
@@ -114,6 +98,140 @@ namespace FakeJni {
    [[gnu::always_inline]]
    inline static target_t cast(step_t step) {
     return (target_t)step;
+   }
+  };
+
+  template<typename...>
+  class ExplicitCastGenerator;
+
+  //Static assertion to prevent the compiler from spewing template errors and provide users with relevant information
+  //about their incorrect usage of ExplicitCastGenerator
+  template<typename Target>
+  class ExplicitCastGenerator<Target> {
+  private:
+   class Dummy;
+
+   using target_t = typename ComponentTypeResolver<Target>::type *;
+
+  public:
+   [[gnu::always_inline]]
+   inline static target_t cast(void *) {
+    //Assertion will always fail
+    static_assert(
+     std::is_same<Target, Dummy>::value,
+     "No explicit cast is required if a polymorphic derived type is not going to be casted to a polymorphic base that "
+     "is at least one type removed from the derivation. ExplicitCastGenerator is intended to be used with three or "
+     "more template parameters!"
+    );
+   }
+  };
+
+  //Also incorrect usage, causes static assertion in ExplicitCastGenerator<typename> to trip
+  template<typename T1, typename T2>
+  class ExplicitCastGenerator<T1, T2> : public ExplicitCastGenerator<T1> {
+  private:
+   using target_t = typename ComponentTypeResolver<T1>::type *;
+
+  public:
+   [[gnu::always_inline]]
+   inline static target_t cast(void *) {
+    return ExplicitCastGenerator<T1>::cast(nullptr);
+   }
+  };
+
+  template<typename Target, typename... Steps>
+  class ExplicitCastGenerator<Target, Steps...> {
+  private:
+   using steps_end_t = typename CX::TemplateTypeIterator<sizeof...(Steps) - 1U, Steps...>::type;
+
+   //Upcasting types
+   using target_u_t = typename ComponentTypeResolver<steps_end_t>::type *;
+   using step_u_t = typename ComponentTypeResolver<Target>::type *;
+
+   //Downcasting types
+   using target_d_t = step_u_t;
+   using step_d_t = target_u_t;
+
+   [[gnu::always_inline]]
+   inline static constexpr void assertArgumentCompliance() {
+    static_assert(
+     std::is_class<typename ComponentTypeResolver<Target>::type>::value
+      && (std::is_class<typename ComponentTypeResolver<Steps>::type>::value && ...),
+     "Explicit casting routes can only be generated for polymorphic types!"
+    );
+   }
+
+  public:
+   using upcast_generator = typename CX::TemplateTypeArgCycler<
+    0,
+    sizeof...(Steps),
+    UpcastingGenerator,
+    Target,
+    Steps...
+   >::type;
+
+   using downcast_generator = typename CX::ReverseSpecialize<
+    DowncastingGenerator,
+    Steps...
+   >::template type<Target>;
+
+   //Upcasting function
+   [[gnu::always_inline]]
+   inline static target_u_t cast(step_u_t arg) {
+    assertArgumentCompliance();
+    return upcast_generator::cast(arg);
+   }
+
+   //Downcasting function
+   [[gnu::always_inline]]
+   inline static target_d_t cast(step_d_t arg) {
+    assertArgumentCompliance();
+    return downcast_generator::cast(arg);
+   }
+  };
+
+  //'cast' alias detection idiom
+  //Negative case
+  template<typename T, typename = void>
+  class CastDefined : public std::false_type {
+  public:
+   [[gnu::always_inline]]
+   inline static void assertAliasCorrectness() {}
+  };
+
+  //Positive case
+  template<typename T>
+  class CastDefined<T, std::void_t<typename T::cast>> : public std::true_type {
+  private:
+   template<typename>
+   class TemplateTemplateDecomposer {};
+
+   template<template<typename...> typename T1, typename... Args>
+   class TemplateTemplateDecomposer<T1<Args...>> {
+   public:
+    [[gnu::always_inline]]
+    inline static constexpr bool verifyParameters() {
+     static_assert(
+      CX::IsSame<T1, ExplicitCastGenerator>::value,
+      "Illegal type for 'cast' alias, should be 'ExplicitCastGenerator<...>'!"
+     );
+     static_assert(
+      ((JniTypeBase<Args>::isRegisteredType && JniTypeBase<Args>::isClass) && ...),
+      "You may only use registered JNI / FakeJni classes in an explicit casting route!"
+     );
+     return true;
+    }
+   };
+
+  public:
+   using cast = typename T::cast;
+
+   [[gnu::always_inline]]
+   inline static void assertAliasCorrectness() {
+    static_assert(
+     CX::IsTemplateTemplate<cast>::value && TemplateTemplateDecomposer<cast>::verifyParameters(),
+     "Illegal type for 'cast' alias, should be 'ExplicitCastGenerator<...>'!"
+    );
    }
   };
  }
@@ -141,42 +259,17 @@ namespace FakeJni {
  class JObject;
  class JClass;
 
+ class JniEnv;
+ class JvmtiEnv;
+
  class Jvm;
 
  class InvokeInterface;
  class NativeInterface;
+ class JvmtiInterface;
 
  class Library;
  class LibraryOptions;
-
- class JniEnv: public JNIEnv {
- public:
-  Jvm * const vm;
-
- public:
-  JniEnv(Jvm * const vm) noexcept :
-   JNIEnv(),
-   vm(vm)
-  {}
-
-  virtual Jvm * getVM() final {
-   return vm;
-  }
- };
-
- class JvmtiEnv: public jvmtiEnv {
- public:
-  Jvm * const vm;
-
-  JvmtiEnv(Jvm * const vm):
-   jvmtiEnv(),
-   vm(vm)
-  {}
-
-  virtual Jvm * getVM() final {
-   return vm;
-  }
- };
 
  class Jvm: public JavaVM {
  protected:
@@ -219,6 +312,7 @@ namespace FakeJni {
 
   virtual InvokeInterface * getInvokeInterface() = 0;
   virtual NativeInterface * getNativeInterface() = 0;
+  virtual JvmtiInterface * getJvmtiInterface() = 0;
   virtual FILE * getLog() = 0;
   virtual JniEnv * getEnv() = 0;
   virtual void start() = 0;
@@ -231,5 +325,38 @@ namespace FakeJni {
    LibraryOptions loptions
   ) = 0;
   virtual bool removeLibrary(const std::string &path, const std::string &options) = 0;
+ };
+
+ class JniEnv: public JNIEnv {
+ public:
+  Jvm * const vm;
+
+ public:
+  JniEnv(Jvm * const vm) noexcept :
+   JNIEnv(),
+   vm(vm)
+  {
+   functions = (JNINativeInterface_*)vm->getInvokeInterface();
+  }
+
+  virtual Jvm * getVM() final {
+   return vm;
+  }
+ };
+
+ class JvmtiEnv: public jvmtiEnv {
+ public:
+  Jvm * const vm;
+
+  JvmtiEnv(Jvm * const vm):
+   jvmtiEnv(),
+   vm(vm)
+  {
+   functions = (jvmtiInterface_1_*)vm->getJvmtiInterface();
+  }
+
+  virtual Jvm * getVM() final {
+   return vm;
+  }
  };
 }

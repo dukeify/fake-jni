@@ -18,18 +18,18 @@ namespace FakeJni {
 
    union {
     void (AnyClass::* const memberFunc)();
-    void (*const nonMemberFunc)();
+    void (* const nonMemberFunc)();
     int (AnyClass::* const memberField);
-    void (*const nonMemberField);
+    void (* const nonMemberField);
    };
 
    const char *const name;
    const uint32_t modifiers;
-   bool (*const processHook)(JClass *const, ClassDescriptorElement *const);
+   bool (* const processHook)(JClass *const, ClassDescriptorElement *const);
 
    //Constructor for member functions
    template<typename R, typename T, typename... Args>
-   constexpr ClassDescriptorElement(R (T::* const func)(Args...), const char *const name, uint32_t modifiers = JMethodID::PUBLIC) noexcept :
+   ClassDescriptorElement(R (T::* const func)(Args...), const char *const name, uint32_t modifiers = JMethodID::PUBLIC) noexcept :
     type(MEMBER_FUNCTION),
     memberFunc((decltype(memberFunc))func),
     name(name),
@@ -39,7 +39,7 @@ namespace FakeJni {
 
    //Constructor for non-member functions
    template<typename R, typename... Args>
-   constexpr ClassDescriptorElement(R (*const func)(Args...), const char *const name, uint32_t modifiers = JMethodID::PUBLIC) noexcept :
+   ClassDescriptorElement(R (*const func)(Args...), const char *const name, uint32_t modifiers = JMethodID::PUBLIC) noexcept :
     type(NON_MEMBER_FUNCTION),
     nonMemberFunc((decltype(nonMemberFunc))func),
     name(name),
@@ -49,13 +49,12 @@ namespace FakeJni {
 
    //Constructor for constructor delegates
    template<typename R, typename... Args>
-   constexpr ClassDescriptorElement(R (*const func)(Args...), uint32_t modifiers = JMethodID::PUBLIC) noexcept :
+   ClassDescriptorElement(R (*const func)(Args...), uint32_t modifiers = JMethodID::PUBLIC) noexcept :
     ClassDescriptorElement(func, "<init>", modifiers)
    {}
 
    //Constructor for member fields
    template<typename F, typename T>
-   constexpr
    ClassDescriptorElement(F (T::* const field), const char *const name, uint32_t modifiers = JFieldID::PUBLIC) noexcept :
     type(MEMBER_FIELD),
     memberField((decltype(memberField))field),
@@ -66,7 +65,6 @@ namespace FakeJni {
 
    //Constructor for non-member fields
    template<typename F>
-   constexpr
    ClassDescriptorElement(F *const field, const char *const name, uint32_t modifiers = JFieldID::PUBLIC) noexcept :
     type(NON_MEMBER_FIELD),
     nonMemberField((decltype(nonMemberField))field),
@@ -86,9 +84,12 @@ namespace FakeJni {
  private:
   static const JClass jClassDescriptor;
 
+  const JClass *copyConstructed;
+
   //Constructor for JClass descriptor
   JClass(std::nullptr_t) noexcept :
    JObject(),
+   copyConstructed(nullptr),
    functions(nullptr),
    fields(nullptr) {}
 
@@ -116,22 +117,25 @@ namespace FakeJni {
 
   JClass(std::initializer_list<_CX::ClassDescriptorElement> list) noexcept :
    JObject(),
-   functions(new AllocStack<JMethodID *>()),
-   fields(new AllocStack<JFieldID *>()) {
+   copyConstructed(nullptr),
+   functions(new AllocStack<JMethodID *>(true)),
+   fields(new AllocStack<JFieldID *>(true))
+  {
    for (auto &d : list) {
     d.process(this);
    }
   }
 
-  JClass(const JClass *const clazz) noexcept :
+  JClass(const JClass * const clazz) noexcept :
    JObject(),
+   copyConstructed(clazz),
    functions(clazz->functions),
    fields(clazz->fields)
   {}
 
   virtual ~JClass() {
    //The default class descriptor for JClass does not allocate any memory
-   if (strcmp(getName(), "java/lang/Class") == 0) {
+   if (strcmp(getName(), "java/lang/Class") == 0 && !copyConstructed) {
     delete functions;
     delete fields;
    }

@@ -1,13 +1,5 @@
 #pragma once
 
-////Internal macro
-//#define _GET_VARG_REMAP(t, vararg) \
-//template<>\
-//[[gnu::always_inline]]\
-//inline t getVArg<t>(va_list args) {\
-// return (t)va_arg(args, vararg);\
-//}
-
 //Internal macro
 #define _GET_AARG_MAP(t, member) \
 template<>\
@@ -23,16 +15,55 @@ public:\
 //Internal macro
 #define _ASSERT_JNI_FUNCTION_COMPLIANCE \
 static_assert(\
- _CX::VerifyJNIArguments<Args...>::verify(),\
+ _CX::VerifyJniFunctionArguments<Args...>::verify(),\
  "Registered JNI functions may only accept JNI types and pointers to _jobject or derived classes!"\
 );
 
 //Checks a given class for a inlined static function called 'cast'
-DEFINE_FUNCTION_DETECTOR(cast)
+//DEFINE_FUNCTION_DETECTOR(cast)
 
 namespace FakeJni {
- //C to C++ Vararg glue
  namespace _CX {
+  //Ensures that all type arguments are valid JNI parameters
+//  template<typename...>
+//  class VerifyJniFunctionArguments;
+
+//  template<typename T, typename... Args>
+//  class VerifyJniFunctionArguments<T, Args...> {
+  template<typename... Args>
+  class VerifyJniFunctionArguments {
+  public:
+   [[gnu::always_inline]]
+   inline static constexpr bool verify() {
+//    return VerifyJniFunctionArguments<T>::verify() && VerifyJniFunctionArguments<Args...>::verify();
+    return  !((!VerifyJniFunctionArguments<Args>::verify()) || ...);
+   }
+  };
+
+  template<typename T>
+  class VerifyJniFunctionArguments<T> {
+  public:
+   [[gnu::always_inline]]
+   inline static constexpr bool verify() {
+    using resolver = ComponentTypeResolver<T>;
+    if constexpr(std::is_class<typename resolver::type>::value) {
+     return std::is_base_of<_jobject, typename resolver::type>::value && resolver::indirectionCount == 1U;
+    } else {
+     return JniTypeBase<T>::isRegisteredType && resolver::indirectionCount == 0U;
+    }
+   }
+  };
+
+  template<>
+  class VerifyJniFunctionArguments<> {
+  public:
+   [[gnu::always_inline]]
+   inline static constexpr bool verify() {
+    return true;
+   }
+  };
+
+  //C to C++ Vararg glue
   template<bool, typename>
   class JValueArgResolver {
   public:
@@ -42,20 +73,20 @@ namespace FakeJni {
   //JValueArgResolver for JObject derived classes
   template<typename T>
   class JValueArgResolver<true, T> {
-  private:
-   template<typename R, typename TT, typename... Args>
-   inline static constexpr bool assertCastMatches(R (TT::*)(Args...)) {
-    return false;
-   }
-
-   template<typename R, typename... Args>
-   inline static constexpr bool assertCastMatches(R (*)(Args...)) {
-    if constexpr(std::is_same<componentType *, R>::value && sizeof...(Args) == 1) {
-     using arg_t = typename CX::TemplateTypeIterator<0, Args...>::type;
-     return std::is_same<_jobject *, arg_t>::value;
-    }
-    return false;
-   }
+//  private:
+//   template<typename R, typename TT, typename... Args>
+//   inline static constexpr bool assertCastMatches(R (TT::*)(Args...)) {
+//    return false;
+//   }
+//
+//   template<typename R, typename... Args>
+//   inline static constexpr bool assertCastMatches(R (*)(Args...)) {
+//    if constexpr(std::is_same<componentType *, R>::value && sizeof...(Args) == 1) {
+//     using arg_t = typename CX::TemplateTypeIterator<0, Args...>::type;
+//     return std::is_same<_jobject *, arg_t>::value;
+//    }
+//    return false;
+//   }
 
   public:
    inline static constexpr const bool isRegisteredResolver = true;
@@ -64,14 +95,14 @@ namespace FakeJni {
    [[gnu::always_inline]]
    inline static componentType* getAArg(jvalue *values) {
     static_assert(std::is_base_of<_jobject, componentType>::value, "Illegal JNI function parameter type!");
-    if constexpr(CX::HascastFunction<componentType>::value) {
-     static_assert(
-      assertCastMatches(&componentType::cast),
-      "Illegal prototype for downcasting delegate! The prototype should be:"
-      "\n\tinline static Derived* cast(_jobject *) {}"
-      "\n(where 'Derived' is your native class)"
-     );
-     return componentType::cast(values->l);
+    if constexpr(CastDefined<componentType>::value) {
+//     static_assert(
+//      assertCastMatches(&componentType::cast),
+//      "Illegal prototype for downcasting delegate! The prototype should be:"
+//      "\n\tinline static Derived* cast(_jobject *) {}"
+//      "\n(where 'Derived' is your native class)"
+//     );
+     return componentType::cast::cast((JObject*)values->l);
     } else {
      return (componentType *)values->l;
     }
@@ -90,8 +121,15 @@ namespace FakeJni {
    return JValueArgResolver<std::is_class<componentType>::value, T>::getAArg(values);
   }
 
+//  template<
+//   typename T,
+//   bool IsClass = std::is_class<T>::value,
+//   bool LargerThanInt = (sizeof(T) > sizeof(int))
+//  >
+//  class VArgResolver;
   template<
    typename T,
+   bool IsPointer = std::is_pointer<T>::value,
    bool IsClass = std::is_class<T>::value,
    bool LargerThanInt = (sizeof(T) > sizeof(int))
   >
@@ -99,7 +137,7 @@ namespace FakeJni {
 
   //VArgResolver for pointer types
   template<typename T>
-  class VArgResolver<T*, false, (sizeof(T*) > sizeof(int))> {
+  class VArgResolver<T*, true, false, (sizeof(T*) > sizeof(int))> {
   public:
    [[gnu::always_inline]]
    inline static T* getVArg(va_list list) {
@@ -110,7 +148,7 @@ namespace FakeJni {
   //VArgResolver for integral types smaller than int
   //Promotes to int and lossy-casts
   template<typename T>
-  class VArgResolver<T, false, false> {
+  class VArgResolver<T, false, false, false> {
   public:
    [[gnu::always_inline]]
    inline static T getVArg(va_list list) {
@@ -121,7 +159,7 @@ namespace FakeJni {
   //VArgResolver for integral types larger than int
   //Promotes to double and lossy-casts
   template<typename T>
-  class VArgResolver<T, false, true> {
+  class VArgResolver<T, false, false, true> {
   public:
    [[gnu::always_inline]]
    inline static T getVArg(va_list list) {
@@ -132,7 +170,7 @@ namespace FakeJni {
   //VArgResolver for object types
   //Consuming an object type off of a va_list is undefined behaviour
   template<typename T>
-  class VArgResolver<T, true, (sizeof(T) > sizeof(int))> {
+  class VArgResolver<T, false, true> {
   public:
    [[gnu::always_inline]]
    inline static T getVArg(va_list list) {

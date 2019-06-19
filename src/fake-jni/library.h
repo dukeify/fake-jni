@@ -10,43 +10,27 @@
 
 namespace FakeJni {
  using dlopen_t = void* (* const)(const char *filename, int flags);
- using dlmopen_t = void* (* const)(Lmid_t lmid, const char *filename, int flags);
  using dlsym_t = void* (* const)(void *handle, const char* symbol);
  using dlclose_t = int (* const)(void *handle);
  using dlerror_t = char* (* const)();
- using dlinfo_t = int (* const)(void *handle, int request, void *info);
- using dladdr_t = int (* const)(const void *addr, Dl_info *info);
- using dladdr1_t = int (* const)(const void *addr, Dl_info *info, void **extra_info, int flags);
 
  class LibraryOptions final {
  public:
   dlopen_t dlopen_p;
-  dlmopen_t dlmopen_p;
   dlsym_t dlsym_p;
   dlclose_t dlclose_p;
   dlerror_t dlerror_p;
-  dlinfo_t dlinfo_p;
-  dladdr_t dladdr_p;
-  dladdr1_t dladdr1_p;
 
   LibraryOptions(
    dlopen_t dlopen_p = &dlopen,
    dlsym_t dlsym_p = &dlsym,
    dlclose_t dlclose_p = &dlclose,
-   dlerror_t dlerror_p = &dlerror,
-   dlinfo_t dlinfo_p = &dlinfo,
-   dladdr_t dladdr_p = &dladdr,
-   dlmopen_t dlmopen_p = &dlmopen,
-   dladdr1_t dladdr1_p = &dladdr1
+   dlerror_t dlerror_p = &dlerror
   ) :
    dlopen_p(dlopen_p),
-   dlmopen_p(dlmopen_p),
    dlsym_p(dlsym_p),
    dlclose_p(dlclose_p),
-   dlerror_p(dlerror_p),
-   dlinfo_p(dlinfo_p),
-   dladdr_p(dladdr_p),
-   dladdr1_p(dladdr1_p)
+   dlerror_p(dlerror_p)
   {}
  };
 

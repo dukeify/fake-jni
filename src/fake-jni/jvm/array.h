@@ -15,7 +15,9 @@ namespace _CX {\
   inline static constexpr const char arrayPrefix[] = "[";\
  public:\
   inline static constexpr const bool isRegisteredType = true;\
+  inline static constexpr const bool isClass = true;\
   inline static constexpr const auto signature = CX::Concat<arrayPrefix, JniTypeBase<componentType>::signature>::result;\
+  inline static constexpr const bool hasComplexHierarchy = CastDefined<arrayType>::value;\
  };\
 }
 
@@ -42,8 +44,10 @@ namespace _CX {\
  template<>\
  class JniTypeBase<fake_type> {\
  public:\
-  inline static constexpr const bool isRegisteredType = true;\
+  inline static constexpr const auto isRegisteredType = JniTypeBase<jni_type>::isRegisteredType;\
+  inline static constexpr const auto isClass = JniTypeBase<jni_type>::isClass;\
   inline static constexpr const auto signature = JniTypeBase<jni_type>::signature;\
+  inline static constexpr const auto hasComplexHierarchy = JniTypeBase<jni_type>::hasComplexHierarchy;\
  };\
 }
 

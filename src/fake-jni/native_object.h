@@ -17,7 +17,9 @@ namespace FakeJni::_CX {\
    suffix[] = ";";\
  public:\
   inline static constexpr const bool isRegisteredType = true;\
+  inline static constexpr const bool isClass = true;\
   inline static constexpr const auto signature = CX::Concat<prefix, clazz::name, suffix>::result;\
+  inline static constexpr const bool hasComplexHierarchy = CastDefined<clazz>::value;\
  };\
 }\
 inline const FakeJni::JClass clazz::descriptor
@@ -37,6 +39,8 @@ namespace FakeJni {
 
   NativeObject() noexcept : JClass(getClass()) {
    static_assert(std::is_base_of<NativeObject, T>::value, "T must be derived from NativeObject<T>!");
+   //Perform checks for complex hierarchy 'cast' alias member
+   _CX::CastDefined<T>::assertAliasCorrectness();
   }
 
   ~NativeObject() override = default;
@@ -56,7 +60,14 @@ namespace FakeJni {
    for (uint32_t i = 0; i < functions->getSize(); i++) {
     JMethodID * const method = (*functions)[i];
     if (strcmp(method->getSignature(), signature) == 0 && strcmp(method->getName(), "<init>") == 0) {
-     return jvm->getInstances()->pushAlloc(deallocator, (JObject *)method->invoke<T *>(nullptr, list));
+     const auto inst = method->invoke<T *>(nullptr, list);
+     JObject *baseInst;
+     if constexpr(_CX::JniTypeBase<T>::hasComplexHierarchy) {
+      baseInst = T::cast::cast(inst);
+     } else {
+      baseInst = (JObject*)inst;
+     }
+     return jvm->getInstances()->pushAlloc(deallocator, baseInst);
     }
    }
    return nullptr;
