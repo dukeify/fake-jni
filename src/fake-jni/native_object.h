@@ -3,7 +3,7 @@
 #define DEFINE_CLASS_NAME(str) \
 inline static constexpr const char name[] = str;\
 static const JClass descriptor;\
-const JClass * getDescriptor() noexcept override {\
+inline static const JClass * getDescriptor() noexcept {\
  return &descriptor;\
 }
 
@@ -37,8 +37,8 @@ namespace FakeJni {
   explicit NativeObject(NativeObject &) = delete;
   explicit NativeObject(NativeObject &&) = delete;
 
-  NativeObject() noexcept : JClass(getClass()) {
-   static_assert(std::is_base_of<NativeObject, T>::value, "T must be derived from NativeObject<T>!");
+  NativeObject() noexcept : JClass(T::getDescriptor()) {
+//   static_assert(std::is_base_of<NativeObject, T>::value, "T must be derived from NativeObject<T>!");
    //Perform checks for complex hierarchy 'cast' alias member
    _CX::CastDefined<T>::assertAliasCorrectness();
   }
@@ -47,12 +47,6 @@ namespace FakeJni {
 
   const char * getName() noexcept final {
    return T::name;
-  }
-
-  virtual const JClass * getDescriptor() = 0;
-
-  const JClass * getClass() noexcept final {
-   return getDescriptor();
   }
 
   JObject * newInstance(JavaVM * const vm, const char * const signature, va_list list) const noexcept final {

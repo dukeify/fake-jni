@@ -80,6 +80,8 @@ DEFINE_NATIVE_TYPE(ExampleClass) {
 
 //fake-jni in action
 int main(int argc, char **argv) {
+ JString test{"Hello World!"};
+
  //Create a shiny new fake JVM instance
  DefaultJvm vm;
 

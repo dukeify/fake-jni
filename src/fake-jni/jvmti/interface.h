@@ -10,6 +10,10 @@ namespace FakeJni {
   //interface_constructor.h
   JvmtiInterface();
 
+  JvmtiInterface(const JvmtiInterface&) = delete;
+
+  virtual ~JvmtiInterface() = default;
+
   //thread.h
   virtual jvmtiError getAllThreads(jvmtiEnv* env, jint* threads_count_ptr, jthread** threads_ptr) const;
   virtual jvmtiError suspendThread(jvmtiEnv* env, jthread thread) const;

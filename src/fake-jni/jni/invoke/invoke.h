@@ -46,7 +46,7 @@ namespace FakeJni {
    };
   }
 
-  InvokeInterface(const InvokeInterface &ii) = delete;
+  InvokeInterface(const InvokeInterface &) = delete;
 
   virtual ~InvokeInterface() = default;
 

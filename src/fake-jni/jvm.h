@@ -10,6 +10,7 @@
 #include <string>
 #include <stdexcept>
 #include <mutex>
+#include <cmath>
 
 #include <dlfcn.h>
 
@@ -101,7 +102,7 @@ namespace FakeJni {
    jvmtiEnv(JvmtiEnv(this)),
    running(false)
   {
-   functions = invoke;
+   functions = (const JNIInvokeInterface_ *)invoke;
   }
 
   virtual ~JvmImpl() {
@@ -110,6 +111,9 @@ namespace FakeJni {
     removeLibrary(l->path, "");
    }
    libraries.clear();
+   delete jvmti;
+   delete native;
+   delete invoke;
   }
 
   FILE * getLog() override {

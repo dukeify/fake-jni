@@ -7,10 +7,10 @@ namespace _CX {\
  private:\
   using type = typename ComponentTypeResolver<target>::type;\
  public:\
-  inline static constexpr const bool isRegisteredType = true;\
-  inline static constexpr const bool isClass = std::is_class<type>::value;\
-  inline static constexpr const char signature[] = #sig;\
-  inline static constexpr const bool hasComplexHierarchy = CastDefined<type>::value;\
+  static constexpr const bool isRegisteredType = true;\
+  static constexpr const bool isClass = std::is_class<type>::value;\
+  static constexpr const char signature[] = #sig;\
+  static constexpr const bool hasComplexHierarchy = CastDefined<type>::value;\
  };\
 }
 
@@ -20,10 +20,10 @@ namespace FakeJni {
   template<typename>
   class JniTypeBase {
   public:
-   inline static constexpr const bool isRegisteredType = false;
-   inline static constexpr const bool isClass = false;
-   inline static constexpr const char signature[] = "[INVALID_TYPE]";
-   inline static constexpr const bool hasComplexHierarchy = false;
+   static constexpr const bool isRegisteredType = false;
+   static constexpr const bool isClass = false;
+   static constexpr const char signature[] = "[INVALID_TYPE]";
+   static constexpr const bool hasComplexHierarchy = false;
   };
 
   //Strip pointers off of JniTypeBase specializations and instantiations
@@ -338,8 +338,10 @@ namespace FakeJni {
    JNIEnv(),
    vm(vm)
   {
-   functions = (JNINativeInterface_*)vm->getInvokeInterface();
+   functions = (JNINativeInterface_ *)vm->getNativeInterface();
   }
+
+  virtual ~JniEnv() = default;
 
   virtual Jvm * getVM() final {
    return vm;
@@ -354,8 +356,10 @@ namespace FakeJni {
    jvmtiEnv(),
    vm(vm)
   {
-   functions = (jvmtiInterface_1_*)vm->getJvmtiInterface();
+   functions = (jvmtiInterface_1_ *)vm->getJvmtiInterface();
   }
+
+  virtual ~JvmtiEnv() = default;
 
   virtual Jvm * getVM() final {
    return vm;

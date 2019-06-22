@@ -4,7 +4,7 @@
 #ifdef FAKE_JNI_DEBUG
 #define _FETCH_JNI_ENV \
 JniEnv *jenv = (JniEnv *)env;\
-NativeInterface * const ni = (NativeInterface *)(env->functions);
+NativeInterface * const ni = (NativeInterface *)(jenv->functions);
 #else
 #define _FETCH_JNI_ENV \
 NativeInterface * const ni = (NativeInterface *)(env->functions);
