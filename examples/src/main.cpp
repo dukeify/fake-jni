@@ -12,17 +12,17 @@ public:
  JString exampleField2;
 
  //This constructor is visible to the JNI
- ExampleClass():
+ ExampleClass() :
   NativeObject<ExampleClass>(),
   exampleField1(10),
   exampleField2("Hello World!")
  {}
 
  //This constructor is visible to the JNI
- ExampleClass(JInt i, JString str):
+ ExampleClass(JInt i, JString *str) :
   NativeObject<ExampleClass>(),
   exampleField1(i),
-  exampleField2(str)
+  exampleField2(*str)
  {}
 
  //This constructor is not visible to the JNI
@@ -53,16 +53,6 @@ static void outOfLineMemberFunction() {
  std::cout << "I am JVM static!" << std::endl;
 }
 
-//Example constructor delegate
-static ExampleClass * constructorDelegate() {
- return new ExampleClass();
-}
-
-//Another example constructor delegate
-static ExampleClass * anotherConstructorDelegate(JInt i, JString *str) {
- return new ExampleClass(i, *str);
-}
-
 DEFINE_NATIVE_TYPE(ExampleClass) {
  //Link member functions
  {&ExampleClass::exampleFunction, "exampleFunction"},
@@ -74,8 +64,8 @@ DEFINE_NATIVE_TYPE(ExampleClass) {
  //Link static function
  {&outOfLineMemberFunction, "woahTheNameIsDifferentAgain"},
  //Register constructor delegates
- {&constructorDelegate},
- {&anotherConstructorDelegate}
+ {Constructor<ExampleClass> {}},
+ {Constructor<ExampleClass, JInt, JString*> {}}
 };
 
 //fake-jni in action

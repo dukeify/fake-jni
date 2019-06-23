@@ -1,6 +1,19 @@
 #pragma once
 
 namespace FakeJni {
+ template<typename T, typename... Args>
+ class Constructor {
+ public:
+  Constructor() {
+   static_assert(CX::HasConstructor<T, Args...>::value, "Tried to register non-existent constructor!");
+  }
+
+  [[gnu::always_inline]]
+  inline static T * construct(Args... args) {
+   return new T(args...);
+  }
+ };
+
  namespace _CX {
   template<typename>
   class RegistrationHookGenerator;
@@ -25,7 +38,9 @@ namespace FakeJni {
 
    const char *const name;
    const uint32_t modifiers;
+   //TODO use capturing lambdas in place of RegistrationHookGenerator after converting to a shared library
    bool (* const processHook)(JClass * const, ClassDescriptorElement * const);
+//   std::function<bool (JClass * const)> processHook;
 
    //Constructor for member functions
    template<typename R, typename T, typename... Args>
@@ -47,10 +62,14 @@ namespace FakeJni {
     processHook(&RegistrationHookGenerator<decltype(func)>::process)
    {}
 
-   //Constructor for constructor delegates
-   template<typename R, typename... Args>
-   ClassDescriptorElement(R (* const func)(Args...), uint32_t modifiers = JMethodID::PUBLIC) noexcept :
-    ClassDescriptorElement(func, "<init>", modifiers)
+   //Constructor for constructors
+   template<typename T, typename... Args>
+   ClassDescriptorElement(Constructor<T, Args...> constructor, uint32_t modifiers = JMethodID::PUBLIC) noexcept :
+    type(NON_MEMBER_FUNCTION),
+    nonMemberFunc((decltype(nonMemberFunc))Constructor<T, Args...>::construct),
+    name("<init>"),
+    modifiers(modifiers),
+    processHook(&RegistrationHookGenerator<void (* const)(Args...)>::process)
    {}
 
    //Constructor for member fields
