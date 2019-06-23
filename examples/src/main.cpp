@@ -85,7 +85,7 @@ int main(int argc, char **argv) {
  //Create a shiny new fake JVM instance
  DefaultJvm vm;
 
-// //Register ExampleClass on the VM)
+ //Register ExampleClass on the VM)
  vm.registerClass<ExampleClass>();
 
  //Attach this binary as a native library

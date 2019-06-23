@@ -18,6 +18,7 @@
 #include "cx/strings.h"
 #include "cx/templates.h"
 #include "cx/classes.h"
+#include "cx/indirection.h"
 //JNI dependencies
 #include "jni.h"
 #include "jvmti.h"

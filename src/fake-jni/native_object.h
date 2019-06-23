@@ -35,7 +35,6 @@ namespace FakeJni {
 
  public:
   explicit NativeObject(NativeObject &) = delete;
-  explicit NativeObject(NativeObject &&) = delete;
 
   NativeObject() noexcept : JClass(T::getDescriptor()) {
 //   static_assert(std::is_base_of<NativeObject, T>::value, "T must be derived from NativeObject<T>!");

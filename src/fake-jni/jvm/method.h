@@ -19,23 +19,14 @@ static_assert(\
  "Registered JNI functions may only accept JNI types and pointers to _jobject or derived classes!"\
 );
 
-//Checks a given class for a inlined static function called 'cast'
-//DEFINE_FUNCTION_DETECTOR(cast)
-
 namespace FakeJni {
  namespace _CX {
   //Ensures that all type arguments are valid JNI parameters
-//  template<typename...>
-//  class VerifyJniFunctionArguments;
-
-//  template<typename T, typename... Args>
-//  class VerifyJniFunctionArguments<T, Args...> {
   template<typename... Args>
   class VerifyJniFunctionArguments {
   public:
    [[gnu::always_inline]]
    inline static constexpr bool verify() {
-//    return VerifyJniFunctionArguments<T>::verify() && VerifyJniFunctionArguments<Args...>::verify();
     return  !((!VerifyJniFunctionArguments<Args>::verify()) || ...);
    }
   };
@@ -64,7 +55,7 @@ namespace FakeJni {
   };
 
   //C to C++ Vararg glue
-  template<bool, typename>
+  template<bool IsClass, typename T>
   class JValueArgResolver {
   public:
    inline static constexpr const bool isRegisteredResolver = false;
@@ -73,20 +64,6 @@ namespace FakeJni {
   //JValueArgResolver for JObject derived classes
   template<typename T>
   class JValueArgResolver<true, T> {
-//  private:
-//   template<typename R, typename TT, typename... Args>
-//   inline static constexpr bool assertCastMatches(R (TT::*)(Args...)) {
-//    return false;
-//   }
-//
-//   template<typename R, typename... Args>
-//   inline static constexpr bool assertCastMatches(R (*)(Args...)) {
-//    if constexpr(std::is_same<componentType *, R>::value && sizeof...(Args) == 1) {
-//     using arg_t = typename CX::TemplateTypeIterator<0, Args...>::type;
-//     return std::is_same<_jobject *, arg_t>::value;
-//    }
-//    return false;
-//   }
 
   public:
    inline static constexpr const bool isRegisteredResolver = true;
@@ -96,12 +73,6 @@ namespace FakeJni {
    inline static componentType* getAArg(jvalue *values) {
     static_assert(std::is_base_of<_jobject, componentType>::value, "Illegal JNI function parameter type!");
     if constexpr(CastDefined<componentType>::value) {
-//     static_assert(
-//      assertCastMatches(&componentType::cast),
-//      "Illegal prototype for downcasting delegate! The prototype should be:"
-//      "\n\tinline static Derived* cast(_jobject *) {}"
-//      "\n(where 'Derived' is your native class)"
-//     );
      return componentType::cast::cast((JObject*)values->l);
     } else {
      return (componentType *)values->l;
@@ -115,18 +86,13 @@ namespace FakeJni {
   inline static T getAArg(jvalue *values) {
    using componentType = typename ComponentTypeResolver<T>::type;
    static_assert(
-    JValueArgResolver<false, componentType>::isRegisteredResolver || JValueArgResolver<true, componentType>::isRegisteredResolver,
+    JValueArgResolver<false, componentType>::isRegisteredResolver
+     || JValueArgResolver<true, componentType>::isRegisteredResolver,
     "Illegal JNI function parameter type!"
    );
    return JValueArgResolver<std::is_class<componentType>::value, T>::getAArg(values);
   }
 
-//  template<
-//   typename T,
-//   bool IsClass = std::is_class<T>::value,
-//   bool LargerThanInt = (sizeof(T) > sizeof(int))
-//  >
-//  class VArgResolver;
   template<
    typename T,
    bool IsPointer = std::is_pointer<T>::value,
@@ -214,7 +180,7 @@ namespace FakeJni {
 
    template<typename... DecomposedVarargs>
    [[gnu::always_inline]]
-   inline static R invokeV(void *const inst, erasedType func, va_list list, DecomposedVarargs... args) {
+   inline static R invokeV(void * const inst, erasedType func, va_list list, DecomposedVarargs... args) {
     return FunctionAccessor<N - 1, functionType>::template invokeV<argType, DecomposedVarargs...>(
      inst,
      func,

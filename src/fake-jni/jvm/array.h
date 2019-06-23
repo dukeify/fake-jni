@@ -31,7 +31,7 @@ template<>\
 }\
 class fake_object: public NativeObject<fake_object>, public JArray<fake_object>, public jni_struct {\
 public:\
- using cast = _CX::ExplicitCastGenerator<fake_object, JClass, JObject>;\
+ using cast = CX::ExplicitCastGenerator<fake_object, JClass, JObject>;\
  static constexpr const auto name = _CX::JniTypeBase<jni_struct>::signature;\
  static const JClass descriptor;\
  const JInt length = getLength();\

@@ -9,7 +9,7 @@ static_assert(\
  "Field type is not a valid JNI type!"\
 );\
 static_assert(\
- _CX::ComponentTypeResolver<T>::indirectionCount == 0U,\
+ CX::ComponentTypeResolver<T>::indirectionCount == 0U,\
  "Registered field types cannot be pointers or references to a JNI type!"\
 );
 
@@ -52,8 +52,10 @@ namespace FakeJni {
 
    [[gnu::always_inline]]
    inline static void set(void * const inst, erased_t field, void * const value) {
-    //TODO log that this is not possible because the field is immutable
-    std::cerr << "Attempted to write to immutable field!" << std::endl;
+    std::string error = "Attempted to write to immutable field: '";
+    error +=  typeid(type_t).name();
+    error += "'!";
+    throw std::runtime_error(error.c_str());
    }
   };
 
@@ -89,8 +91,10 @@ namespace FakeJni {
 
    [[gnu::always_inline]]
    inline static void set(erased_t field, void * value) {
-    //TODO log that this is not possible because the field is immutable
-    std::cerr << "Attempted to write to immutable field!" << std::endl;
+    std::string error = "Attempted to write to immutable field: '";
+    error +=  typeid(type_t).name();
+    error += "'!";
+    throw std::runtime_error(error.c_str());
    }
   };
  }

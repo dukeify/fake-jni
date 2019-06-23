@@ -6,7 +6,7 @@ namespace FakeJni {
  class JString: public _jstring, public JCharArray, public virtual NativeObject<JString> {
  public:
   DEFINE_CLASS_NAME("java/lang/String")
-  using cast = typename _CX::ExplicitCastGenerator<JString, JCharArray, JClass, JObject>;
+  using cast = typename CX::ExplicitCastGenerator<JString, JCharArray, JClass, JObject>;
 
   const size_t slen;
 

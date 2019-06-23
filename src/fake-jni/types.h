@@ -16,6 +16,11 @@ namespace _CX {\
 
 namespace FakeJni {
  namespace _CX {
+  using CX::ComponentTypeResolver;
+
+  //Stub type for generating pointer-to-member types
+  class AnyClass;
+
   //JNI Type metadata template
   template<typename>
   class JniTypeBase {
@@ -37,160 +42,6 @@ namespace FakeJni {
   //Strip const qualifications off of JniTypeBase specializations and instantiations
   template<typename T>
   class JniTypeBase<const T> : public JniTypeBase<typename ComponentTypeResolver<const T>::type> {};
-
-  //Explicit casting generators to disambiguate casting with multiple inheritance JNI types
-  template<typename...>
-  class UpcastingGenerator;
-
-  //JString, JCharArray, JClass, JObject
-  //JObject, JString, JCharArray, JClass
-  template<typename Target, typename Step, typename... Steps>
-  class UpcastingGenerator<Target, Step, Steps...> {
-  private:
-   using target_t = typename ComponentTypeResolver<Target>::type *;
-   using step_t = typename ComponentTypeResolver<Step>::type *;
-   using next_t = typename ComponentTypeResolver<typename CX::TemplateTypeIterator<0U, Steps...>::type>::type *;
-
-  public:
-   [[gnu::always_inline]]
-   inline static target_t cast(step_t step) {
-    return UpcastingGenerator<Target, Steps...>::cast((next_t)step);
-   }
-  };
-
-  template<typename Target, typename Step>
-  class UpcastingGenerator<Target, Step> {
-  private:
-   using target_t = typename ComponentTypeResolver<Target>::type *;
-   using step_t = typename ComponentTypeResolver<Step>::type *;
-
-  public:
-   [[gnu::always_inline]]
-   inline static target_t cast(step_t step) {
-    return (target_t)step;
-   }
-  };
-
-  template<typename...>
-  class DowncastingGenerator;
-
-  template<typename Target, typename Step, typename... Steps>
-  class DowncastingGenerator<Target, Step, Steps...> {
-  private:
-   using target_t = typename ComponentTypeResolver<Target>::type *;
-   using step_t = typename ComponentTypeResolver<Step>::type *;
-   using next_t = typename ComponentTypeResolver<typename CX::TemplateTypeIterator<0U, Steps...>::type>::type *;
-
-  public:
-   [[gnu::always_inline]]
-   inline static target_t cast(step_t step) {
-    return DowncastingGenerator<Target, Steps...>::cast((next_t)step);
-   }
-  };
-
-  template<typename Target, typename Step>
-  class DowncastingGenerator<Target, Step> {
-  private:
-   using target_t = typename ComponentTypeResolver<Target>::type *;
-   using step_t = typename ComponentTypeResolver<Step>::type *;
-
-  public:
-   [[gnu::always_inline]]
-   inline static target_t cast(step_t step) {
-    return (target_t)step;
-   }
-  };
-
-  template<typename...>
-  class ExplicitCastGenerator;
-
-  //Static assertion to prevent the compiler from spewing template errors and provide users with relevant information
-  //about their incorrect usage of ExplicitCastGenerator
-  template<typename Target>
-  class ExplicitCastGenerator<Target> {
-  private:
-   class Dummy;
-
-   using target_t = typename ComponentTypeResolver<Target>::type *;
-
-  public:
-   [[gnu::always_inline]]
-   inline static target_t cast(void *) {
-    //Assertion will always fail
-    static_assert(
-     std::is_same<Target, Dummy>::value,
-     "No explicit cast is required if a polymorphic derived type is not going to be casted to a polymorphic base that "
-     "is at least one type removed from the derivation. ExplicitCastGenerator is intended to be used with three or "
-     "more template parameters!"
-    );
-    //Execution will never reach this line, it is simply here to avoid compiler errors
-    return nullptr;
-   }
-  };
-
-  //Also incorrect usage, causes static assertion in ExplicitCastGenerator<typename> to trip
-  template<typename T1, typename T2>
-  class ExplicitCastGenerator<T1, T2> : public ExplicitCastGenerator<T1> {
-  private:
-   using target_t = typename ComponentTypeResolver<T1>::type *;
-
-  public:
-   [[gnu::always_inline]]
-   inline static target_t cast(void *) {
-    return ExplicitCastGenerator<T1>::cast(nullptr);
-   }
-  };
-
-  template<typename Target, typename... Steps>
-  class ExplicitCastGenerator<Target, Steps...> {
-  private:
-   using steps_end_t = typename CX::TemplateTypeIterator<sizeof...(Steps) - 1U, Steps...>::type;
-
-   //Upcasting types
-   using target_u_t = typename ComponentTypeResolver<steps_end_t>::type *;
-   using step_u_t = typename ComponentTypeResolver<Target>::type *;
-
-   //Downcasting types
-   using target_d_t = step_u_t;
-   using step_d_t = target_u_t;
-
-   [[gnu::always_inline]]
-   inline static constexpr void assertArgumentCompliance() {
-    static_assert(
-     std::is_class<typename ComponentTypeResolver<Target>::type>::value
-      && (std::is_class<typename ComponentTypeResolver<Steps>::type>::value && ...),
-     "Explicit casting routes can only be generated for polymorphic types!"
-    );
-   }
-
-  public:
-   using upcast_generator = typename CX::TemplateTypeArgCycler<
-    0,
-    sizeof...(Steps),
-    UpcastingGenerator,
-    Target,
-    Steps...
-   >::type;
-
-   using downcast_generator = typename CX::ReverseSpecialize<
-    DowncastingGenerator,
-    Steps...
-   >::template type<Target>;
-
-   //Upcasting function
-   [[gnu::always_inline]]
-   inline static target_u_t cast(step_u_t arg) {
-    assertArgumentCompliance();
-    return upcast_generator::cast(arg);
-   }
-
-   //Downcasting function
-   [[gnu::always_inline]]
-   inline static target_d_t cast(step_d_t arg) {
-    assertArgumentCompliance();
-    return downcast_generator::cast(arg);
-   }
-  };
 
   //'cast' alias detection idiom
   //Negative case
@@ -214,7 +65,7 @@ namespace FakeJni {
     [[gnu::always_inline]]
     inline static constexpr bool verifyParameters() {
      static_assert(
-      CX::IsSame<T1, ExplicitCastGenerator>::value,
+      CX::IsSame<T1, CX::ExplicitCastGenerator>::value,
       "Illegal type for 'cast' alias, should be 'ExplicitCastGenerator<...>'!"
      );
      static_assert(
