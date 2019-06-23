@@ -168,9 +168,14 @@ namespace FakeJni {
    return "java/lang/Class";
   }
 
-  //By default, allocations will not be supported. This prevents attempts to instantiate
-  //`java/lang/Class` directly.
+  //By default, allocations will not be supported. This prevents attempts to instantiate `java/lang/Class` directly.
+  //Object construction for c-varargs
   virtual JObject * newInstance(JavaVM * const vm, const char * const signature, va_list list) const {
+   return nullptr;
+  }
+
+  //Object construction for jvalue arrays
+  virtual JObject * newInstance(JavaVM * const vm, const char * const signature, jvalue * const values) const {
    return nullptr;
   }
  };

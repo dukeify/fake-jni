@@ -248,7 +248,7 @@ namespace FakeJni {
 
    template<typename... DecomposedJValues>
    [[gnu::always_inline]]
-   inline static R invokeA(erasedType func, jvalue *values, DecomposedJValues... args) {
+   inline static R invokeA(erasedType func, jvalue * const values, DecomposedJValues... args) {
     return FunctionAccessor<N - 1, functionType>::template invokeA<argType, DecomposedJValues...>(
      func,
      values + 1,
@@ -457,7 +457,7 @@ namespace FakeJni {
 
   template<typename R>
   [[gnu::always_inline]]
-  inline R invoke(void * const inst, const jvalue *values) {
+  inline R invoke(void * const inst, jvalue * const values) {
    if (!modifiers) {
     throw std::runtime_error("Functions linked through `registerNatives` are not supported yet!");
    } else {

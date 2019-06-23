@@ -1,7 +1,7 @@
 #pragma once
 
 #define DEFINE_CLASS_NAME(str) \
-inline static constexpr const char name[] = str;\
+static constexpr const char name[] = str;\
 static const JClass descriptor;\
 inline static const JClass * getDescriptor() noexcept {\
  return &descriptor;\
@@ -12,14 +12,14 @@ namespace FakeJni::_CX {\
  template<>\
  class JniTypeBase<clazz> {\
  private:\
-  inline static constexpr const char \
+  static constexpr const char \
    prefix[] = "L",\
    suffix[] = ";";\
  public:\
-  inline static constexpr const bool isRegisteredType = true;\
-  inline static constexpr const bool isClass = true;\
-  inline static constexpr const auto signature = CX::Concat<prefix, clazz::name, suffix>::result;\
-  inline static constexpr const bool hasComplexHierarchy = CastDefined<clazz>::value;\
+  static constexpr const bool isRegisteredType = true;\
+  static constexpr const bool isClass = true;\
+  static constexpr const auto signature = CX::Concat<prefix, clazz::name, suffix>::result;\
+  static constexpr const bool hasComplexHierarchy = CastDefined<clazz>::value;\
  };\
 }\
 inline const FakeJni::JClass clazz::descriptor
@@ -32,6 +32,25 @@ namespace FakeJni {
  class NativeObject: public JClass {
  private:
   inline static constexpr const auto deallocator = &_CX::Deallocator<T>::deallocate;
+
+  template<typename A>
+  JObject * construct(JavaVM * const vm, const char * const signature, A args) const {
+   Jvm * const jvm = (Jvm * const)vm;
+   for (uint32_t i = 0; i < functions->getSize(); i++) {
+    JMethodID * const method = (*functions)[i];
+    if (strcmp(method->getSignature(), signature) == 0 && strcmp(method->getName(), "<init>") == 0) {
+     const auto inst = method->invoke<T *>(nullptr, args);
+     JObject *baseInst;
+     if constexpr(_CX::JniTypeBase<T>::hasComplexHierarchy) {
+      baseInst = T::cast::cast(inst);
+     } else {
+      baseInst = (JObject*)inst;
+     }
+     return jvm->getInstances()->pushAlloc(deallocator, baseInst);
+    }
+   }
+   return nullptr;
+  }
 
  public:
   explicit NativeObject(NativeObject &) = delete;
@@ -48,22 +67,12 @@ namespace FakeJni {
    return T::name;
   }
 
-  JObject * newInstance(JavaVM * const vm, const char * const signature, va_list list) const noexcept final {
-   Jvm * const jvm = (Jvm * const)vm;
-   for (uint32_t i = 0; i < functions->getSize(); i++) {
-    JMethodID * const method = (*functions)[i];
-    if (strcmp(method->getSignature(), signature) == 0 && strcmp(method->getName(), "<init>") == 0) {
-     const auto inst = method->invoke<T *>(nullptr, list);
-     JObject *baseInst;
-     if constexpr(_CX::JniTypeBase<T>::hasComplexHierarchy) {
-      baseInst = T::cast::cast(inst);
-     } else {
-      baseInst = (JObject*)inst;
-     }
-     return jvm->getInstances()->pushAlloc(deallocator, baseInst);
-    }
-   }
-   return nullptr;
+  JObject * newInstance(JavaVM * const vm, const char * const signature, va_list list) const final {
+   return construct(vm, signature, list);
+  }
+
+  JObject * newInstance(JavaVM * const vm, const char * const signature, jvalue * const values) const final {
+   return construct(vm, signature, values);
   }
  };
 }
