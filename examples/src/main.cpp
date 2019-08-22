@@ -4,9 +4,11 @@
 
 using namespace FakeJni;
 
-class ExampleClass: public NativeObject<ExampleClass> {
+class ExampleClass : public NativeObject<ExampleClass> {
 public:
  DEFINE_CLASS_NAME("com/example/ExampleClass")
+
+ using cast = CX::ExplicitCastGenerator<ExampleClass, JClass, JObject>;
 
  JInt exampleField1;
  JString exampleField2;
@@ -19,18 +21,28 @@ public:
  {}
 
  //This constructor is visible to the JNI
- ExampleClass(JInt i, JString *str) :
-  NativeObject<ExampleClass>(),
-  exampleField1(i),
-  exampleField2(*str)
+// ExampleClass(JInt i, JString *str) :
+//  NativeObject<ExampleClass>(),
+//  exampleField1(i),
+//  exampleField2(*str)
+// {}
+
+ ExampleClass(JInt, JString *) :
+  exampleField1(0),
+  exampleField2{""}
  {}
 
- //This constructor is not visible to the JNI
- ExampleClass(JBooleanArray arr):
-  NativeObject<ExampleClass>(),
-  exampleField1(-1),
-  exampleField2("This constructor has no linked delegate!")
+ ExampleClass(JDouble, ExampleClass *) :
+  exampleField1(0),
+  exampleField2{""}
  {}
+
+// //This constructor is not visible to the JNI
+// ExampleClass(JBooleanArray arr):
+//  NativeObject<ExampleClass>(),
+//  exampleField1(-1),
+//  exampleField2("This constructor has no linked delegate!")
+// {}
 
  JInt* exampleFunction() {
   return &exampleField1;
@@ -65,29 +77,35 @@ DEFINE_NATIVE_TYPE(ExampleClass) {
  {&outOfLineMemberFunction, "woahTheNameIsDifferentAgain"},
  //Register constructor delegates
  {Constructor<ExampleClass> {}},
- {Constructor<ExampleClass, JInt, JString*> {}}
+// {Constructor<ExampleClass, JInt, JString*> {}}
+ //TODO This also needs to be fixed, see TODO document
+ {Constructor<ExampleClass, JDouble, ExampleClass *> {}}
 };
 
 //fake-jni in action
 int main(int argc, char **argv) {
+ //Make a JString
  JString test{"Hello World!"};
 
  //Create a shiny new fake JVM instance
- DefaultJvm vm;
+ Jvm * const vm = createJvm();
 
  //Register ExampleClass on the VM)
- vm.registerClass<ExampleClass>();
+ vm->registerClass<ExampleClass>();
+// vm->registerClass<TestClass>();
 
  //Attach this binary as a native library
  //no path to current binary, no options, custom library dl functions
-// vm.attachLibrary("", "", {&dlopen, &dlsym, &dlclose});
+// vm->attachLibrary("", "", {&dlopen, &dlsym, &dlclose});
 
  //Start fake-jni
-// vm.start();
+// vm->start();
 
- vm.unregisterClass<ExampleClass>();
+ vm->unregisterClass<ExampleClass>();
 
  //Clean up
- vm.destroy();
+ vm->destroy();
+
+ delete vm;
  return 0;
 }

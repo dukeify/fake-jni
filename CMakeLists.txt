@@ -2,16 +2,21 @@ cmake_minimum_required(VERSION 3.8)
 
 #set(CMAKE_CXX_COMPILER "/usr/bin/clang++")
 set(CMAKE_CXX_STANDARD 17)
-set(compiler_flags "-g -DFAKE_JNI_DEBUG")
+
+project(fake-jni VERSION 0.1.0)
+add_subdirectory(CX)
+
+set(CMAKE_BUILD_TYPE Release)
+set(compiler_flags "-g -fstandalone-debug -DFAKE_JNI_DEBUG")
 set(CMAKE_CXX_FLAGS ${compiler_flags})
 set(CMAKE_C_FLAGS ${compiler_flags})
 
-project(fake-jni)
-add_library(fake-jni INTERFACE)
-add_subdirectory(CX)
+file(GLOB_RECURSE FAKE_JNI_SRC "src/**.cpp")
+add_library(fake-jni SHARED ${FAKE_JNI_SRC})
 
-target_include_directories(fake-jni INTERFACE include src ${cx_SOURCE_DIR})
-target_compile_options(fake-jni INTERFACE
+target_link_libraries(fake-jni dl)
+target_include_directories(fake-jni PUBLIC include ${cx_SOURCE_DIR})
+target_compile_options(fake-jni PUBLIC
         -Wall
         -Wextra
 #        -Werror
