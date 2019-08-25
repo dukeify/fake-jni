@@ -2,14 +2,14 @@
 
 #include "jni.h"
 #include "jvmti.h"
+
 #include "fake-jni/util.h"
 
 #include "cx/templates.h"
 #include "cx/indirection.h"
 #include "cx/classes.h"
+#include "cx/idioms.h"
 #include "cx/strings.h"
-
-#include "uuid/uuid.h"
 
 #include <dlfcn.h>
 #include <initializer_list>
