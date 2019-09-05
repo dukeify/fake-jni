@@ -65,6 +65,7 @@ static void outOfLineMemberFunction() {
  std::cout << "I am JVM static!" << std::endl;
 }
 
+//TODO #19 the JClass instance needs a reference to the NativeClass somehow
 DEFINE_NATIVE_TYPE(ExampleClass) {
  //Link member functions
  {&ExampleClass::exampleFunction, "exampleFunction"},

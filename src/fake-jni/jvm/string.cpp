@@ -26,7 +26,7 @@ namespace FakeJni {
   memcpy(array, str, slen);
  }
 
- bool JString::operator==(const JString& str) {
+ bool JString::operator==(const JString& str) const {
   return strcmp((char *)array, (char *)str.array) == 0;
  }
 }

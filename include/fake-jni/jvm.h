@@ -72,7 +72,7 @@ fprintf(jvm->getLog(), "DEBUG: JNIInvokeInterface_::%s\n", #name);
 //Internal JFieldID macros
 #define _ASSERT_FIELD_JNI_COMPLIANCE \
 static_assert(\
- std::is_base_of<JObject, T>::value || _CX::JniTypeBase<T>::isRegisteredType,\
+ __is_base_of(JObject, T) || _CX::JniTypeBase<T>::isRegisteredType,\
  "Field type is not a valid JNI type!"\
 );\
 static_assert(\
@@ -122,7 +122,7 @@ template<>\
   static constexpr const char arrayPrefix[] = "[";\
  public:\
   static constexpr const bool isRegisteredType = true;\
-  static constexpr const bool isClass = std::is_class<jni_struct>::value;\
+  static constexpr const bool isClass = __is_class(jni_struct);\
   static constexpr const auto signature = CX::Concat<arrayPrefix, JniTypeBase<component_type>::signature>::result;\
   static constexpr const bool hasComplexHierarchy = false;\
  };\
@@ -143,7 +143,7 @@ namespace _CX {\
  class JniTypeBase<fake_object> {\
  public:\
   static constexpr const bool isRegisteredType = true;\
-  static constexpr const bool isClass = std::is_class<fake_object>::value;\
+  static constexpr const bool isClass = __is_class(fake_object);\
   static constexpr const auto signature = JniTypeBase<jni_struct>::signature;\
   static constexpr const bool hasComplexHierarchy = CastDefined<fake_object>::value;\
  };\
@@ -163,7 +163,7 @@ namespace FakeJni::_CX {\
   using type = typename ComponentTypeResolver<target>::type;\
  public:\
   static constexpr const bool isRegisteredType = true;\
-  static constexpr const bool isClass = std::is_class<type>::value;\
+  static constexpr const bool isClass = __is_class(type);\
   static constexpr const char signature[] = sig;\
   static constexpr const bool hasComplexHierarchy = CastDefined<type>::value;\
  };\
@@ -234,13 +234,13 @@ namespace FakeJni::_CX {
   //'cast' alias detection idiom
   //Negative case
   template<typename T, typename V = void>
-  class CastDefined : public std::false_type {
+  class CastDefined : public CX::false_type {
   public:
    [[gnu::always_inline]]
    inline static void assertAliasCorrectness() {
     //Always false
     static_assert(
-     std::is_same<V, void>::value,
+     CX::IsSame<V, void>::value,
      "Complex JNI types must define a 'cast' alias!"
     );
    }
@@ -248,7 +248,7 @@ namespace FakeJni::_CX {
 
   //Positive case
   template<typename T>
-  class CastDefined<T, std::void_t<typename T::cast>> : public std::true_type {
+  class CastDefined<T, CX::void_t<typename T::cast>> : public CX::true_type {
   private:
    template<typename>
    class TemplateTemplateDecomposer {};
@@ -900,7 +900,6 @@ namespace FakeJni {
  class Constructor {
  public:
   Constructor() {
-   //TODO
    static_assert(CX::HasConstructor<T, Args...>::value, "Tried to register non-existent constructor!");
   }
 
@@ -1075,8 +1074,8 @@ namespace FakeJni {
    [[gnu::always_inline]]
    inline static constexpr bool verify() {
     using resolver = ComponentTypeResolver<T>;
-    if constexpr(std::is_class<typename resolver::type>::value) {
-     return std::is_base_of<_jobject, typename resolver::type>::value && resolver::indirectionCount == 1U;
+    if constexpr(__is_class(typename resolver::type)) {
+     return __is_base_of(_jobject, typename resolver::type) && resolver::indirectionCount == 1U;
     } else {
      return JniTypeBase<T>::isRegisteredType && resolver::indirectionCount == 0U;
     }
@@ -1109,7 +1108,7 @@ namespace FakeJni {
 
    [[gnu::always_inline]]
    inline static componentType* getAArg(jvalue *values) {
-    static_assert(std::is_base_of<_jobject, componentType>::value, "Illegal JNI function parameter type!");
+    static_assert(__is_base_of(_jobject, componentType), "Illegal JNI function parameter type!");
     if constexpr(CastDefined<componentType>::value) {
      return componentType::cast::cast((JObject*)values->l);
     } else {
@@ -1128,13 +1127,15 @@ namespace FakeJni {
     || JValueArgResolver<true, componentType>::isRegisteredResolver,
     "Illegal JNI function parameter type!"
    );
-   return JValueArgResolver<std::is_class<componentType>::value, T>::getAArg(values);
+   return JValueArgResolver<__is_class(componentType), T>::getAArg(values);
   }
 
   template<
    typename T,
-   bool IsPointer = std::is_pointer<T>::value,
-   bool IsClass = std::is_class<T>::value,
+   //TODO check that this did not break anything
+//   bool IsPointer = std::is_pointer<T>::value,
+   bool IsPointer = CX::IsPointer<T>::value,
+   bool IsClass = __is_class(T),
    bool LargerThanInt = (sizeof(T) > sizeof(int))
   >
   class VArgResolver;
@@ -1182,7 +1183,7 @@ namespace FakeJni {
     //compiler errors in non-fault conditions, since static_assert(false, ...); will
     //always throw an error, even if the template is not instantiated
     static_assert(
-     !std::is_class<T>::value,
+     !__is_class(T),
      "Consuming an object type off of a va_list is undefined behaviour!\n"
      "Did you intend to consume a pointer-to-object type?"
     );
@@ -1258,7 +1259,7 @@ namespace FakeJni {
    [[gnu::always_inline]]
    inline static R invokeA(void * const inst, erasedType func, jvalue *values, Args2... args) {
     static_assert(
-     std::is_same<std::tuple<Args...>, std::tuple<Args2...>>::value,
+     CX::IsSame<std::tuple<Args...>, std::tuple<Args2...>>::value,
      "Function argument list does not match base invoker arguments!"
     );
     return (((T*)inst)->*((R (T::*)(Args...))func))(args...);
@@ -1313,7 +1314,7 @@ namespace FakeJni {
    template<typename... Args2>
    inline static R invokeA(erasedType func, jvalue *values, Args2... args) {
     static_assert(
-     std::is_same<std::tuple<Args...>, std::tuple<Args2...>>::value,
+     CX::IsSame<std::tuple<Args...>, std::tuple<Args2...>>::value,
      "Function argument list does not match base invoker arguments!"
     );
     return ((R (*)(Args...))func)(args...);
@@ -1713,13 +1714,14 @@ namespace FakeJni {
  //TODO detect if function is virtual: if any derived classes, of previously defined native classes, contain
  // a virtual override for the base, then register a new java function association for the derived class and
  // the respective function signature and classpath
+ //TODO Do not extend JClass
  template<typename T>
- class NativeObject: public JClass {
+ class NativeObject : public JClass {
  private:
   static constexpr const auto deallocator = &_CX::Deallocator<T>::deallocate;
 
   template<typename A>
-  JObject * construct(JavaVM * const vm, const char * const signature, A args) const;
+  JObject * construct(JavaVM * vm, const char * signature, A args) const;
 
  public:
   explicit NativeObject(NativeObject &) = delete;
@@ -1762,10 +1764,10 @@ namespace FakeJni {
   template<typename... TS>
   JArray(TS... ts);
   explicit JArray(const JArray<T> &array);
-  explicit JArray(const JInt size);
+  explicit JArray(JInt size);
   virtual ~JArray();
 
-  inline virtual JInt getLength() {
+  inline virtual JInt getLength() const {
    return length;
   }
 
@@ -1798,14 +1800,14 @@ namespace FakeJni {
   const size_t slen;
 
   JString(const JString &str);
-  JString(const JInt size);
+  JString(JInt size);
   JString(const char * str);
 
-  inline JInt getLength() override {
+  inline JInt getLength() const override {
    return (JInt)slen;
   }
 
-  bool operator==(const JString& str);
+  bool operator==(const JString& str) const;
  };
 
  //JNI _jthrowable and java/lang/Throwable implementation
@@ -1827,11 +1829,11 @@ namespace FakeJni {
  Jvm * createJvm(FILE * log = stdout) {
   //TODO all static assertions
   static_assert(
-   std::is_base_of<InvokeInterface, INVOKE>::value
-   && std::is_base_of<NativeInterface, NATIVE>::value
-   && std::is_base_of<JvmtiInterface, JVMTI>::value
-   && std::is_base_of<JniEnv, JNI_ENV>::value
-   && std::is_base_of<JvmtiEnv, JVMTI_ENV>::value
+   __is_base_of(InvokeInterface, INVOKE)
+   && __is_base_of(NativeInterface, NATIVE)
+   && __is_base_of(JvmtiInterface, JVMTI)
+   && __is_base_of(JniEnv, JNI_ENV)
+   && __is_base_of(JvmtiEnv, JVMTI_ENV)
   );
   return new Jvm(
    log,
@@ -1869,7 +1871,7 @@ namespace FakeJni {
  {
   _ASSERT_FIELD_JNI_COMPLIANCE
   //TODO should we lift this restriction?
-  static_assert(std::is_base_of<JObject, M>::value, "Encapsulating class is not derived from JObject!");
+  static_assert(__is_base_of(JObject, M), "Encapsulating class is not derived from JObject!");
  }
 
  template<typename T>
@@ -2005,7 +2007,7 @@ namespace FakeJni {
  template<typename T>
  bool Jvm::registerClass() {
   static_assert(
-   std::is_base_of<JClass, T>::value,
+   __is_base_of(JClass, T),
    "Only native classes may be passed to registerClass!"
   );
   JClass *clazz = const_cast<JClass *>(&T::descriptor);
@@ -2028,7 +2030,7 @@ namespace FakeJni {
  template<typename T>
  bool Jvm::unregisterClass() {
   static_assert(
-   std::is_base_of<JClass, T>::value,
+   __is_base_of(JClass, T),
    "Only native classes may be passed to unregisterClass!"
   );
   auto clazz = const_cast<JClass *>(&T::descriptor);
@@ -2080,7 +2082,7 @@ namespace FakeJni {
  template<typename T>
  template<typename... TS>
  JArray<T>::JArray(TS... ts) : JArray(sizeof...(TS)) {
-  static_assert((std::is_same<T, TS>::value && ...), "Arrays can only hold one type!");
+  static_assert((CX::IsSame<T, TS>::value && ...), "Arrays can only hold one type!");
   if constexpr(length > 0) {
    const T temp[] = {ts...};
    memcpy(array, temp, length);
@@ -2088,7 +2090,7 @@ namespace FakeJni {
  }
 
  template<typename T>
- JArray<T>::JArray(const JArray<T> &array) : JArray(array.length) {
+ JArray<T>::JArray(const JArray<T> &array) : JArray((const JInt)array.length) {
   memcpy(array, array.array, length);
  }
 
@@ -2097,7 +2099,7 @@ namespace FakeJni {
   length(size),
   array(new component[size])
  {
-  static_assert(std::is_base_of<_jarray, T>::value, "T must be derived from _jarray!");
+  static_assert(__is_base_of(_jarray, T), "T must be derived from _jarray!");
  }
 
  template<typename T>
