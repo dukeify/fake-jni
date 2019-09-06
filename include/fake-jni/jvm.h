@@ -1509,8 +1509,8 @@ namespace FakeJni {
   constructV(decltype(breeder)::template constructorPredicate<va_list>()),
   constructA(decltype(breeder)::template constructorPredicate<jvalue*>()),
   className(T::name),
-  functions(new AllocStack<JMethodID *>()),
-  fields(new AllocStack<JFieldID *>())
+  functions(new AllocStack<JMethodID *>(true)),
+  fields(new AllocStack<JFieldID *>(true))
  {
   for (const auto& d : breeder.descriptorElements) {
    d.process(this);
