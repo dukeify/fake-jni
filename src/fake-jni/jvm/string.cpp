@@ -2,6 +2,7 @@
 
 #include <cmath>
 #include <cstring>
+#include <algorithm>
 
 namespace FakeJni {
  const JString JString::EMPTY_STR {""};
@@ -27,7 +28,7 @@ namespace FakeJni {
  }
 
  bool JString::operator==(const JString& str) const {
-  return strcmp((char *)array, (char *)str.array) == 0;
+  return slen == str.slen && memcmp((char *)array, (char *)str.array, slen) == 0;
  }
 }
 
