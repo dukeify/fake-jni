@@ -1,3 +1,4 @@
+#include "fake-jni/internal/jni/native.h"
 #include "fake-jni/jvm.h"
 
 #define _BEGIN_VA_LIST \

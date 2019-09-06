@@ -4,7 +4,7 @@
 
 using namespace FakeJni;
 
-class ExampleClass : public NativeObject<ExampleClass> {
+class ExampleClass : public JObject {
 public:
  DEFINE_CLASS_NAME("com/example/ExampleClass")
 
@@ -15,7 +15,6 @@ public:
 
  //This constructor is visible to the JNI
  ExampleClass() :
-  NativeObject<ExampleClass>(),
   exampleField1(10),
   exampleField2("Hello World!")
  {}
@@ -66,7 +65,7 @@ static void outOfLineMemberFunction() {
 }
 
 //TODO #19 the JClass instance needs a reference to the NativeClass somehow
-DEFINE_NATIVE_TYPE(ExampleClass) {
+BEGIN_NATIVE_DESCRIPTOR(ExampleClass)
  //Link member functions
  {&ExampleClass::exampleFunction, "exampleFunction"},
  {&ExampleClass::getMyString, "getMyString"},
@@ -81,7 +80,7 @@ DEFINE_NATIVE_TYPE(ExampleClass) {
 // {Constructor<ExampleClass, JInt, JString*> {}}
  //TODO This also needs to be fixed, see TODO document
  {Constructor<ExampleClass, JDouble, ExampleClass *> {}}
-};
+END_NATIVE_DESCRIPTOR
 
 //fake-jni in action
 int main(int argc, char **argv) {

@@ -1,5 +1,7 @@
 #include "jni.h"
 #include "jvmti.h"
+
+#include "fake-jni/internal/jvmti/jvmti.h"
 #include "fake-jni/jvm.h"
 
 namespace FakeJni {

@@ -2,13 +2,11 @@
 
 #include <cmath>
 #include <cstring>
-#include <algorithm>
 
 namespace FakeJni {
  const JString JString::EMPTY_STR {""};
 
  JString::JString(const JString &str) :
-  NativeObject<JString>(),
   JCharArray(str.length),
   slen(str.slen)
  {
@@ -16,7 +14,6 @@ namespace FakeJni {
  }
 
  JString::JString(const JInt size) :
-  NativeObject<JString>(),
   JCharArray(size),
   slen(size)
  {}
@@ -28,9 +25,9 @@ namespace FakeJni {
  }
 
  bool JString::operator==(const JString& str) const {
-  return slen == str.slen && memcmp((char *)array, (char *)str.array, slen) == 0;
+  return memcmp((char *)array, (char *)str.array, std::min(slen, str.slen)) == 0;
  }
 }
 
 //TODO If we decide to link the JDK functions for java.lang.String, they would go here
-DEFINE_NATIVE_DESCRIPTOR(FakeJni::JString) {};
+DEFINE_NATIVE_DESCRIPTOR(FakeJni::JString)END_NATIVE_DESCRIPTOR

@@ -3,7 +3,11 @@
 #include "jni.h"
 #include "jvmti.h"
 
-#include "fake-jni/util.h"
+#include "fake-jni/internal/util.h"
+#include "fake-jni/internal/meta/meta.h"
+#include "fake-jni/internal/meta/field.h"
+#include "fake-jni/internal/meta/method.h"
+#include "fake-jni/internal/meta/class.h"
 
 #include "cx/templates.h"
 #include "cx/indirection.h"
@@ -19,47 +23,6 @@
 #include <cstring>
 
 //INTERNAL MACROS
-#define _FETCH_JVM Jvm * const jvm = (Jvm *)vm;
-
-#ifdef FAKE_JNI_DEBUG
-#define _FETCH_JNI_ENV \
-JniEnv *jenv = (JniEnv *)env;\
-NativeInterface * const ni = (NativeInterface *)(env->functions);
-#else
-#define _FETCH_JNI_ENV \
-NativeInterface * const ni = (NativeInterface *)(env->functions);
-#endif
-
-//TODO Clean up
-#ifdef FAKE_JNI_DEBUG
-#define _FETCH_JVMTI_ENV \
-JvmtiEnv *jenv = (JvmtiEnv *)env;\
-JvmtiInterface * const ji = (JvmtiInterface *)(env->functions);
-
-#define _JVMTI_DEBUG(name) fprintf(jenv->getVM()->getLog(), "DEBUG: jvmtiInterface_1_::%s\n", #name);
-#else
-#define _FETCH_JVMTI_ENV \
-JvmtiInterface * const ji = (JvmtiInterface *)(env->functions);
-
-#define _JVMTI_DEBUG(name)
-#endif
-
-//No need to store an extra stack variable if debugging is disabled
-#ifdef FAKE_JNI_DEBUG
-#define _INVOKE_DEBUG(name) \
-_FETCH_JVM \
-fprintf(jvm->getLog(), "DEBUG: JNIInvokeInterface_::%s\n", #name);
-#else
-#define _INVOKE_DEBUG(name) _FETCH_JVM
-#endif
-
-//Same as _INVOKE_DEBUG
-#ifdef FAKE_JNI_DEBUG
-#define _NATIVE_DEBUG(name) fprintf(jenv->getVM()->getLog(), "DEBUG: JNINativeInterface_::%s\n", #name);
-#else
-#define _NATIVE_DEBUG(name)
-#endif
-
 //TODO remove these with the fix for #24
 #ifdef _WIN32
 #define STATIC_LIB_SUFFIX std::string(".lib")
@@ -86,17 +49,6 @@ static_assert(\
  _CX::VerifyJniFunctionArguments<Args...>::verify(),\
  "Registered JNI functions may only accept JNI types and pointers to _jobject or derived classes!"\
 );
-
-#define _GET_AARG_MAP(t, member) \
-template<>\
-class JValueArgResolver<false, t> {\
-public:\
- inline static constexpr const bool isRegisteredResolver = true;\
- [[gnu::always_inline]]\
- inline static t getAArg(jvalue *values) {\
-  return (t)values->member;\
- }\
-};
 
 //Internal native array macros
 //Used to define:
@@ -127,7 +79,7 @@ template<>\
   static constexpr const bool hasComplexHierarchy = false;\
  };\
 }\
-class fake_object: public NativeObject<fake_object>, public JArray<fake_object>, public jni_struct {\
+class fake_object : public JObject, public JArray<fake_object>, public jni_struct {\
 public:\
  using cast = CX::ExplicitCastGenerator<fake_object, JClass, JObject>;\
  static constexpr const auto name = _CX::JniTypeBase<jni_struct>::signature;\
@@ -150,9 +102,9 @@ namespace _CX {\
 }
 
 #define _DEFINE_NATIVE_ARRAY_DESCRIPTOR(fake_object) \
-DEFINE_NATIVE_DESCRIPTOR(fake_object) {\
+DEFINE_NATIVE_DESCRIPTOR(fake_object) \
  {&fake_object::length, "length"}\
-};
+END_NATIVE_DESCRIPTOR
 
 //FAKE-JNI API MACROS
 #define DEFINE_JNI_TYPE(target, sig) \
@@ -193,111 +145,13 @@ namespace FakeJni::_CX {\
 }
 
 #define DEFINE_NATIVE_DESCRIPTOR(clazz) \
-inline const FakeJni::JClass clazz::descriptor
+inline const FakeJni::JClass clazz::descriptor { FakeJni::_CX::JClassBreeder<clazz> {
 
-#define DEFINE_NATIVE_TYPE(clazz) \
+#define BEGIN_NATIVE_DESCRIPTOR(clazz) \
 DECLARE_NATIVE_TYPE(clazz)\
 DEFINE_NATIVE_DESCRIPTOR(clazz)
 
-//fake-jni type metadata templates
-namespace FakeJni::_CX {
-  using CX::ComponentTypeResolver;
-  using CX::ExplicitCastGenerator;
-  using CX::IsTemplateTemplate;
-  using CX::TemplateIsSame;
-
-  //Stub type for generating pointer-to-member types
-  class AnyClass;
-
-  //JNI Type metadata template
-  template<typename>
-  class JniTypeBase {
-  public:
-   static constexpr const bool isRegisteredType = false;
-   static constexpr const bool isClass = false;
-   static constexpr const char signature[] = "[INVALID_TYPE]";
-   static constexpr const bool hasComplexHierarchy = false;
-  };
-
-  //Strip pointers off of JniTypeBase specializations and instantiations
-  template<typename T>
-  class JniTypeBase<T*> : public JniTypeBase<typename ComponentTypeResolver<T*>::type> {};
-
-  //Strip references off of JniTypeBase specializations and instantiations
-  template<typename T>
-  class JniTypeBase<T&> : public JniTypeBase<typename ComponentTypeResolver<T&>::type> {};
-
-  //Strip const qualifications off of JniTypeBase specializations and instantiations
-  template<typename T>
-  class JniTypeBase<const T> : public JniTypeBase<typename ComponentTypeResolver<const T>::type> {};
-
-  //'cast' alias detection idiom
-  //Negative case
-  template<typename T, typename V = void>
-  class CastDefined : public CX::false_type {
-  public:
-   [[gnu::always_inline]]
-   inline static void assertAliasCorrectness() {
-    //Always false
-    static_assert(
-     CX::IsSame<V, void>::value,
-     "Complex JNI types must define a 'cast' alias!"
-    );
-   }
-  };
-
-  //Positive case
-  template<typename T>
-  class CastDefined<T, CX::void_t<typename T::cast>> : public CX::true_type {
-  private:
-   template<typename>
-   class TemplateTemplateDecomposer {};
-
-   template<template<typename...> typename T1, typename... Args>
-   class TemplateTemplateDecomposer<T1<Args...>> {
-   public:
-    [[gnu::always_inline]]
-    inline static constexpr bool verifyParameters() {
-     static_assert(
-      TemplateIsSame<T1, ExplicitCastGenerator>::value,
-      "Illegal type for 'cast' alias, should be 'ExplicitCastGenerator<...>'!"
-     );
-     static_assert(
-      ((JniTypeBase<Args>::isRegisteredType && JniTypeBase<Args>::isClass) && ...),
-      "You may only use registered JNI / FakeJni classes in an explicit casting route!"
-     );
-     return true;
-    }
-   };
-
-  public:
-   using cast = typename T::cast;
-
-   [[gnu::always_inline]]
-   inline static void assertAliasCorrectness() {
-    static_assert(
-     IsTemplateTemplate<cast>::value && TemplateTemplateDecomposer<cast>::verifyParameters(),
-     "Illegal type for 'cast' alias, should be 'ExplicitCastGenerator<...>'!"
-    );
-   }
-  };
-}
-
-//fake-jni integral types
-namespace FakeJni {
- //Forward declare JObject to define metadata templates
- class JObject;
-
- using JVoid = void;
- using JBoolean = jboolean;
- using JByte = jbyte;
- using JChar = jchar;
- using JShort = jshort;
- using JInt = jint;
- using JFloat = jfloat;
- using JLong = jlong;
- using JDouble = jdouble;
-}
+#define END_NATIVE_DESCRIPTOR }};
 
 //Create template metadata for all JNI types
 DEFINE_JNI_TYPE(FakeJni::JVoid, "V")
@@ -309,6 +163,7 @@ DEFINE_JNI_TYPE(FakeJni::JInt, "I")
 DEFINE_JNI_TYPE(FakeJni::JFloat, "F")
 DEFINE_JNI_TYPE(FakeJni::JLong, "J")
 DEFINE_JNI_TYPE(FakeJni::JDouble, "D")
+//TODO remove
 DEFINE_JNI_TYPE(FakeJni::JObject, "Ljava/lang/Object;")
 
 //fake-jni API declarations
@@ -321,9 +176,7 @@ namespace FakeJni {
   Jvm * const vm;
 
   explicit InvokeInterface(Jvm * vm);
-
   InvokeInterface(const InvokeInterface &) = delete;
-
   virtual ~InvokeInterface() = default;
 
   //misc.cpp
@@ -376,9 +229,7 @@ namespace FakeJni {
 
   //native_constructor.h
   explicit NativeInterface(Jvm * vm);
-
-  NativeInterface(const NativeInterface&) = delete;
-
+  NativeInterface(const NativeInterface &) = delete;
   virtual ~NativeInterface() = default;
 
   //TODO make all functions pure virtual
@@ -642,10 +493,8 @@ namespace FakeJni {
   Jvm * vm;
 
   //interface_constructor.cpp
-  JvmtiInterface(Jvm * vm);
-
+  explicit JvmtiInterface(Jvm * vm);
   JvmtiInterface(const JvmtiInterface&) = delete;
-
   virtual ~JvmtiInterface() = default;
 
   //thread.cpp
@@ -884,7 +733,7 @@ namespace FakeJni {
  class JClass;
 
  //JNI _jobject and java/lang/Object implementation
- class JObject: public _jobject {
+ class JObject : public _jobject {
  public:
   //Internal fake-jni native class metadata
   DEFINE_CLASS_NAME("java/lang/Object")
@@ -892,114 +741,13 @@ namespace FakeJni {
   explicit JObject(const JObject&) = delete;
   constexpr JObject() = default;
   virtual ~JObject() = default;
-  virtual const JClass * getClass() noexcept;
  };
-
- //Wrapper template for constructor detection and registration
- template<typename T, typename... Args>
- class Constructor {
- public:
-  Constructor() {
-   static_assert(CX::HasConstructor<T, Args...>::value, "Tried to register non-existent constructor!");
-  }
-
-  [[gnu::always_inline]]
-  inline static T * construct(Args... args) {
-   return new T(args...);
-  }
- };
-
- //Template glue code for field registration and access
- namespace _CX {
-  //SFINAE templates to generate field accessors
-  //Field accessor for mutable member fields
-  template<typename...>
-  class FieldAccessor;
-
-  //Field accesor for mutable member fields
-  template<typename T, typename F>
-  class FieldAccessor<F (T::*)> {
-  public:
-   using type_t = F (T::* const);
-   using erased_t = int (AnyClass::* const);
-
-   [[gnu::always_inline]]
-   inline static F get(void * inst, erased_t field) {
-    return ((T * const)inst)->*((type_t)field);
-   }
-
-   [[gnu::always_inline]]
-   inline static void set(void * const inst, erased_t field, void * const value) {
-    ((T*)inst)->*((type_t)field) = *((F*)value);
-   }
-  };
-
-  //Field accessor for immutable member fields
-  template<typename T, typename F>
-  class FieldAccessor<const F (T::*)> {
-  public:
-   using type_t = const F (T::* const);
-   using erased_t = int (AnyClass::* const);
-
-   [[gnu::always_inline]]
-   inline static F get(void * inst, erased_t field) {
-    return ((T*)inst)->*((type_t)field);
-   }
-
-   [[gnu::always_inline]]
-   inline static void set(void * const inst, erased_t field, void * const value) {
-    std::string error = "Attempted to write to immutable field: '";
-    error += typeid(type_t).name();
-    error += "'!";
-    throw std::runtime_error(error.c_str());
-   }
-  };
-
-  //Field accessor for mutable non-member fields
-  template<typename F>
-  class FieldAccessor<F*> {
-  public:
-   using type_t = F * const;
-   using erased_t = void * const;
-
-   [[gnu::always_inline]]
-   inline static F get(erased_t field) {
-    return *((type_t)field);
-   }
-
-   [[gnu::always_inline]]
-   inline static void set(erased_t field, void * const value) {
-    *((type_t)field) = *((type_t)value);
-   }
-  };
-
-  //Field accessor for immutable non-member fields
-  template<typename F>
-  class FieldAccessor<const F*> {
-  public:
-   using type_t = const F * const;
-   using erased_t = void * const;
-
-   [[gnu::always_inline]]
-   inline static F get(erased_t field) {
-    return *((type_t)field);
-   }
-
-   [[gnu::always_inline]]
-   inline static void set(erased_t field, void * value) {
-    std::string error = "Attempted to write to immutable field: '";
-    error +=  typeid(type_t).name();
-    error += "'!";
-    throw std::runtime_error(error.c_str());
-   }
-  };
- }
 
  //JNI base
  struct _jfieldID {};
 
  //fake-jni implementation
- class JFieldID: public _jfieldID {
+ class JFieldID final : public _jfieldID {
  private:
   using staticProp_t = void * const;
   using memberProp_t = int (_CX::AnyClass::* const);
@@ -1056,316 +804,11 @@ namespace FakeJni {
   void set(JObject * obj, void * value);
  };
 
- //Template glue code for method registration and access
- namespace _CX {
-  //Ensures that all type arguments are valid JNI parameters
-  template<typename... Args>
-  class VerifyJniFunctionArguments {
-  public:
-   [[gnu::always_inline]]
-   inline static constexpr bool verify() {
-    return  !((!VerifyJniFunctionArguments<Args>::verify()) || ...);
-   }
-  };
-
-  template<typename T>
-  class VerifyJniFunctionArguments<T> {
-  public:
-   [[gnu::always_inline]]
-   inline static constexpr bool verify() {
-    using resolver = ComponentTypeResolver<T>;
-    if constexpr(__is_class(typename resolver::type)) {
-     return __is_base_of(_jobject, typename resolver::type) && resolver::indirectionCount == 1U;
-    } else {
-     return JniTypeBase<T>::isRegisteredType && resolver::indirectionCount == 0U;
-    }
-   }
-  };
-
-  template<>
-  class VerifyJniFunctionArguments<> {
-  public:
-   [[gnu::always_inline]]
-   inline static constexpr bool verify() {
-    return true;
-   }
-  };
-
-  //C to C++ Vararg glue
-  template<bool IsClass, typename T>
-  class JValueArgResolver {
-  public:
-   inline static constexpr const bool isRegisteredResolver = false;
-  };
-
-  //JValueArgResolver for JObject derived classes
-  template<typename T>
-  class JValueArgResolver<true, T> {
-
-  public:
-   inline static constexpr const bool isRegisteredResolver = true;
-   using componentType = typename ComponentTypeResolver<T*>::type;
-
-   [[gnu::always_inline]]
-   inline static componentType* getAArg(jvalue *values) {
-    static_assert(__is_base_of(_jobject, componentType), "Illegal JNI function parameter type!");
-    if constexpr(CastDefined<componentType>::value) {
-     return componentType::cast::cast((JObject*)values->l);
-    } else {
-     return (componentType *)values->l;
-    }
-   }
-  };
-
-  //Function breeder for JValueArgResolver<typename>::getAArg(jvalue *)
-  template<typename T>
-  [[gnu::always_inline]]
-  inline static T getAArg(jvalue *values) {
-   using componentType = typename ComponentTypeResolver<T>::type;
-   static_assert(
-    JValueArgResolver<false, componentType>::isRegisteredResolver
-    || JValueArgResolver<true, componentType>::isRegisteredResolver,
-    "Illegal JNI function parameter type!"
-   );
-   return JValueArgResolver<__is_class(componentType), T>::getAArg(values);
-  }
-
-  template<
-   typename T,
-   //TODO check that this did not break anything
-//   bool IsPointer = std::is_pointer<T>::value,
-   bool IsPointer = CX::IsPointer<T>::value,
-   bool IsClass = __is_class(T),
-   bool LargerThanInt = (sizeof(T) > sizeof(int))
-  >
-  class VArgResolver;
-
-  //VArgResolver for pointer types
-  template<typename T>
-  class VArgResolver<T*, true, false, (sizeof(T*) > sizeof(int))> {
-  public:
-   [[gnu::always_inline]]
-   inline static T* getVArg(va_list list) {
-    return va_arg(list, T*);
-   }
-  };
-
-  //VArgResolver for integral types smaller than int
-  //Promotes to int and lossy-casts
-  template<typename T>
-  class VArgResolver<T, false, false, false> {
-  public:
-   [[gnu::always_inline]]
-   inline static T getVArg(va_list list) {
-    return (T)va_arg(list, int);
-   }
-  };
-
-  //VArgResolver for integral types larger than int
-  //Promotes to double and lossy-casts
-  template<typename T>
-  class VArgResolver<T, false, false, true> {
-  public:
-   [[gnu::always_inline]]
-   inline static T getVArg(va_list list) {
-    return (T)va_arg(list, double);
-   }
-  };
-
-  //VArgResolver for object types
-  //Consuming an object type off of a va_list is undefined behaviour
-  template<typename T>
-  class VArgResolver<T, false, true> {
-  public:
-   [[gnu::always_inline]]
-   inline static T getVArg(va_list list) {
-    //Static assertion will always fail in fault-conditions, uses sfinae to prevent
-    //compiler errors in non-fault conditions, since static_assert(false, ...); will
-    //always throw an error, even if the template is not instantiated
-    static_assert(
-     !__is_class(T),
-     "Consuming an object type off of a va_list is undefined behaviour!\n"
-     "Did you intend to consume a pointer-to-object type?"
-    );
-   }
-  };
-
-  template<typename T>
-  [[gnu::always_inline]]
-  inline static T getVArg(va_list args) {
-   return VArgResolver<T>::getVArg(args);
-  }
-
-  //Type-to-member-name maps for the jvalue union
-  _GET_AARG_MAP(JBoolean, z)
-  _GET_AARG_MAP(JByte, b)
-  _GET_AARG_MAP(JChar, c)
-  _GET_AARG_MAP(JShort, s)
-  _GET_AARG_MAP(JInt, i)
-  _GET_AARG_MAP(JLong, j)
-  _GET_AARG_MAP(JFloat, f)
-  _GET_AARG_MAP(JDouble, d)
-
-  template<auto, typename...>
-  class FunctionAccessor {};
-
-  //Entry invoker for member functions
-  template<auto N, typename T, typename R, typename... Args>
-  class FunctionAccessor<N, R (T::* const)(Args...)> {
-  public:
-   using argType = typename CX::TemplateTypeIterator<N - 1, Args...>::type;
-   using functionType = R (T::* const)(Args...);
-   using erasedType = void (AnyClass::* const)();
-
-   template<typename... DecomposedVarargs>
-   [[gnu::always_inline]]
-   inline static R invokeV(void * const inst, erasedType func, va_list list, DecomposedVarargs... args) {
-    return FunctionAccessor<N - 1, functionType>::template invokeV<argType, DecomposedVarargs...>(
-     inst,
-     func,
-     list,
-     getVArg<argType>(list),
-     args...
-    );
-   }
-
-   template<typename... DecomposedJValues>
-   [[gnu::always_inline]]
-   inline static R invokeA(void * const inst, erasedType func, jvalue *values, DecomposedJValues... args) {
-    return FunctionAccessor<N - 1, functionType>::template invokeA<argType, DecomposedJValues...>(
-     inst,
-     func,
-     values + 1,
-     getAArg<argType>(values),
-     args...
-    );
-   }
-  };
-
-  //Base invoker for member functions
-  template<typename T, typename R, typename... Args>
-  class FunctionAccessor<0, R (T::* const)(Args...)> {
-  public:
-   using erasedType = void (AnyClass::* const)();
-   //Template pack should match Args
-   template<typename... Args2>
-   [[gnu::always_inline]]
-   inline static R invokeV(void * const inst, erasedType func, va_list list, Args2... args) {
-    va_end(list);
-    return invokeA(inst, func, nullptr, args...);
-   }
-
-   template<typename... Args2>
-   [[gnu::always_inline]]
-   inline static R invokeA(void * const inst, erasedType func, jvalue *values, Args2... args) {
-    static_assert(
-     CX::IsSame<std::tuple<Args...>, std::tuple<Args2...>>::value,
-     "Function argument list does not match base invoker arguments!"
-    );
-    return (((T*)inst)->*((R (T::*)(Args...))func))(args...);
-   }
-  };
-
-  //Entry invoker for non-member functions
-  template<auto N, typename R, typename... Args>
-  class FunctionAccessor<N, R (* const)(Args...)> {
-  public:
-   using argType = typename CX::TemplateTypeIterator<N - 1, Args...>::type;
-   using functionType = R (* const)(Args...);
-   using erasedType = void (* const)();
-
-   template<typename... DecomposedVarargs>
-   [[gnu::always_inline]]
-   inline static R invokeV(erasedType func, va_list list, DecomposedVarargs... args) {
-    return FunctionAccessor<N - 1, functionType>::template invokeV<argType, DecomposedVarargs...>(
-     func,
-     list,
-     getVArg<argType>(list),
-     args...
-    );
-   }
-
-   template<typename... DecomposedJValues>
-   [[gnu::always_inline]]
-   inline static R invokeA(erasedType func, jvalue * const values, DecomposedJValues... args) {
-    return FunctionAccessor<N - 1, functionType>::template invokeA<argType, DecomposedJValues...>(
-     func,
-     values + 1,
-     getAArg<argType>(values),
-     args...
-    );
-   }
-  };
-
-  //Base invoker for non-member functions
-  template<typename R, typename... Args>
-  class FunctionAccessor<0, R (* const)(Args...)> {
-  public:
-   using erasedType = void (* const)();
-
-   //Template pack should match Args
-   template<typename... Args2>
-   [[gnu::always_inline]]
-   inline static R invokeV(erasedType func, va_list list, Args2... args) {
-    va_end(list);
-    return invokeA(func, nullptr, args...);
-   }
-
-   template<typename... Args2>
-   inline static R invokeA(erasedType func, jvalue *values, Args2... args) {
-    static_assert(
-     CX::IsSame<std::tuple<Args...>, std::tuple<Args2...>>::value,
-     "Function argument list does not match base invoker arguments!"
-    );
-    return ((R (*)(Args...))func)(args...);
-   }
-  };
-
-  //SFINAE functions to generate JNI function signatures
-  //Fold expression evaluators
-  //Evaluator for non-empty fold
-  template<typename... Args>
-  class EvaluateFold {
-  public:
-   inline static constexpr const auto fold = CX::Concat<(JniTypeBase<Args>::signature, ...)>::result;
-  };
-
-  //Evaluator for empty folds
-  template<>
-  class EvaluateFold<> {
-  public:
-   inline static constexpr const char fold[] = "";
-  };
-
-  template<bool IsConstructor, typename R, typename... Args>
-  class SignatureGenerator;
-
-  //Generator for regular functions
-  template<typename R, typename... Args>
-  class SignatureGenerator<false, R, Args...> {
-  public:
-   inline static constexpr const char
-    prefix[] = "(",
-    suffix[] = ");";
-   inline static constexpr const auto signature =
-    CX::Concat<prefix, EvaluateFold<Args...>::fold, suffix, JniTypeBase<R>::signature>::result;
-  };
-
-  //Generator for constructors
-  template<typename R, typename... Args>
-  class SignatureGenerator<true, R, Args...> {
-  public:
-   inline static constexpr const char suffix[] = ");V";
-   inline static constexpr const auto signature =
-    CX::Concat<SignatureGenerator<false, R, Args...>::prefix, EvaluateFold<Args...>::fold, suffix>::result;
-  };
- }
-
  //JNI base
  struct _jmethodID {};
 
  //fake-jni implementation
- class JMethodID: public _jmethodID, private JNINativeMethod {
+ class JMethodID final : public _jmethodID, private JNINativeMethod {
  private:
   using staticFunc_t = void (* const)();
   using memberFunc_t = void (_CX::AnyClass::* const)();
@@ -1380,8 +823,8 @@ namespace FakeJni {
    memberFunc_t memberFunc;
   };
   void
-  (* const proxyFuncV)(),
-  (* const proxyFuncA)();
+   (* const proxyFuncV)(),
+   (* const proxyFuncA)();
 
  public:
   //Currently JVM modifiers do nothing
@@ -1400,13 +843,13 @@ namespace FakeJni {
 
   //Constructor for delegate constructors
   template<typename R, typename... Args>
-  JMethodID(R (* const func)(Args...), const uint32_t modifiers) noexcept;
+  JMethodID(R (* const func)(Args...), uint32_t modifiers) noexcept;
   //constructor for static functions
   template<typename R, typename... Args>
-  JMethodID(R (* const func)(Args...), const char * const name, const uint32_t modifiers) noexcept;
+  JMethodID(R (* const func)(Args...), const char * name, uint32_t modifiers) noexcept;
   //Constructor for member methods
   template<typename T, typename R, typename... Args>
-  JMethodID(R (T::* const func)(Args...), const char * const name, const uint32_t modifiers) noexcept;
+  JMethodID(R (T::* const func)(Args...), const char * name, uint32_t modifiers) noexcept;
 
   inline const char * getName() const noexcept {
    return name;
@@ -1429,32 +872,32 @@ namespace FakeJni {
   R invoke(void * inst, jvalue * values);
  };
 
- //Forward declare glue type for JClass construction
- namespace _CX {
-  class ClassDescriptorElement;
- }
+// //Forward declare glue type for JClass construction
+// namespace _CX {
+//  class ClassDescriptorElement;
+//
+//  template<typename T>
+//  class JClassBreeder;
+// }
 
- //TODO register java.lang.Class functions for JClass if they are ever required
- class JClass : public JObject, public _jclass {
+ class JClass final : public JObject, public _jclass {
  private:
-  const JClass * const copyConstructed;
+  JObject
+   * (* const constructV)(JavaVM *, const char *, va_list),
+   * (* const constructA)(JavaVM *, const char *, jvalue *);
 
-  //Private constructor for JClass descriptor
-  JClass(std::nullptr_t) noexcept;
+  const char * const className;
 
- protected:
-  //Property associations
-  AllocStack<JMethodID *> * functions;
-  AllocStack<JFieldID *> * fields;
-
-  //TODO
-  constexpr bool isNameCompliant(const char * name) const noexcept {
-   return true;
-  }
+  //TODO modifiers
 
  public:
   //Internal fake-jni native class metadata
   DEFINE_CLASS_NAME("java/lang/Class")
+
+  //Property associations
+  //TODO convert to stack variables and remember to fix destructor
+  AllocStack<JMethodID *> * const functions;
+  AllocStack<JFieldID *> * const fields;
 
   //TODO ensure that these are correct
   //CLASS_MODIFIERS = 3103;
@@ -1464,162 +907,23 @@ namespace FakeJni {
   };
 
   explicit JClass(JClass &) = delete;
-  JClass(std::initializer_list<_CX::ClassDescriptorElement> list) noexcept;
-  JClass(const JClass * clazz) noexcept;
+  template<typename T>
+  explicit JClass(_CX::JClassBreeder<T>) noexcept;
   virtual ~JClass();
 
   bool registerMethod(JMethodID * mid) noexcept;
   bool registerField(JFieldID * fid) noexcept;
-  virtual const JClass * getClass() noexcept final;
-  virtual const char * getName() noexcept;
+//  virtual const JClass * getClass() noexcept final;
+  virtual const char * getName() const noexcept;
   //Object construction for c-varargs
-  virtual JObject * newInstance(JavaVM * vm, const char * signature, va_list list) const;
+  JObject * newInstance(JavaVM * vm, const char * signature, va_list list) const;
   //Object construction for jvalue arrays
-  virtual JObject * newInstance(JavaVM * vm, const char * signature, jvalue * values) const;
+  JObject * newInstance(JavaVM * vm, const char * signature, jvalue * values) const;
  };
-
- //Template glue code for native class registration
- //TODO eliminate the RegistrationHookGenerator
- namespace _CX {
-  template<typename>
-  class RegistrationHookGenerator;
-
-  class ClassDescriptorElement {
-  public:
-   enum DescriptorType {
-    MEMBER_FUNCTION,
-    NON_MEMBER_FUNCTION,
-    MEMBER_FIELD,
-    NON_MEMBER_FIELD
-   };
-
-   const DescriptorType type;
-
-   union {
-    void (AnyClass::* const memberFunc)();
-    void (* const nonMemberFunc)();
-    int AnyClass::* const memberField;
-    void * const nonMemberField;
-   };
-
-   const char * const name;
-   const uint32_t modifiers;
-   //TODO use capturing lambdas in place of RegistrationHookGenerator after converting to a shared library
-   bool (* const processHook)(JClass * const, ClassDescriptorElement * const);
-//   std::function<bool (JClass * const)> processHook;
-
-   //Constructor for member functions
-   template<typename R, typename T, typename... Args>
-   ClassDescriptorElement(R (T::* const func)(Args...), const char * const name, uint32_t modifiers = JMethodID::PUBLIC) noexcept :
-    type(MEMBER_FUNCTION),
-    memberFunc((decltype(memberFunc))func),
-    name(name),
-    modifiers(modifiers),
-    processHook(&RegistrationHookGenerator<decltype(func)>::process)
-   {}
-
-   //Constructor for non-member functions
-   template<typename R, typename... Args>
-   ClassDescriptorElement(R (* const func)(Args...), const char * const name, uint32_t modifiers = JMethodID::PUBLIC) noexcept :
-    type(NON_MEMBER_FUNCTION),
-    nonMemberFunc((decltype(nonMemberFunc))func),
-    name(name),
-    modifiers(modifiers),
-    processHook(&RegistrationHookGenerator<decltype(func)>::process)
-   {}
-
-   //Constructor for constructors
-   template<typename T, typename... Args>
-   ClassDescriptorElement(Constructor<T, Args...> constructor, uint32_t modifiers = JMethodID::PUBLIC) noexcept :
-    type(NON_MEMBER_FUNCTION),
-    nonMemberFunc((decltype(nonMemberFunc))Constructor<T, Args...>::construct),
-    name("<init>"),
-    modifiers(modifiers),
-    processHook(&RegistrationHookGenerator<void (* const)(Args...)>::process)
-   {}
-
-   //Constructor for member fields
-   template<typename F, typename T>
-   ClassDescriptorElement(F (T::* const field), const char * const name, uint32_t modifiers = JFieldID::PUBLIC) noexcept :
-    type(MEMBER_FIELD),
-    memberField((decltype(memberField))field),
-    name(name),
-    modifiers(modifiers),
-    processHook(&RegistrationHookGenerator<decltype(field)>::process)
-   {}
-
-   //Constructor for non-member fields
-   template<typename F>
-   ClassDescriptorElement(F * const field, const char * const name, uint32_t modifiers = JFieldID::PUBLIC) noexcept :
-    type(NON_MEMBER_FIELD),
-    nonMemberField((decltype(nonMemberField))field),
-    name(name),
-    modifiers(modifiers),
-    processHook(&RegistrationHookGenerator<decltype(field)>::process) {}
-
-   [[gnu::always_inline]]
-   inline bool process(JClass *const clazz) const {
-    return processHook(clazz, const_cast<ClassDescriptorElement *>(this));
-   }
-  };
-
-  //Generator for member functions
-  template<typename R, typename T, typename... Args>
-  class RegistrationHookGenerator<R (T::* const)(Args...)> {
-  public:
-   using type = R (T::* const)(Args...);
-
-   [[gnu::always_inline]]
-   inline static bool process(JClass * const clazz, ClassDescriptorElement * const elem) {
-    return clazz->registerMethod(new JMethodID((type)elem->memberFunc, elem->name, elem->modifiers));
-   }
-  };
-
-  //Generator for non-member functions
-  template<typename R, typename... Args>
-  class RegistrationHookGenerator<R (*const)(Args...)> {
-  public:
-   using type = R (*const)(Args...);
-
-   [[gnu::always_inline]]
-   inline static bool process(JClass * const clazz, ClassDescriptorElement * const elem) {
-    if (strcmp(elem->name, "<init>") == 0) {
-     //Register constructor
-     return clazz->registerMethod(new JMethodID((type)elem->nonMemberFunc, elem->modifiers));
-    } else {
-     return clazz->registerMethod(new JMethodID((type)elem->nonMemberFunc, elem->name, elem->modifiers));
-    }
-   }
-  };
-
-  //Generator for member fields
-  template<typename F, typename T>
-  class RegistrationHookGenerator<F (T::* const)> {
-  public:
-   using type = F (T::* const);
-
-   [[gnu::always_inline]]
-   inline static bool process(JClass * const clazz, ClassDescriptorElement * const elem) {
-    return clazz->registerField(new JFieldID((type)elem->memberField, elem->name, elem->modifiers));
-   }
-  };
-
-  //Generator for non-member fields
-  template<typename F>
-  class RegistrationHookGenerator<F * const> {
-  public:
-   using type = F * const;
-
-   [[gnu::always_inline]]
-   inline static bool process(JClass * const clazz, ClassDescriptorElement * const elem) {
-    return clazz->registerField(new JFieldID((type)elem->nonMemberField, elem->name, elem->modifiers));
-   }
-  };
- }
 
  //FAKE-JNI USER API
  //TODO all JVM calls should be blocking until execution completes to prevent race conditions from emerging
- class Jvm: public JavaVM {
+ class Jvm : public JavaVM {
  private:
   using jnienv_t = JniEnv * const;
   using jvmtienv_t = JvmtiEnv * const;
@@ -1711,37 +1015,144 @@ namespace FakeJni {
   virtual void destroy();
  };
 
- //TODO detect if function is virtual: if any derived classes, of previously defined native classes, contain
- // a virtual override for the base, then register a new java function association for the derived class and
- // the respective function signature and classpath
- //TODO Do not extend JClass
- template<typename T>
- class NativeObject : public JClass {
- private:
-  static constexpr const auto deallocator = &_CX::Deallocator<T>::deallocate;
+ //Template glue code for native class registration
+ namespace _CX {
+  //TODO eliminate the RegistrationHookGenerator
+  template<typename>
+  class RegistrationHookGenerator;
 
-  template<typename A>
-  JObject * construct(JavaVM * vm, const char * signature, A args) const;
+  class ClassDescriptorElement {
+  public:
+   enum DescriptorType {
+    MEMBER_FUNCTION,
+    NON_MEMBER_FUNCTION,
+    MEMBER_FIELD,
+    NON_MEMBER_FIELD
+   };
 
- public:
-  explicit NativeObject(NativeObject &) = delete;
-  NativeObject() noexcept;
-  virtual ~NativeObject();
+   const DescriptorType type;
 
-  inline const char * getName() noexcept final {
-   return T::name;
-  }
+   union {
+    void (AnyClass::* const memberFunc)();
+    void (* const nonMemberFunc)();
+    int AnyClass::* const memberField;
+    void * const nonMemberField;
+   };
 
-  [[gnu::always_inline]]
-  inline JObject * newInstance(JavaVM * const vm, const char * const signature, va_list list) const final {
-   return construct(vm, signature, list);
-  }
+   const char * const name;
+   const uint32_t modifiers;
+   //TODO use capturing lambdas in place of RegistrationHookGenerator after converting to a shared library
+   bool (* const processHook)(JClass * const, ClassDescriptorElement * const);
+//   std::function<bool (JClass * const)> processHook;
 
-  [[gnu::always_inline]]
-  inline JObject * newInstance(JavaVM * const vm, const char * const signature, jvalue * const values) const final {
-   return construct(vm, signature, values);
-  }
- };
+   //Constructor for member functions
+   template<typename R, typename T, typename... Args>
+   ClassDescriptorElement(R (T::* const func)(Args...), const char * const name, uint32_t modifiers = JMethodID::PUBLIC) noexcept :
+    type(MEMBER_FUNCTION),
+    memberFunc((decltype(memberFunc))func),
+    name(name),
+    modifiers(modifiers),
+    processHook(&RegistrationHookGenerator<decltype(func)>::process)
+   {}
+
+   //Constructor for non-member functions
+   template<typename R, typename... Args>
+   ClassDescriptorElement(R (* const func)(Args...), const char * const name, uint32_t modifiers = JMethodID::PUBLIC) noexcept :
+    type(NON_MEMBER_FUNCTION),
+    nonMemberFunc((decltype(nonMemberFunc))func),
+    name(name),
+    modifiers(modifiers),
+    processHook(&RegistrationHookGenerator<decltype(func)>::process)
+   {}
+
+   //Constructor for constructors
+   template<typename T, typename... Args>
+   ClassDescriptorElement(Constructor<T, Args...> constructor, uint32_t modifiers = JMethodID::PUBLIC) noexcept :
+    type(NON_MEMBER_FUNCTION),
+    nonMemberFunc((decltype(nonMemberFunc))Constructor<T, Args...>::construct),
+    name("<init>"),
+    modifiers(modifiers),
+    processHook(&RegistrationHookGenerator<void (* const)(Args...)>::process)
+   {}
+
+   //Constructor for member fields
+   template<typename F, typename T>
+   ClassDescriptorElement(F (T::* const field), const char * const name, uint32_t modifiers = JFieldID::PUBLIC) noexcept :
+    type(MEMBER_FIELD),
+    memberField((decltype(memberField))field),
+    name(name),
+    modifiers(modifiers),
+    processHook(&RegistrationHookGenerator<decltype(field)>::process)
+   {}
+
+   //Constructor for non-member fields
+   template<typename F>
+   ClassDescriptorElement(F * const field, const char * const name, uint32_t modifiers = JFieldID::PUBLIC) noexcept :
+    type(NON_MEMBER_FIELD),
+    nonMemberField((decltype(nonMemberField))field),
+    name(name),
+    modifiers(modifiers),
+    processHook(&RegistrationHookGenerator<decltype(field)>::process) {}
+
+   [[gnu::always_inline]]
+   inline bool process(JClass * const clazz) const {
+    return processHook(clazz, const_cast<ClassDescriptorElement *>(this));
+   }
+  };
+
+  //Generator for member functions
+  template<typename R, typename T, typename... Args>
+  class RegistrationHookGenerator<R (T::* const)(Args...)> {
+  public:
+   using type = R (T::* const)(Args...);
+
+   [[gnu::always_inline]]
+   inline static bool process(JClass * const clazz, ClassDescriptorElement * const elem) {
+    return clazz->registerMethod(new JMethodID((type)elem->memberFunc, elem->name, elem->modifiers));
+   }
+  };
+
+  //Generator for non-member functions
+  template<typename R, typename... Args>
+  class RegistrationHookGenerator<R (*const)(Args...)> {
+  public:
+   using type = R (*const)(Args...);
+
+   [[gnu::always_inline]]
+   inline static bool process(JClass * const clazz, ClassDescriptorElement * const elem) {
+    if (strcmp(elem->name, "<init>") == 0) {
+     //Register constructor
+     return clazz->registerMethod(new JMethodID((type)elem->nonMemberFunc, elem->modifiers));
+    } else {
+     return clazz->registerMethod(new JMethodID((type)elem->nonMemberFunc, elem->name, elem->modifiers));
+    }
+   }
+  };
+
+  //Generator for member fields
+  template<typename F, typename T>
+  class RegistrationHookGenerator<F (T::* const)> {
+  public:
+   using type = F (T::* const);
+
+   [[gnu::always_inline]]
+   inline static bool process(JClass * const clazz, ClassDescriptorElement * const elem) {
+    return clazz->registerField(new JFieldID((type)elem->memberField, elem->name, elem->modifiers));
+   }
+  };
+
+  //Generator for non-member fields
+  template<typename F>
+  class RegistrationHookGenerator<F * const> {
+  public:
+   using type = F * const;
+
+   [[gnu::always_inline]]
+   inline static bool process(JClass * const clazz, ClassDescriptorElement * const elem) {
+    return clazz->registerField(new JFieldID((type)elem->nonMemberField, elem->name, elem->modifiers));
+   }
+  };
+ }
 
  //Native array implementation
  namespace _CX {
@@ -1787,7 +1198,7 @@ namespace FakeJni {
  _DEFINE_NATIVE_ARRAY(JObjectArray, _jobjectArray, JObject)
 
  //JNI _jstring and java/lang/String implementation
- class JString: public _jstring, public JCharArray, public virtual NativeObject<JString> {
+ class JString: public _jstring, public JCharArray {
  private:
   static const JString EMPTY_STR;
 
@@ -2007,7 +1418,7 @@ namespace FakeJni {
  template<typename T>
  bool Jvm::registerClass() {
   static_assert(
-   __is_base_of(JClass, T),
+   __is_base_of(JObject, T),
    "Only native classes may be passed to registerClass!"
   );
   JClass *clazz = const_cast<JClass *>(&T::descriptor);
@@ -2030,53 +1441,81 @@ namespace FakeJni {
  template<typename T>
  bool Jvm::unregisterClass() {
   static_assert(
-   __is_base_of(JClass, T),
+   __is_base_of(JObject, T),
    "Only native classes may be passed to unregisterClass!"
   );
-  auto clazz = const_cast<JClass *>(&T::descriptor);
+  const auto clazz = &T::descriptor;
   const auto end = classes.end();
-  const auto ret = std::remove(classes.begin(), classes.end(), clazz);
+  const auto found = end != classes.erase(std::remove(classes.begin(), end, clazz), end);
 #ifdef FAKE_JNI_DEBUG
-  fprintf(
-   log,
-   "WARNING: Class '%s' is not registered on the JVM instance '%s'!\n",
-   clazz->getName(),
-   uuid
-  );
-#endif
-  return end == ret;
- }
-
- //NativeObject template members
- template<typename T>
- template<typename A>
- JObject * NativeObject<T>::construct(JavaVM * const vm, const char * const signature, A args) const {
-  Jvm * const jvm = (Jvm * const)vm;
-  for (uint32_t i = 0; i < functions->getSize(); i++) {
-   JMethodID * const method = (*functions)[i];
-   if (strcmp(method->getSignature(), signature) == 0 && strcmp(method->getName(), "<init>") == 0) {
-    const auto inst = method->invoke<T *>(nullptr, args);
-    JObject * baseInst;
-    if constexpr(_CX::JniTypeBase<T>::hasComplexHierarchy) {
-     baseInst = T::cast::cast(inst);
-    } else {
-     baseInst = (JObject *)inst;
-    }
-    return jvm->getInstances()->pushAlloc(deallocator, baseInst);
-   }
+  if (!found) {
+   fprintf(
+    log,
+    "WARNING: Class '%s' is not registered on the JVM instance '%s'!\n",
+    clazz->getName(),
+    uuid
+   );
   }
-  return nullptr;
+#endif
+  return found;
  }
 
- template<typename T>
- NativeObject<T>::NativeObject() noexcept : JClass(T::getDescriptor()) {
-//   static_assert(std::is_base_of<NativeObject, T>::value, "T must be derived from NativeObject<T>!");
-  //Perform checks for complex hierarchy 'cast' alias member
-  _CX::CastDefined<T>::assertAliasCorrectness();
+ //_CX::JClassImpl template members
+ namespace _CX {
+  template<typename T>
+  constexpr JClassBreeder<T>::JClassBreeder(decltype(descriptorElements) descriptorElements) noexcept :
+   descriptorElements(descriptorElements)
+  {
+   static_assert(__is_base_of(JObject, T), "T must be derived from JObject!");
+   //Perform checks for complex hierarchy 'cast' alias member
+   //TODO if cast is not defined use default casting route
+   CastDefined<T>::assertAliasCorrectness();
+   assertNameCompliance();
+  }
+
+  template<typename T>
+  template<typename A>
+  constexpr typename JClassBreeder<T>:: template constructor_func_t<A> JClassBreeder<T>::constructorPredicate() noexcept {
+   return [](JavaVM * const vm, const char * const signature, A args) -> JObject * {
+    const JClass& descriptor = T::descriptor;
+    Jvm * const jvm = (Jvm * const)vm;
+    for (uint32_t i = 0; i < descriptor.functions->getSize(); i++) {
+     JMethodID * const method = (*descriptor.functions)[i];
+     if (strcmp(method->getSignature(), signature) == 0 && strcmp(method->getName(), "<init>") == 0) {
+      const auto inst = method->invoke<T *>(nullptr, args);
+      JObject * baseInst;
+      if constexpr(_CX::JniTypeBase<T>::hasComplexHierarchy) {
+       baseInst = T::cast::cast(inst);
+      } else {
+       baseInst = (JObject *)inst;
+      }
+      return jvm->getInstances()->pushAlloc(deallocator, baseInst);
+     }
+    }
+    return nullptr;
+   };
+  }
+
+  template<typename T>
+  constexpr void JClassBreeder<T>::assertNameCompliance() noexcept {
+   //TODO
+  }
  }
 
+ //JClass template members
  template<typename T>
- NativeObject<T>::~NativeObject() = default;
+ JClass::JClass(FakeJni::_CX::JClassBreeder<T> breeder) noexcept :
+  JObject(),
+  constructV(decltype(breeder)::template constructorPredicate<va_list>()),
+  constructA(decltype(breeder)::template constructorPredicate<jvalue*>()),
+  className(T::name),
+  functions(new AllocStack<JMethodID *>()),
+  fields(new AllocStack<JFieldID *>())
+ {
+  for (const auto& d : breeder.descriptorElements) {
+   d.process(this);
+  }
+ }
 
  //JArray template members
  template<typename T>
