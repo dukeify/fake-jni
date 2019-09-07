@@ -859,14 +859,6 @@ namespace FakeJni {
   R invoke(void * inst, jvalue * values);
  };
 
-// //Forward declare glue type for JClass construction
-// namespace _CX {
-//  class ClassDescriptorElement;
-//
-//  template<typename T>
-//  class JClassBreeder;
-// }
-
  class JClass final : public JObject, public _jclass {
  private:
   JObject
