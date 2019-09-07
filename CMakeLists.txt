@@ -7,7 +7,7 @@ project(fake-jni VERSION 0.1.0)
 add_subdirectory(CX)
 
 set(CMAKE_BUILD_TYPE Release)
-set(compiler_flags "-g -fstandalone-debug -DFAKE_JNI_DEBUG")
+set(compiler_flags "-g -DFAKE_JNI_DEBUG")
 set(CMAKE_CXX_FLAGS ${compiler_flags})
 set(CMAKE_C_FLAGS ${compiler_flags})
 

@@ -22,16 +22,6 @@
 #include <cstdint>
 #include <cstring>
 
-//INTERNAL MACROS
-//TODO remove these with the fix for #24
-#ifdef _WIN32
-#define STATIC_LIB_SUFFIX std::string(".lib")
- #define DYNAMIC_LIB_SUFFIX std::string(".dll")
-#else
-#define STATIC_LIB_SUFFIX std::string(".a")
-#define DYNAMIC_LIB_SUFFIX std::string(".so")
-#endif
-
 //Internal JFieldID macros
 #define _ASSERT_FIELD_JNI_COMPLIANCE \
 static_assert(\
@@ -709,13 +699,10 @@ namespace FakeJni {
   jint (* Agent_OnLoad_)(JavaVM * vm, char * options, void * reserved);
   void (* Agent_OnUnload_)(JavaVM * vm, char * options, void * reserved);
 
-  bool determineIsStatic(const std::string &path);
-
  public:
   Jvm * const vm;
   const std::string path;
   const LibraryOptions options;
-  const bool isStatic;
 
   Library(Jvm * vm, std::string path, LibraryOptions options);
   ~Library();

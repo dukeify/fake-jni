@@ -5,8 +5,6 @@
 #include <stdexcept>
 
 namespace FakeJni {
- class JFieldID;
-
  //Template glue code for field registration and access
  namespace _CX {
   //SFINAE templates to generate field accessors

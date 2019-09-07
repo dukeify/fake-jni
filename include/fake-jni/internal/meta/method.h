@@ -21,8 +21,6 @@ public:\
 
 //Template glue code for method registration and access
 namespace FakeJni {
- class JMethodID;
-
  namespace _CX {
   //Ensures that all type arguments are valid JNI parameters
   template<typename... Args>

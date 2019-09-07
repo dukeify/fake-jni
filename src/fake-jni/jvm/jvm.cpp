@@ -65,9 +65,17 @@ namespace FakeJni {
   if (!library) {
    library = new Library(this, path, loptions);
 #ifdef FAKE_JNI_DEBUG
-   fprintf(log, "DEBUG: Created library: '%s'\nDEBUG: [%s]::JNI_OnLoad\n", path.c_str(), path.c_str());
+   fprintf(log, "DEBUG: Created library: '%s'\n", path.c_str());
 #endif
    if (library->jniBound()) {
+#ifdef FAKE_JNI_DEBUG
+    fprintf(
+     log,
+     "DEBUG: JNI Linked for library: '%s'\nDEBUG: [%s]::JNI_OnLoad\n",
+     path.c_str(),
+     path.c_str()
+    );
+#endif
     if (library->jniLoad()) {
      throw std::runtime_error("FATAL: Error initializing JNI library: '" + path + "'");
     }
@@ -75,7 +83,13 @@ namespace FakeJni {
    //Only one startup agent function is called per library instance
    if (library->agentBound()) {
 #ifdef FAKE_JNI_DEBUG
-    fprintf(log, "DEBUG: [%s]::%s\n", path.c_str(), (running ? "Agent_OnAttach" : "Agent_OnLoad"));
+    fprintf(
+     log,
+     "DEBUG: Agent linked for library: '%s'\nDEBUG: [%s]::%s\n",
+     path.c_str(),
+     path.c_str(),
+     (running ? "Agent_OnAttach" : "Agent_OnLoad")
+    );
 #endif
     const auto agentInitializer = (running ? &Library::agentAttach : &Library::agentLoad);
     if ((library->*agentInitializer)(const_cast<char *>(options.c_str()))) {

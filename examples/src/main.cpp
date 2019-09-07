@@ -96,7 +96,7 @@ int main(int argc, char **argv) {
 
  //Attach this binary as a native library
  //no path to current binary, no options, custom library dl functions
-// vm->attachLibrary("", "", {&dlopen, &dlsym, &dlclose});
+ vm->attachLibrary("", "", {&dlopen, &dlsym, &dlclose});
 
  //Start fake-jni
 // vm->start();
@@ -109,3 +109,5 @@ int main(int argc, char **argv) {
  delete vm;
  return 0;
 }
+
+//const JMethodID example();
