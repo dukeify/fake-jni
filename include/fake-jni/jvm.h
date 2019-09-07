@@ -758,8 +758,6 @@ namespace FakeJni {
    (* const proxySetFunc)();
 
  public:
-  //TODO ensure that these are correct
-  //FIELD_MODIFIERS = 223;
   enum Modifiers: uint32_t {
    PUBLIC = 1,
    PRIVATE = 2,
@@ -767,7 +765,9 @@ namespace FakeJni {
    STATIC = 8,
    FINAL = 16,
    VOLATILE = 64,
-   TRANSIENT = 128
+   TRANSIENT = 128,
+   SYNTHETIC = 4096,
+   ENUM = 16384
   };
 
   //Constructor for member fields
@@ -817,8 +817,6 @@ namespace FakeJni {
    (* const proxyFuncA)();
 
  public:
-  //Currently JVM modifiers do nothing
-  //METHOD_MODIFIERS = 3391;
   enum Modifiers: uint32_t {
    PUBLIC = 1,
    PRIVATE = 2,
@@ -826,9 +824,12 @@ namespace FakeJni {
    STATIC = 8,
    FINAL = 16,
    SYNCHRONIZED = 32,
+   BRIDGE = 64,
+   VARARGS = 128,
    NATIVE = 256,
    ABSTRACT = 1024,
-   STRICT = 2048
+   STRICT = 2048,
+   SYNTHETIC = 4096
   };
 
   //Constructor for delegate constructors
@@ -881,11 +882,17 @@ namespace FakeJni {
   AllocStack<JMethodID *> functions;
   AllocStack<JFieldID *> fields;
 
-  //TODO ensure that these are correct
-  //CLASS_MODIFIERS = 3103;
-  //INTERFACE_MODIFIERS = 3087;
   enum Modifiers : uint32_t {
-   //TODO
+   PUBLIC = 1,
+   PRIVATE = 2,
+   PROTECTED = 4,
+   STATIC = 8,
+   FINAL = 16,
+   INTERFACE = 512,
+   ABSTRACT = 1024,
+   SYNTHETIC = 4096,
+   ANNOTATION = 8192,
+   ENUM = 16384
   };
 
   explicit JClass(JClass &) = delete;
