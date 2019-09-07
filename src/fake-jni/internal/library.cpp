@@ -29,23 +29,23 @@ namespace FakeJni {
   path(path),
   options(options)
  {
-  const char *name = (path == "(embedded)" ? nullptr : path.c_str());
+  const char * const name = (path == "(embedded)" ? nullptr : path.c_str());
   handle = options.dlopen_p(name, RTLD_LAZY);
   if (!handle) {
    throw std::runtime_error("FATAL: Failed to open library: '" + path + "'!");
   }
   const bool
-   jniIsStatic = false,
+//   jniIsStatic = false,
    agentIsStatic = !lsym("Agent_OnAttach_L");
-#ifdef FAKE_JNI_DEBUG
-  fprintf(
-   vm->getLog(),
-   "DEBUG: '%s' uses %s JNI linkage!\n",
-   path.c_str(),
-   jniIsStatic ? "static" : "dynamic"
-  );
-#endif
-  if (lsym("JNI_OnLoad_L")) {
+//#ifdef FAKE_JNI_DEBUG
+//  fprintf(
+//   vm->getLog(),
+//   "DEBUG: '%s' uses %s JNI linkage!\n",
+//   path.c_str(),
+//   jniIsStatic ? "static" : "dynamic"
+//  );
+//#endif
+  if (lsym("JNI_OnLoad_L") && dlerror() == nullptr) {
    //Load static JNI linkage
    (void *&)JNI_OnLoad_ = lsym("JNI_OnLoad_L");
    (void *&)JNI_OnUnload_ = lsym("JNI_OnUnload_L");

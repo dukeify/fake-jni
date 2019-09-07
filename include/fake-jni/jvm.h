@@ -156,6 +156,12 @@ DEFINE_JNI_TYPE(FakeJni::JDouble, "D")
 //TODO remove
 DEFINE_JNI_TYPE(FakeJni::JObject, "Ljava/lang/Object;")
 
+//JNI base
+struct _jmethodID {};
+
+//JNI base
+struct _jfieldID {};
+
 //fake-jni API declarations
 namespace FakeJni {
  //JNI / JVMTI WRAPPER API
@@ -730,9 +736,6 @@ namespace FakeJni {
   virtual ~JObject() = default;
  };
 
- //JNI base
- struct _jfieldID {};
-
  //fake-jni implementation
  class JFieldID final : public _jfieldID {
  private:
@@ -790,9 +793,6 @@ namespace FakeJni {
   T get(JObject * obj);
   void set(JObject * obj, void * value);
  };
-
- //JNI base
- struct _jmethodID {};
 
  //fake-jni implementation
  class JMethodID final : public _jmethodID, private JNINativeMethod {

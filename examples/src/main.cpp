@@ -109,5 +109,3 @@ int main(int argc, char **argv) {
  delete vm;
  return 0;
 }
-
-//const JMethodID example();
