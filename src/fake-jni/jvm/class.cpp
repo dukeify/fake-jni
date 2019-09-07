@@ -2,28 +2,23 @@
 #include "fake-jni/jvm.h"
 
 namespace FakeJni {
- JClass::~JClass() {
-  delete functions;
-  delete fields;
- }
-
  bool JClass::registerMethod(JMethodID * const mid) noexcept {
-  for (uint32_t i = 0; i < functions->getSize(); i++) {
-   if (*(*functions)[i] == *mid) {
+  for (uint32_t i = 0; i < functions.getSize(); i++) {
+   if (*(functions)[i] == *mid) {
     return false;
    }
   }
-  functions->pushAlloc(mid);
+  functions.pushAlloc(mid);
   return true;
  }
 
  bool JClass::registerField(JFieldID * const fid) noexcept {
-  for (uint32_t i = 0; i < fields->getSize(); i++) {
-   if (*(*fields)[i] == *fid) {
+  for (uint32_t i = 0; i < fields.getSize(); i++) {
+   if (*(fields)[i] == *fid) {
     return false;
    }
   }
-  fields->pushAlloc(fid);
+  fields.pushAlloc(fid);
   return true;
  }
 

@@ -795,7 +795,9 @@ namespace FakeJni {
  };
 
  //fake-jni implementation
- class JMethodID final : public _jmethodID, private JNINativeMethod {
+ //TODO protect the mutable fields in JNINativeMethod
+// class JMethodID final : public _jmethodID, private JNINativeMethod {
+ class JMethodID final : public _jmethodID, public JNINativeMethod {
  private:
   using staticFunc_t = void (* const)();
   using memberFunc_t = void (_CX::AnyClass::* const)();
@@ -837,6 +839,7 @@ namespace FakeJni {
   //Constructor for member methods
   template<typename T, typename R, typename... Args>
   JMethodID(R (T::* const func)(Args...), const char * name, uint32_t modifiers) noexcept;
+  //Constructor for
 
   inline const char * getName() const noexcept {
    return name;
@@ -874,9 +877,8 @@ namespace FakeJni {
   DEFINE_CLASS_NAME("java/lang/Class")
 
   //Property associations
-  //TODO convert to stack variables and remember to fix destructor
-  AllocStack<JMethodID *> * const functions;
-  AllocStack<JFieldID *> * const fields;
+  AllocStack<JMethodID *> functions;
+  AllocStack<JFieldID *> fields;
 
   //TODO ensure that these are correct
   //CLASS_MODIFIERS = 3103;
@@ -888,7 +890,7 @@ namespace FakeJni {
   explicit JClass(JClass &) = delete;
   template<typename T>
   explicit JClass(_CX::JClassBreeder<T>) noexcept;
-  virtual ~JClass();
+  virtual ~JClass() = default;
 
   bool registerMethod(JMethodID * mid) noexcept;
   bool registerField(JFieldID * fid) noexcept;
@@ -939,11 +941,11 @@ namespace FakeJni {
   template<typename INVOKE, typename NATIVE, typename JVMTI, typename JNI_ENV, typename JVMTI_ENV>
   explicit Jvm(
    FILE * log,
-   INVOKE * const invoke,
-   NATIVE * const native,
-   JVMTI * const jvmti,
-   JNI_ENV * const jniEnv,
-   JVMTI_ENV * const jvmtiEnv
+   INVOKE * invoke,
+   NATIVE * native,
+   JVMTI * jvmti,
+   JNI_ENV * jniEnv,
+   JVMTI_ENV * jvmtiEnv
   );
   virtual ~Jvm();
 
@@ -996,10 +998,6 @@ namespace FakeJni {
 
  //Template glue code for native class registration
  namespace _CX {
-  //TODO eliminate the RegistrationHookGenerator
-  template<typename>
-  class RegistrationHookGenerator;
-
   class ClassDescriptorElement {
   public:
    enum DescriptorType {
@@ -1011,132 +1009,82 @@ namespace FakeJni {
 
    const DescriptorType type;
 
-   union {
-    void (AnyClass::* const memberFunc)();
-    void (* const nonMemberFunc)();
-    int AnyClass::* const memberField;
-    void * const nonMemberField;
-   };
-
-   const char * const name;
-   const uint32_t modifiers;
-   //TODO use capturing lambdas in place of RegistrationHookGenerator after converting to a shared library
-   bool (* const processHook)(JClass * const, ClassDescriptorElement * const);
-//   std::function<bool (JClass * const)> processHook;
+//   union {
+//    void (AnyClass::* const memberFunc)();
+//    void (* const nonMemberFunc)();
+//    int AnyClass::* const memberField;
+//    void * const nonMemberField;
+//   };
+//
+//   const char * const name;
+//   const uint32_t modifiers;
+   const std::function<bool (JClass * const)> processHook;
 
    //Constructor for member functions
    template<typename R, typename T, typename... Args>
    ClassDescriptorElement(R (T::* const func)(Args...), const char * const name, uint32_t modifiers = JMethodID::PUBLIC) noexcept :
     type(MEMBER_FUNCTION),
-    memberFunc((decltype(memberFunc))func),
-    name(name),
-    modifiers(modifiers),
-    processHook(&RegistrationHookGenerator<decltype(func)>::process)
+//    memberFunc((decltype(memberFunc))func),
+//    name(name),
+//    modifiers(modifiers),
+    processHook([=](JClass * const clazz) -> bool {
+     return clazz->registerMethod(new JMethodID((void (AnyClass::* const)())func, name, modifiers));
+    })
    {}
 
    //Constructor for non-member functions
    template<typename R, typename... Args>
    ClassDescriptorElement(R (* const func)(Args...), const char * const name, uint32_t modifiers = JMethodID::PUBLIC) noexcept :
     type(NON_MEMBER_FUNCTION),
-    nonMemberFunc((decltype(nonMemberFunc))func),
-    name(name),
-    modifiers(modifiers),
-    processHook(&RegistrationHookGenerator<decltype(func)>::process)
+//    nonMemberFunc((decltype(nonMemberFunc))func),
+//    name(name),
+//    modifiers(modifiers),
+    processHook([=](JClass * const clazz) -> bool {
+     return clazz->registerMethod(new JMethodID((void (* const)())func, name, modifiers));
+    })
    {}
 
    //Constructor for constructors
    template<typename T, typename... Args>
    ClassDescriptorElement(Constructor<T, Args...> constructor, uint32_t modifiers = JMethodID::PUBLIC) noexcept :
     type(NON_MEMBER_FUNCTION),
-    nonMemberFunc((decltype(nonMemberFunc))Constructor<T, Args...>::construct),
-    name("<init>"),
-    modifiers(modifiers),
-    processHook(&RegistrationHookGenerator<void (* const)(Args...)>::process)
+//    nonMemberFunc((decltype(nonMemberFunc))Constructor<T, Args...>::construct),
+//    name("<init>"),
+//    modifiers(modifiers),
+    processHook([=](JClass * const clazz) -> bool {
+     return clazz->registerMethod(new JMethodID((void (* const)())decltype(constructor)::construct, modifiers));
+    })
    {}
 
    //Constructor for member fields
    template<typename F, typename T>
    ClassDescriptorElement(F (T::* const field), const char * const name, uint32_t modifiers = JFieldID::PUBLIC) noexcept :
     type(MEMBER_FIELD),
-    memberField((decltype(memberField))field),
-    name(name),
-    modifiers(modifiers),
-    processHook(&RegistrationHookGenerator<decltype(field)>::process)
+//    memberField((decltype(memberField))field),
+//    name(name),
+//    modifiers(modifiers),
+    processHook([=](JClass * const clazz) -> bool {
+     return clazz->registerField(new JFieldID((int AnyClass::* const)field, name, modifiers));
+    })
    {}
 
    //Constructor for non-member fields
    template<typename F>
    ClassDescriptorElement(F * const field, const char * const name, uint32_t modifiers = JFieldID::PUBLIC) noexcept :
     type(NON_MEMBER_FIELD),
-    nonMemberField((decltype(nonMemberField))field),
-    name(name),
-    modifiers(modifiers),
-    processHook(&RegistrationHookGenerator<decltype(field)>::process) {}
+//    nonMemberField((decltype(nonMemberField))field),
+//    name(name),
+//    modifiers(modifiers),
+    processHook([=](JClass * const clazz) -> bool {
+     return clazz->registerField(new JFieldID((void * const)field, name, modifiers));
+    })
+   {}
 
    [[gnu::always_inline]]
    inline bool process(JClass * const clazz) const {
-    return processHook(clazz, const_cast<ClassDescriptorElement *>(this));
+    return processHook(clazz);
    }
   };
-
-  //Generator for member functions
-  template<typename R, typename T, typename... Args>
-  class RegistrationHookGenerator<R (T::* const)(Args...)> {
-  public:
-   using type = R (T::* const)(Args...);
-
-   [[gnu::always_inline]]
-   inline static bool process(JClass * const clazz, ClassDescriptorElement * const elem) {
-    return clazz->registerMethod(new JMethodID((type)elem->memberFunc, elem->name, elem->modifiers));
-   }
-  };
-
-  //Generator for non-member functions
-  template<typename R, typename... Args>
-  class RegistrationHookGenerator<R (*const)(Args...)> {
-  public:
-   using type = R (*const)(Args...);
-
-   [[gnu::always_inline]]
-   inline static bool process(JClass * const clazz, ClassDescriptorElement * const elem) {
-    if (strcmp(elem->name, "<init>") == 0) {
-     //Register constructor
-     return clazz->registerMethod(new JMethodID((type)elem->nonMemberFunc, elem->modifiers));
-    } else {
-     return clazz->registerMethod(new JMethodID((type)elem->nonMemberFunc, elem->name, elem->modifiers));
-    }
-   }
-  };
-
-  //Generator for member fields
-  template<typename F, typename T>
-  class RegistrationHookGenerator<F (T::* const)> {
-  public:
-   using type = F (T::* const);
-
-   [[gnu::always_inline]]
-   inline static bool process(JClass * const clazz, ClassDescriptorElement * const elem) {
-    return clazz->registerField(new JFieldID((type)elem->memberField, elem->name, elem->modifiers));
-   }
-  };
-
-  //Generator for non-member fields
-  template<typename F>
-  class RegistrationHookGenerator<F * const> {
-  public:
-   using type = F * const;
-
-   [[gnu::always_inline]]
-   inline static bool process(JClass * const clazz, ClassDescriptorElement * const elem) {
-    return clazz->registerField(new JFieldID((type)elem->nonMemberField, elem->name, elem->modifiers));
-   }
-  };
- }
-
- //Native array implementation
- namespace _CX {
-  template<typename T>
-  class JniArrayTypeBase;
  }
 
  //Utility base, not a registered fake-jni type
@@ -1260,8 +1208,7 @@ namespace FakeJni {
   proxySetFunc((void (*)())&_CX::FieldAccessor<T (M::*)>::set)
  {
   _ASSERT_FIELD_JNI_COMPLIANCE
-  //TODO should we lift this restriction?
-  static_assert(__is_base_of(JObject, M), "Encapsulating class is not derived from JObject!");
+//  static_assert(__is_base_of(JObject, M), "Encapsulating class is not derived from JObject!");
  }
 
  template<typename T>
@@ -1456,10 +1403,10 @@ namespace FakeJni {
   template<typename A>
   constexpr typename JClassBreeder<T>:: template constructor_func_t<A> JClassBreeder<T>::constructorPredicate() noexcept {
    return [](JavaVM * const vm, const char * const signature, A args) -> JObject * {
-    const JClass& descriptor = T::descriptor;
+    JClass& descriptor = const_cast<JClass&>(T::descriptor);
     Jvm * const jvm = (Jvm * const)vm;
-    for (uint32_t i = 0; i < descriptor.functions->getSize(); i++) {
-     JMethodID * const method = (*descriptor.functions)[i];
+    for (uint32_t i = 0; i < descriptor.functions.getSize(); i++) {
+     JMethodID * const method = (descriptor.functions)[i];
      if (strcmp(method->getSignature(), signature) == 0 && strcmp(method->getName(), "<init>") == 0) {
       const auto inst = method->invoke<T *>(nullptr, args);
       JObject * baseInst;
@@ -1477,7 +1424,8 @@ namespace FakeJni {
 
   template<typename T>
   constexpr void JClassBreeder<T>::assertNameCompliance() noexcept {
-   //TODO
+   //TODO waiting on constexpr string utils from CX
+//   const auto name = T::name;
   }
  }
 
@@ -1486,10 +1434,10 @@ namespace FakeJni {
  JClass::JClass(FakeJni::_CX::JClassBreeder<T> breeder) noexcept :
   JObject(),
   constructV(decltype(breeder)::template constructorPredicate<va_list>()),
-  constructA(decltype(breeder)::template constructorPredicate<jvalue*>()),
+  constructA(decltype(breeder)::template constructorPredicate<jvalue *>()),
   className(T::name),
-  functions(new AllocStack<JMethodID *>(true)),
-  fields(new AllocStack<JFieldID *>(true))
+  functions{true},
+  fields{true}
  {
   for (const auto& d : breeder.descriptorElements) {
    d.process(this);

@@ -27,7 +27,7 @@ namespace FakeJni {
    //Load static JNI linkage (OnUnload is optional)
    if (error == nullptr) {
 #ifdef FAKE_JNI_DEBUG
-    fprintf(vm->getLog(), "DEBUG: '%s' uses static JNI linkage!\n", path.c_str());
+    fprintf(vm->getLog(), "DEBUG: '%s' uses static JNI linkage\n", path.c_str());
 #endif
     (void *&)JNI_OnUnload_ = lsym("JNI_OnUnload_L");
    } else {
@@ -37,7 +37,7 @@ namespace FakeJni {
    error = dlerror();
    if (error == nullptr) {
 #ifdef FAKE_JNI_DEBUG
-    fprintf(vm->getLog(), "DEBUG: '%s' uses dynamic JNI linkage!\n", path.c_str());
+    fprintf(vm->getLog(), "DEBUG: '%s' uses dynamic JNI linkage\n", path.c_str());
 #endif
     //Load dynamic JNI linkage (unload not required)
     (void *&)JNI_OnUnload_ = lsym("JNI_OnUnload");
@@ -45,7 +45,7 @@ namespace FakeJni {
   }
 #ifdef FAKE_JNI_DEBUG
   else {
-   fprintf(vm->getLog(), "DEBUG: '%s' contains no JNI linkage!\n", path.c_str());
+   fprintf(vm->getLog(), "DEBUG: '%s' contains no JNI linkage\n", path.c_str());
   }
 #endif
 
@@ -55,7 +55,7 @@ namespace FakeJni {
    error = dlerror();
    if (error == nullptr) {
 #ifdef FAKE_JNI_DEBUG
-    fprintf(vm->getLog(), "DEBUG: '%s' uses static Agent linkage!\n", path.c_str());
+    fprintf(vm->getLog(), "DEBUG: '%s' uses static Agent linkage\n", path.c_str());
 #endif
     //Load static Agent linkage (OnAttach and OnUnload are optional)
     (void *&)Agent_OnAttach_ = lsym("Agent_OnAttach_L");
@@ -65,7 +65,7 @@ namespace FakeJni {
    error = dlerror();
    if (error == nullptr) {
 #ifdef FAKE_JNI_DEBUG
-    fprintf(vm->getLog(), "DEBUG: '%s' uses dynamic Agent linkage!\n", path.c_str());
+    fprintf(vm->getLog(), "DEBUG: '%s' uses dynamic Agent linkage\n", path.c_str());
 #endif
     //Load dynamic Agent linkage (OnAttach and OnUnload are optional)
     (void *&)Agent_OnAttach_ = lsym("Agent_OnAttach");
@@ -74,7 +74,7 @@ namespace FakeJni {
   }
 #ifdef FAKE_JNI_DEBUG
   else {
-   fprintf(vm->getLog(), "DEBUG: '%s' contains no Agent linkage!\n", path.c_str());
+   fprintf(vm->getLog(), "DEBUG: '%s' contains no Agent linkage\n", path.c_str());
   }
 #endif
   if (!(agentBound() || jniBound())) {
@@ -84,7 +84,7 @@ namespace FakeJni {
 
  Library::~Library() {
 #ifdef FAKE_JNI_DEBUG
-  fprintf(vm->getLog(), "DEBUG: Closing handle for library '%s'", path.c_str());
+  fprintf(vm->getLog(), "DEBUG: Closing handle for library '%s'\n", path.c_str());
 #endif
   const int status = options.dlclose_p(handle);
   if (status) {

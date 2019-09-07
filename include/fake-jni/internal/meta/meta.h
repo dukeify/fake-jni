@@ -53,6 +53,10 @@ namespace FakeJni::_CX {
   static constexpr const bool hasComplexHierarchy = false;
  };
 
+ //Native array metadata template
+ template<typename T>
+ class JniArrayTypeBase;
+
  //Strip pointers off of JniTypeBase specializations and instantiations
  template<typename T>
  class JniTypeBase<T*> : public JniTypeBase<typename ComponentTypeResolver<T*>::type> {};
