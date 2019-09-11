@@ -4,7 +4,7 @@
 #include "fake-jni/jvm.h"
 
 namespace FakeJni {
- NativeInterface::NativeInterface(Jvm * const vm) :
+ NativeInterface::NativeInterface(const Jvm& vm) :
   JNINativeInterface_(),
   vm(vm)
  {
@@ -1036,5 +1036,9 @@ namespace FakeJni {
    _NATIVE_DEBUG(GetObjectRefType)
    return ni->getObjectRefType(obj);
   };
+ }
+
+ inline NativeInterface& NativeInterface::operator=(const NativeInterface& ni) noexcept {
+  return const_cast<NativeInterface&>(ni);
  }
 }

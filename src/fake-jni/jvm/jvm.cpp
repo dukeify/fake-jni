@@ -9,26 +9,121 @@
 namespace FakeJni {
  AllocStack<Jvm *> Jvm::vms;
 
- void Jvm::generateJvmUuid(char * const uuid) {
+ Jvm::Jvm(FILE *log) :
+  uuid(generateJvmUuid()),
+  log(log),
+  invoke(createDefaultInvokeInterface()),
+  native(createDefaultNativeInterface()),
+  jvmti(createDefaultJvmtiInterface()),
+  jniEnv(createDefaultJniEnv()),
+  jvmtiEnv(createDefaultJvmtiEnv())
+ {
+  functions = &invoke;
+  vms.pushAlloc(this);
+  registerDefaultClasses();
+ }
+
+ FILE * Jvm::getLog() const {
+  return log;
+ }
+
+ void Jvm::registerDefaultClasses() {
+  registerClass<JObject>();
+  registerClass<JClass>();
+  registerClass<JString>();
+  //TODO all arrays
+ }
+
+ const char * Jvm::generateJvmUuid() noexcept {
   static auto randCharFunc = []() -> char {
    return (char)((rand() % 2 ? 65 : 97) + (rand() % 25));
   };
-//  auto str = new char[32];
+  auto str = new char[33];
   for (uint32_t i = 0; i < 32; i++) {
-   uuid[i] = randCharFunc();
+   str[i] = randCharFunc();
   }
   //Ensure that the uuid is unique
   bool changed = true;
   uint32_t i = 0;
   while (changed && i < vms.getSize()) {
    changed = false;
-   while(vms[i]->uuid == std::string(uuid)) {
-    uuid[rand() % 31] = randCharFunc();
+   while(vms[i]->uuid == std::string(str)) {
+    str[rand() % 31] = randCharFunc();
     changed = true;
    }
    i = (changed ? 0 : i + 1);
   }
-  uuid[32] = '\0';
+  str[32] = '\0';
+  return str;
+ }
+
+ InvokeInterface& Jvm::createDefaultInvokeInterface() const {
+  static InvokeInterface interface{*this};
+  return interface;
+ }
+
+ inline void Jvm::setInvokeInterface(const InvokeInterface& ii) {
+  invoke = ii;
+ }
+
+ inline InvokeInterface& Jvm::getInvokeInterface() const {
+  return invoke;
+ }
+
+ NativeInterface& Jvm::createDefaultNativeInterface() const {
+  static NativeInterface interface{*this};
+  return interface;
+ }
+
+ inline void Jvm::setNativeInterface(const NativeInterface& ni) {
+  native = ni;
+ }
+
+ inline NativeInterface& Jvm::getNativeInterface() const {
+  return native;
+ }
+
+ JvmtiInterface& Jvm::createDefaultJvmtiInterface() const {
+  static JvmtiInterface interface{*this};
+  return interface;
+ }
+
+ inline void Jvm::setJvmtiInterface(const FakeJni::JvmtiInterface &ji) {
+  jvmti = ji;
+ }
+
+ inline JvmtiInterface& Jvm::getJvmtiInterface() const {
+  return jvmti;
+ }
+
+ JniEnv& Jvm::createDefaultJniEnv() const {
+  static JniEnv env{*this};
+  return env;
+ }
+
+ inline void Jvm::setJniEnv(const JniEnv env) {
+  jniEnv = env;
+ }
+
+ inline JniEnv& Jvm::getJniEnv() const {
+  return jniEnv;
+ }
+
+ JvmtiEnv& Jvm::createDefaultJvmtiEnv() const {
+  static JvmtiEnv env{*this};
+  return env;
+ }
+
+ inline void Jvm::setJvmtiEnv(const JvmtiEnv& env) {
+  jvmtiEnv = env;
+ }
+
+ inline JvmtiEnv& Jvm::getJvmtiEnv() const {
+  return jvmtiEnv;
+ }
+
+ inline const AllocStack<JObject *>& Jvm::getInstances() const {
+  return instances;
  }
 
  Jvm::~Jvm() {
@@ -38,16 +133,11 @@ namespace FakeJni {
    removeLibrary(l->path, "");
   }
   libraries.clear();
-  delete jvmtiEnv;
-  delete jniEnv;
-  delete jvmti;
-  delete native;
-  delete invoke;
   delete[] uuid;
  }
 
- const JClass * Jvm::findClass(const char * name) {
-  for (const auto& clazz : classes) {
+ const JClass * Jvm::findClass(const char * name) const {
+  for (const auto clazz : classes) {
    if (strcmp(name, clazz->getName()) == 0) {
     return clazz;
    }
@@ -55,8 +145,8 @@ namespace FakeJni {
   return nullptr;
  }
 
- Library * Jvm::getLibrary(const std::string &path) {
-  for (const auto &l : libraries) {
+ Library * Jvm::getLibrary(const std::string &path) const {
+  for (const auto l : libraries) {
    if (l->path == path) {
     return l;
    }
@@ -68,11 +158,11 @@ namespace FakeJni {
   const std::string &rpath,
   const std::string &options,
   FakeJni::LibraryOptions loptions
- ) {
+ ) const {
   std::string path = rpath.empty() ? "(embedded)" : rpath;
   Library * library = getLibrary(path);
   if (!library) {
-   library = new Library(this, path, loptions);
+   library = new Library(const_cast<Jvm&>(*this), path, loptions);
 #ifdef FAKE_JNI_DEBUG
    fprintf(log, "DEBUG: Created library: '%s'\n", path.c_str());
 #endif
@@ -105,7 +195,7 @@ namespace FakeJni {
      throw std::runtime_error("FATAL: Error initializing agent library: '" + path + "'");
     }
    }
-   libraries.push_back(library);
+   const_cast<Jvm *>(this)->libraries.push_back(library);
 #ifdef FAKE_JNI_DEBUG
    fprintf(log, "DEBUG: Registered library: '%s'\n", path.c_str());
 #endif
@@ -122,10 +212,11 @@ namespace FakeJni {
  //Removes a library from the DefaultJvm instance
  //Implicitly unloads the agent within the library, if there was one
  //Implicitly unloads the jni component within the library, if there was one
- bool Jvm::removeLibrary(const std::string &path, const std::string &options) {
+ bool Jvm::removeLibrary(const std::string &path, const std::string &options) const {
+  auto& libs = const_cast<Jvm *>(this)->libraries;
   Library * const library = getLibrary(path);
   if (library) {
-   (void)std::remove(libraries.begin(), libraries.end(), library);
+   (void)std::remove(libs.begin(), libs.end(), library);
 #ifdef FAKE_JNI_DEBUG
    fprintf(log, "DEBUG: Removing library: '%s'\n", path.c_str());
 #endif
@@ -138,7 +229,7 @@ namespace FakeJni {
    delete library;
    return true;
   }
-  fprintf(log, "WARNING: Library '%s' was not registered on this DefaultJvm instance!\n", path.c_str());
+  fprintf(log, "WARNING: Library '%s' was not registered on this Jvm instance!\n", path.c_str());
   return false;
  }
 

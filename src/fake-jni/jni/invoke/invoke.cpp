@@ -12,7 +12,7 @@
 #endif
 
 namespace FakeJni {
- InvokeInterface::InvokeInterface(Jvm * const vm) :
+ InvokeInterface::InvokeInterface(const Jvm& vm) :
   JNIInvokeInterface_(),
   vm(vm)
  {
@@ -23,27 +23,31 @@ namespace FakeJni {
   DestroyJavaVM = [](JavaVM *vm) -> jint {
    _FETCH_JVM
    _INVOKE_DEBUG(DestroyJavaVM)
-   return jvm->getInvokeInterface()->destroyJavaVm(jvm);
+   return jvm->getInvokeInterface().destroyJavaVm(jvm);
   };
   AttachCurrentThread = [](JavaVM *vm, void **penv, void *args) -> jint {
    _FETCH_JVM
    _INVOKE_DEBUG(AttachCurrentThread)
-   return jvm->getInvokeInterface()->attachCurrentThread(jvm, penv, args);
+   return jvm->getInvokeInterface().attachCurrentThread(jvm, penv, args);
   };
   DetachCurrentThread = [](JavaVM *vm) -> jint {
    _FETCH_JVM
    _INVOKE_DEBUG(DetachCurrentThread)
-   return jvm->getInvokeInterface()->detachCurrentThread((Jvm *)vm);
+   return jvm->getInvokeInterface().detachCurrentThread((Jvm *)vm);
   };
   GetEnv = [](JavaVM *vm, void **penv, jint version) -> jint {
    _FETCH_JVM
    _INVOKE_DEBUG(GetEnv)
-   return jvm->getInvokeInterface()->getEnv(jvm, penv, version);
+   return jvm->getInvokeInterface().getEnv(jvm, penv, version);
   };
   AttachCurrentThreadAsDaemon = [](JavaVM *vm, void **penv, void *args) -> jint {
    _FETCH_JVM
    _INVOKE_DEBUG(DetachCurrentThread)
-   return jvm->getInvokeInterface()->attachCurrentThread(jvm, penv, args);
+   return jvm->getInvokeInterface().attachCurrentThread(jvm, penv, args);
   };
+ }
+
+ inline InvokeInterface& InvokeInterface::operator=(const InvokeInterface& ii) noexcept {
+  return const_cast<InvokeInterface&>(ii);
  }
 }

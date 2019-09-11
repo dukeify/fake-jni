@@ -3,7 +3,7 @@
 
 namespace FakeJni {
  jint InvokeInterface::getEnv(Jvm *vm, void **penv, jint version) const {
-  *penv = (void *)((JNIEnv *)vm->getJniEnv());
+  *penv = (void *)((JNIEnv *)&vm->getJniEnv());
   return JNI_OK;
  }
 

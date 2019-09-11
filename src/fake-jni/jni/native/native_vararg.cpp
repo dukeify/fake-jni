@@ -170,9 +170,7 @@ namespace FakeJni {
  jbyte NativeInterface::_CallStaticByteMethod(JNIEnv *env, jclass clazz, jmethodID jmid, ...) {
   _FETCH_JNI_ENV
   _BEGIN_VA_LIST
-#ifdef FAKE_JNI_DEBUG
-  fprintf(jenv->getVM()->getLog(), "DEBUG: JNINativeInterface_::CallStaticByteMethod\n");
-#endif
+  _NATIVE_DEBUG(CallStaticByteMethod)
   return ni->callStaticByteMethodV(clazz, jmid, l);
  }
 

@@ -10,7 +10,7 @@ NativeInterface * const ni = (NativeInterface *)(env->functions);
 #endif
 
 #ifdef FAKE_JNI_DEBUG
-#define _NATIVE_DEBUG(name) fprintf(jenv->getVM()->getLog(), "DEBUG: JNINativeInterface_::%s\n", #name);
+#define _NATIVE_DEBUG(name) fprintf(jenv->getVM().getLog(), "DEBUG: JNINativeInterface_::%s\n", #name);
 #else
 #define _NATIVE_DEBUG(name)
 #endif

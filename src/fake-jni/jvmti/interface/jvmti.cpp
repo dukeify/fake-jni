@@ -5,7 +5,7 @@
 #include "fake-jni/jvm.h"
 
 namespace FakeJni {
- JvmtiInterface::JvmtiInterface(Jvm * const vm) :
+ JvmtiInterface::JvmtiInterface(const Jvm& vm) :
   jvmtiInterface_1(),
   vm(vm)
  {
@@ -717,5 +717,9 @@ namespace FakeJni {
    _JVMTI_DEBUG(GetLocalInstance)
    return ji->getLocalInstance(env, thread, depth, value_ptr);
   };
+ }
+
+ JvmtiInterface& JvmtiInterface::operator=(const FakeJni::JvmtiInterface &ji) noexcept {
+  return const_cast<JvmtiInterface&>(ji);
  }
 }

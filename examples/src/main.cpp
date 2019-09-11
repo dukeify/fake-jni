@@ -88,23 +88,22 @@ int main(int argc, char **argv) {
  JString test{"Hello World!"};
 
  //Create a shiny new fake JVM instance
- Jvm * const vm = createJvm();
+ Jvm vm;
 
  //Register ExampleClass on the VM)
- vm->registerClass<ExampleClass>();
+ vm.registerClass<ExampleClass>();
 
  //Attach this binary as a native library
  //no path to current binary, no options, custom library dl functions
- vm->attachLibrary("", "", {&dlopen, &dlsym, &dlclose});
+ vm.attachLibrary("", "", {&dlopen, &dlsym, &dlclose});
 
  //Start fake-jni
 // vm->start();
 
- vm->unregisterClass<ExampleClass>();
+ vm.unregisterClass<ExampleClass>();
 
  //Clean up
- vm->destroy();
+ vm.destroy();
 
- delete vm;
  return 0;
 }
