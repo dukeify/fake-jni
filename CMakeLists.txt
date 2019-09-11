@@ -32,9 +32,6 @@ ExternalProject_Add(ffi
     CONFIGURE_COMMAND <SOURCE_DIR>/autogen.sh && <SOURCE_DIR>/configure --disable-shared --disable-builddir --prefix=<INSTALL_DIR>
     BUILD_IN_SOURCE 1
     BUILD_BYPRODUCTS <INSTALL_DIR>/lib/libffi.a
-    LOG_BUILD TRUE
-    LOG_CONFIGURE TRUE
-    LOG_INSTALL TRUE
 )
 
 ExternalProject_Get_Property(ffi INSTALL_DIR)
