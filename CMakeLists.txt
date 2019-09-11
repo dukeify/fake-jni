@@ -7,7 +7,7 @@ set(CMAKE_CXX_STANDARD 17)
 project(fake-jni VERSION 0.1.0)
 add_subdirectory(CX)
 
-set(BUILD_FAKE_JNI_DEBUG ON CACHE BOOL "Enables fake-jni debug building")
+set(BUILD_FAKE_JNI_DEBUG OFF CACHE BOOL "Enables fake-jni debug building")
 if(${BUILD_FAKE_JNI_DEBUG})
     set(CMAKE_BUILD_TYPE Release)
     set(compiler_flags "\
