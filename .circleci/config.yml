@@ -6,15 +6,15 @@ jobs:
     - image: alpine:edge
     steps:
       - checkout
-      - run: apk add git clang cmake build-base
+      - run: apk add git clang cmake build-base ninja autoconf automake libtool texinfo
       - run: git submodule update --init --recursive
       - run:
           name: make
           command: |
             mkdir build && \
             cd build && \
-            CC=clang CXX=clang++ cmake .. && \
-            make -j`nproc`
+            CC=clang CXX=clang++ cmake -G Ninja .. && \
+            cmake --build .
       - store_artifacts:
           path: build/examples/example
       - store_artifacts:
