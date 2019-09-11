@@ -16,6 +16,8 @@ jobs:
             CC=clang CXX=clang++ cmake -G Ninja .. && \
             cmake --build .
       - store_artifacts:
-          path: build/examples/example
+          path: build/libfake-jni.so
+      - store_artifacts:
+          path: build/examples/examples
       - store_artifacts:
           path: build/tests/tests
