@@ -1,4 +1,5 @@
 cmake_minimum_required(VERSION 3.8)
+include(ExternalProject)
 
 #set(CMAKE_CXX_COMPILER "/usr/bin/clang++")
 set(CMAKE_CXX_STANDARD 17)
@@ -6,23 +7,68 @@ set(CMAKE_CXX_STANDARD 17)
 project(fake-jni VERSION 0.1.0)
 add_subdirectory(CX)
 
-set(CMAKE_BUILD_TYPE Release)
-set(compiler_flags "-g -DFAKE_JNI_DEBUG")
+set(BUILD_FAKE_JNI_DEBUG ON CACHE BOOL "Enables fake-jni debug building")
+if(${BUILD_FAKE_JNI_DEBUG})
+    set(CMAKE_BUILD_TYPE Release)
+    set(compiler_flags "\
+        -g\
+        -fstandalone-debug\
+        -O0\
+        -fno-inline\
+        -fsanitize=address\
+        -DFAKE_JNI_DEBUG\
+    ")
+else()
+    set(CMAKE_BUILD_TYPE Debug)
+    set(compiler_flags "-O3")
+endif()
+
 set(CMAKE_CXX_FLAGS ${compiler_flags})
 set(CMAKE_C_FLAGS ${compiler_flags})
+
+ExternalProject_Add(ffi
+    SOURCE_DIR ${CMAKE_SOURCE_DIR}/libffi
+    UPDATE_COMMAND ""
+    CONFIGURE_COMMAND <SOURCE_DIR>/autogen.sh && <SOURCE_DIR>/configure --disable-shared --disable-builddir --prefix=<INSTALL_DIR>
+    BUILD_IN_SOURCE 1
+    BUILD_BYPRODUCTS <INSTALL_DIR>/lib/libffi.a
+    LOG_BUILD TRUE
+    LOG_CONFIGURE TRUE
+    LOG_INSTALL TRUE
+)
+
+ExternalProject_Get_Property(ffi INSTALL_DIR)
+set(LIBFFI_INSTALL_DIR ${INSTALL_DIR}/lib/libffi-3.2.1/)
+ExternalProject_Get_Property(ffi SOURCE_DIR)
+set(ffi_SOURCE_DIR ${SOURCE_DIR})
+
+add_library(libffi STATIC IMPORTED GLOBAL)
+file(MAKE_DIRECTORY ${LIBFFI_INSTALL_DIR}/include)
+set_target_properties(libffi PROPERTIES
+    IMPORTED_LOCATION ${INSTALL_DIR}/lib/libffi.a
+    INTERFACE_INCLUDE_DIRECTORIES ${LIBFFI_INSTALL_DIR}/include
+)
 
 file(GLOB_RECURSE FAKE_JNI_SRC "src/**.cpp")
 add_library(fake-jni SHARED ${FAKE_JNI_SRC})
 
-target_link_libraries(fake-jni dl)
-target_include_directories(fake-jni PUBLIC include ${cx_SOURCE_DIR})
+target_link_libraries(fake-jni dl libffi)
+add_dependencies(fake-jni ffi)
+target_include_directories(fake-jni PUBLIC
+    include
+    ${cx_SOURCE_DIR}
+    ${ffi_SOURCE_DIR}/include
+)
 target_compile_options(fake-jni PUBLIC
-        -Wall
-        -Wextra
-#        -Werror
-        -pedantic
-        -Wno-unused-parameter
-        -Wno-unused-function
+    -Wall
+    -Wextra
+#    -Werror
+    -pedantic
+    -Wno-unused-parameter
+    -Wno-unused-function
+    -Wno-gnu-anonymous-struct
+    -Wno-nested-anon-types
+    -Wno-vla-extension
 )
 
 set(BUILD_FAKE_JNI_TESTS ON CACHE BOOL "Enables fake-jni tests")

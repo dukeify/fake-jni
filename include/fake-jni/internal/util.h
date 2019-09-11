@@ -144,7 +144,7 @@ namespace FakeJni {
    }
   }
 
-  T operator[](uint32_t index) {
+  T& operator[](uint32_t index) {
    std::scoped_lock<std::mutex> mLock(m);
    List<Entry> *elem = head;
    while (elem && index > 0) {
@@ -157,7 +157,12 @@ namespace FakeJni {
    return elem->entry.t;
   }
 
-  uint32_t getSize() noexcept {
+  const T& operator[](uint32_t index) const {
+   auto non_const_ptr = const_cast<AllocStack<T> *>(this);
+   return (*non_const_ptr)[index];
+  }
+
+  uint32_t getSize() const noexcept {
    return size;
   }
  };

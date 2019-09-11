@@ -8,44 +8,36 @@ namespace FakeJni {
   return (jboolean)(obj1 == obj2);
  }
 
+ //TODO implement
  jobject NativeInterface::allocObject(jclass clazz) const {
+  throw std::runtime_error("FATAL: 'JVMNativeInterface_::allocObject' is unimplemented!");
   return nullptr;
  }
 
-//TODO implement
- jobject NativeInterface::newObjectV(jclass, jmethodID, va_list) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::newObjectV' is unimplemented!");
-  return nullptr;
+ jobject NativeInterface::newObjectV(jclass clazz, jmethodID mid, va_list args) const {
+  return ((JClass *)clazz)->newInstance(vm, ((JMethodID *)mid)->getSignature(), args);
  }
 
-//TODO implement
- jobject NativeInterface::newObjectA(jclass, jmethodID, const jvalue *) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::newObjectA' is unimplemented!");
-  return nullptr;
+ jobject NativeInterface::newObjectA(jclass const clazz, jmethodID const mid, const jvalue * const args) const {
+  return ((JClass *)clazz)->newInstance(vm, ((JMethodID *)mid)->getSignature(), args);
  }
 
-//TODO implement
- jclass NativeInterface::getObjectClass(jobject) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::getObjectClass' is unimplemented!");
-  return nullptr;
+ jclass NativeInterface::getObjectClass(jobject const obj) const {
+  return (jclass)&((JObject *)obj)->getClass();
  }
 
-//TODO implement
- jboolean NativeInterface::isInstanceOf(jobject, jclass) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::isInstanceOf' is unimplemented!");
-  return 0;
+ jboolean NativeInterface::isInstanceOf(jobject const obj, jclass const clazz) const {
+  //pointer equivalence should be fine since class descriptors are invariant
+  return (unsigned char)(&((JObject *)obj)->getClass() == ((JClass *)clazz));
  }
 
-//TODO implement
  jclass NativeInterface::defineClass(const char *, jobject, const jbyte *, jsize) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::defineClass' is unimplemented!");
+  throw std::runtime_error("FATAL: 'JVMNativeInterface_::defineClass' is currently unsupported!");
   return nullptr;
  }
 
-//TODO implement
- jclass NativeInterface::findClass(const char *) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::findClass' is unimplemented!");
-  return nullptr;
+ jclass NativeInterface::findClass(const char * const name) const {
+  return (jclass)vm->findClass(name);
  }
 
 //TODO implement
@@ -59,6 +51,4 @@ namespace FakeJni {
   throw std::runtime_error("FATAL: 'JVMNativeInterface_::isAssignableFrom' is unimplemented!");
   return 0;
  }
-
-
 }

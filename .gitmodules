@@ -1,3 +1,6 @@
 [submodule "CX"]
 	path = CX
-	url = https://github.com/Matthewacon/CX.git 
+	url = https://github.com/Matthewacon/CX.git
+[submodule "libffi"]
+	path = libffi
+	url = https://github.com/libffi/libffi.git

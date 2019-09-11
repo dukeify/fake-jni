@@ -6,26 +6,22 @@
 namespace FakeJni {
  const JString JString::EMPTY_STR {""};
 
- JString::JString(const JString &str) :
-  JCharArray(str.length),
-  slen(str.slen)
+ JString::JString(const JString &str) : JCharArray(str.getLength())
  {
-  memcpy(array, str.array, slen);
+  memcpy(array, str.array, (size_t)str.getLength());
  }
 
- JString::JString(const JInt size) :
-  JCharArray(size),
-  slen(size)
+ JString::JString(const JInt size) : JCharArray(size)
  {}
 
- JString::JString(const char * const str) :
-  JString((JInt)ceil(strlen(str) * (sizeof(char) / ((float)sizeof(JChar)))))
+ JString::JString(const char * str) :
+  JString((JInt)ceil((int)strlen(str) * (sizeof(char) / ((double)sizeof(JChar)))))
  {
-  memcpy(array, str, slen);
+  memcpy(array, str, (size_t)getLength());
  }
 
- bool JString::operator==(const JString& str) const {
-  return memcmp((char *)array, (char *)str.array, std::min(slen, str.slen)) == 0;
+ bool JString::operator==(const JString &str) const {
+  return memcmp((char *)array, (char *)str.array, (size_t)std::min(getLength(), str.getLength())) == 0;
  }
 }
 

@@ -62,25 +62,6 @@ namespace FakeJni {
    inline static constexpr const bool isRegisteredResolver = false;
   };
 
-  //JValueArgResolver for JObject derived classes
-  template<typename T>
-  class JValueArgResolver<true, T> {
-
-  public:
-   inline static constexpr const bool isRegisteredResolver = true;
-   using componentType = typename ComponentTypeResolver<T*>::type;
-
-   [[gnu::always_inline]]
-   inline static componentType* getAArg(jvalue *values) {
-    static_assert(__is_base_of(_jobject, componentType), "Illegal JNI function parameter type!");
-    if constexpr(CastDefined<componentType>::value) {
-     return componentType::cast::cast((JObject*)values->l);
-    } else {
-     return (componentType *)values->l;
-    }
-   }
-  };
-
   //Function breeder for JValueArgResolver<typename>::getAArg(jvalue *)
   template<typename T>
   [[gnu::always_inline]]
@@ -93,6 +74,16 @@ namespace FakeJni {
    );
    return JValueArgResolver<__is_class(componentType), T>::getAArg(values);
   }
+
+  //Type-to-member-name maps for the jvalue union
+  _GET_AARG_MAP(JBoolean, z)
+  _GET_AARG_MAP(JByte, b)
+  _GET_AARG_MAP(JChar, c)
+  _GET_AARG_MAP(JShort, s)
+  _GET_AARG_MAP(JInt, i)
+  _GET_AARG_MAP(JLong, j)
+  _GET_AARG_MAP(JFloat, f)
+  _GET_AARG_MAP(JDouble, d)
 
   template<
    typename T,
@@ -158,16 +149,6 @@ namespace FakeJni {
    return VArgResolver<T>::getVArg(args);
   }
 
-  //Type-to-member-name maps for the jvalue union
-  _GET_AARG_MAP(JBoolean, z)
-  _GET_AARG_MAP(JByte, b)
-  _GET_AARG_MAP(JChar, c)
-  _GET_AARG_MAP(JShort, s)
-  _GET_AARG_MAP(JInt, i)
-  _GET_AARG_MAP(JLong, j)
-  _GET_AARG_MAP(JFloat, f)
-  _GET_AARG_MAP(JDouble, d)
-
   template<auto, typename...>
   class FunctionAccessor {};
 
@@ -193,7 +174,7 @@ namespace FakeJni {
 
    template<typename... DecomposedJValues>
    [[gnu::always_inline]]
-   inline static R invokeA(void * const inst, erasedType func, jvalue *values, DecomposedJValues... args) {
+   inline static R invokeA(void * const inst, erasedType func, jvalue * const values, DecomposedJValues... args) {
     return FunctionAccessor<N - 1, functionType>::template invokeA<argType, DecomposedJValues...>(
      inst,
      func,
@@ -274,7 +255,7 @@ namespace FakeJni {
    }
 
    template<typename... Args2>
-   inline static R invokeA(erasedType func, jvalue *values, Args2... args) {
+   inline static R invokeA(erasedType func, jvalue * const values, Args2... args) {
     static_assert(
      CX::IsSame<std::tuple<Args...>, std::tuple<Args2...>>::value,
      "Function argument list does not match base invoker arguments!"
@@ -308,7 +289,7 @@ namespace FakeJni {
   public:
    inline static constexpr const char
     prefix[] = "(",
-    suffix[] = ");";
+    suffix[] = ")";
    inline static constexpr const auto signature =
     CX::Concat<prefix, EvaluateFold<Args...>::fold, suffix, JniTypeBase<R>::signature>::result;
   };
@@ -317,7 +298,7 @@ namespace FakeJni {
   template<typename R, typename... Args>
   class SignatureGenerator<true, R, Args...> {
   public:
-   inline static constexpr const char suffix[] = ");V";
+   inline static constexpr const char suffix[] = ")V";
    inline static constexpr const auto signature =
     CX::Concat<SignatureGenerator<false, R, Args...>::prefix, EvaluateFold<Args...>::fold, suffix>::result;
   };

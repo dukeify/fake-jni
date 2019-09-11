@@ -4,9 +4,6 @@
 #include <cx/classes.h>
 
 namespace FakeJni {
- //Forward declare JObject to define metadata templates
- class JObject;
-
  //fake-jni integral types
  using JVoid = void;
  using JBoolean = jboolean;

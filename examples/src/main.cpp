@@ -92,7 +92,6 @@ int main(int argc, char **argv) {
 
  //Register ExampleClass on the VM)
  vm->registerClass<ExampleClass>();
-// vm->registerClass<TestClass>();
 
  //Attach this binary as a native library
  //no path to current binary, no options, custom library dl functions

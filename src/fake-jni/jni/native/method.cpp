@@ -1,372 +1,252 @@
 #include "jni.h"
 #include "fake-jni/jvm.h"
 
-#include <stdexcept>
-
 namespace FakeJni {
- //TODO implement
- jmethodID NativeInterface::getMethodID(jclass, const char *, const char *) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::getMethodID' is unimplemented!");
-  return 0;
+ jmethodID NativeInterface::getMethodID(jclass const jclazz, const char * const name, const char * const sig) const {
+  return ((JClass *)jclazz)->getMethod(sig, name);
  }
 
-//TODO implement
- jobject NativeInterface::callObjectMethodV(jobject, jmethodID, va_list) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::callObjectMethodV' is unimplemented!");
-  return nullptr;
+ jobject NativeInterface::callObjectMethodV(jobject const obj, jmethodID const mid, va_list list) const {
+  return ((JMethodID *)mid)->invoke<jobject>(vm, obj, list);
  }
 
-//TODO implement
- jobject NativeInterface::callObjectMethodA(jobject, jmethodID, const jvalue *) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::callObjectMethodA' is unimplemented!");
-  return nullptr;
+ jobject NativeInterface::callObjectMethodA(jobject const obj, jmethodID const mid, const jvalue * const args) const {
+  return ((JMethodID *)mid)->invoke<jobject>(vm, obj, args);
  }
 
-//TODO implement
- jboolean NativeInterface::callBooleanMethodV(jobject, jmethodID, va_list) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::callBooleanMethodV' is unimplemented!");
-  return 0;
+ jboolean NativeInterface::callBooleanMethodV(jobject const obj, jmethodID const mid, va_list list) const {
+  return ((JMethodID *)mid)->invoke<jboolean>(vm, obj, list);
  }
 
-//TODO implement
- jboolean NativeInterface::callBooleanMethodA(jobject, jmethodID, const jvalue *) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::callBooleanMethodA' is unimplemented!");
-  return 0;
+ jboolean NativeInterface::callBooleanMethodA(jobject const obj, jmethodID const mid, const jvalue * const args) const {
+  return ((JMethodID *)mid)->invoke<jboolean>(vm, obj, args);
  }
 
-//TODO implement
- jbyte NativeInterface::callByteMethodV(jobject, jmethodID, va_list) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::callByteMethodV' is unimplemented!");
-  return 0;
+ jbyte NativeInterface::callByteMethodV(jobject const obj, jmethodID const mid, va_list list) const {
+  return ((JMethodID *)mid)->invoke<jbyte>(vm, obj, list);
  }
 
-//TODO implement
- jbyte NativeInterface::callByteMethodA(jobject, jmethodID, const jvalue *) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::callByteMethodA' is unimplemented!");
-  return 0;
+ jbyte NativeInterface::callByteMethodA(jobject const obj, jmethodID const mid, const jvalue * const args) const {
+  return ((JMethodID *)mid)->invoke<jbyte>(vm, obj, args);
  }
 
-//TODO implement
- jchar NativeInterface::callCharMethodV(jobject, jmethodID, va_list) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::callCharMethodV' is unimplemented!");
-  return 0;
+ jchar NativeInterface::callCharMethodV(jobject const obj, jmethodID const mid, va_list list) const {
+  return ((JMethodID *)mid)->invoke<jchar>(vm, obj, list);
  }
 
-//TODO implement
- jchar NativeInterface::callCharMethodA(jobject, jmethodID, const jvalue *) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::callCharMethodA' is unimplemented!");
-  return 0;
+ jchar NativeInterface::callCharMethodA(jobject const obj, jmethodID const mid, const jvalue * const args) const {
+  return ((JMethodID *)mid)->invoke<jchar>(vm, obj, args);
  }
 
-//TODO implement
- jshort NativeInterface::callShortMethodV(jobject, jmethodID, va_list) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::callShortMethodV' is unimplemented!");
-  return 0;
+ jshort NativeInterface::callShortMethodV(jobject const obj, jmethodID const mid, va_list list) const {
+  return ((JMethodID *)mid)->invoke<jshort>(vm, obj, list);
  }
 
-//TODO implement
- jshort NativeInterface::callShortMethodA(jobject, jmethodID, const jvalue *) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::callShortMethodA' is unimplemented!");
-  return 0;
+ jshort NativeInterface::callShortMethodA(jobject const obj, jmethodID const mid, const jvalue * const args) const {
+  return ((JMethodID *)mid)->invoke<jshort>(vm, obj, args);
  }
 
-//TODO implement
- jint NativeInterface::callIntMethodV(jobject, jmethodID, va_list) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::callIntMethodV' is unimplemented!");
-  return 0;
+ jint NativeInterface::callIntMethodV(jobject const obj, jmethodID const mid, va_list list) const {
+  return ((JMethodID *)mid)->invoke<jint>(vm, obj, list);
  }
 
-//TODO implement
- jint NativeInterface::callIntMethodA(jobject, jmethodID, const jvalue *) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::callIntMethodA' is unimplemented!");
-  return 0;
+ jint NativeInterface::callIntMethodA(jobject const obj, jmethodID const mid, const jvalue * const args) const {
+  return ((JMethodID *)mid)->invoke<jint>(vm, obj, args);
  }
 
-//TODO implement
- jlong NativeInterface::callLongMethodV(jobject, jmethodID, va_list) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::callLongMethodV' is unimplemented!");
-  return 0;
+ jlong NativeInterface::callLongMethodV(jobject const obj, jmethodID const mid, va_list list) const {
+  return ((JMethodID *)mid)->invoke<jlong>(vm, obj, list);
  }
 
-//TODO implement
- jlong NativeInterface::callLongMethodA(jobject, jmethodID, const jvalue *) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::callLongMethodA' is unimplemented!");
-  return 0;
+ jlong NativeInterface::callLongMethodA(jobject const obj, jmethodID const mid, const jvalue * const args) const {
+  return ((JMethodID *)mid)->invoke<jlong>(vm, obj, args);
  }
 
-//TODO implement
- jfloat NativeInterface::callFloatMethodV(jobject, jmethodID, va_list) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::callFloatMethodV' is unimplemented!");
-  return 0.0f;
+ jfloat NativeInterface::callFloatMethodV(jobject const obj, jmethodID const mid, va_list list) const {
+  return ((JMethodID *)mid)->invoke<jfloat>(vm, obj, list);
  }
 
-//TODO implement
- jfloat NativeInterface::callFloatMethodA(jobject, jmethodID, const jvalue *) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::callFloatMethodA' is unimplemented!");
-  return 0.0f;
+ jfloat NativeInterface::callFloatMethodA(jobject const obj, jmethodID const mid, const jvalue * const args) const {
+  return ((JMethodID *)mid)->invoke<jfloat>(vm, obj, args);
  }
 
-//TODO implement
- jdouble NativeInterface::callDoubleMethodV(jobject, jmethodID, va_list) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::callDoubleMethodV' is unimplemented!");
-  return 0.0;
+ jdouble NativeInterface::callDoubleMethodV(jobject const obj, jmethodID const mid, va_list list) const {
+  return ((JMethodID *)mid)->invoke<jdouble>(vm, obj, list);
  }
 
-//TODO implement
- jdouble NativeInterface::callDoubleMethodA(jobject, jmethodID, const jvalue *) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::callDoubleMethodA' is unimplemented!");
-  return 0.0;
+ jdouble NativeInterface::callDoubleMethodA(jobject const obj, jmethodID const mid, const jvalue * const args) const {
+  return ((JMethodID *)mid)->invoke<jdouble>(vm, obj, args);
  }
 
-//TODO implement
- void NativeInterface::callVoidMethodV(jobject, jmethodID, va_list) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::callVoidMethodV' is unimplemented!");
+ void NativeInterface::callVoidMethodV(jobject const obj, jmethodID const mid, va_list list) const {
+  ((JMethodID *)mid)->invoke<void>(vm, obj, list);
  }
 
-//TODO implement
- void NativeInterface::callVoidMethodA(jobject, jmethodID, const jvalue *) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::callVoidMethodA' is unimplemented!");
+ void NativeInterface::callVoidMethodA(jobject const obj, jmethodID const mid, const jvalue * const args) const {
+  ((JMethodID *)mid)->invoke<void>(vm, obj, args);
  }
 
-//TODO implement
- jobject NativeInterface::callNonvirtualObjectMethodV(jobject, jclass, jmethodID, va_list) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::callNonvirtualObjectMethodV' is unimplemented!");
-  return nullptr;
+ jobject NativeInterface::callNonvirtualObjectMethodV(jobject const obj, jclass const clazz, jmethodID const mid, va_list list) const {
+  return ((JMethodID *)mid)->invoke<jobject>(vm, (JClass *)clazz, obj, list);
  }
 
-//TODO implement
- jobject NativeInterface::callNonvirtualObjectMethodA(jobject, jclass, jmethodID, const jvalue *) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::callNonvirtualObjectMethodA' is unimplemented!");
-  return nullptr;
+ jobject NativeInterface::callNonvirtualObjectMethodA(jobject const obj, jclass const clazz, jmethodID const mid, const jvalue * const args) const {
+  return ((JMethodID *)mid)->invoke<jobject>(vm, (JClass *)clazz, obj, args);
  }
 
-//TODO implement
- jboolean NativeInterface::callNonvirtualBooleanMethodV(jobject, jclass, jmethodID, va_list) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::callNonvirtualBooleanMethodV' is unimplemented!");
-  return 0;
+ jboolean NativeInterface::callNonvirtualBooleanMethodV(jobject const obj, jclass const clazz, jmethodID const mid, va_list list) const {
+  return ((JMethodID *)mid)->invoke<jboolean>(vm, (JClass *)clazz, obj, list);
  }
 
-//TODO implement
- jboolean NativeInterface::callNonvirtualBooleanMethodA(jobject, jclass, jmethodID, const jvalue *) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::callNonvirtualBooleanMethodA' is unimplemented!");
-  return 0;
+ jboolean NativeInterface::callNonvirtualBooleanMethodA(jobject const obj, jclass const clazz, jmethodID const mid, const jvalue * const args) const {
+  return ((JMethodID *)mid)->invoke<jboolean>(vm, (JClass *)clazz, obj, args);
  }
 
-//TODO implement
- jbyte NativeInterface::callNonvirtualByteMethodV(jobject, jclass, jmethodID, va_list) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::callNonvirtualByteMethodV' is unimplemented!");
-  return 0;
+ jbyte NativeInterface::callNonvirtualByteMethodV(jobject const obj, jclass const clazz, jmethodID const mid, va_list list) const {
+  return ((JMethodID *)mid)->invoke<jbyte>(vm, (JClass *)clazz, obj, list);
  }
 
-//TODO implement
- jbyte NativeInterface::callNonvirtualByteMethodA(jobject, jclass, jmethodID, const jvalue *) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::callNonvirtualByteMethodA' is unimplemented!");
-  return 0;
+ jbyte NativeInterface::callNonvirtualByteMethodA(jobject const obj, jclass const clazz, jmethodID const mid, const jvalue * const args) const {
+  return ((JMethodID *)mid)->invoke<jbyte>(vm, (JClass *)clazz, obj, args);
  }
 
-//TODO implement
- jchar NativeInterface::callNonvirtualCharMethodV(jobject, jclass, jmethodID, va_list) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::callNonvirtualCharMethodV' is unimplemented!");
-  return 0;
+ jchar NativeInterface::callNonvirtualCharMethodV(jobject const obj, jclass const clazz, jmethodID const mid, va_list list) const {
+  return ((JMethodID *)mid)->invoke<jchar>(vm, (JClass *)clazz, obj, list);
  }
 
-//TODO implement
- jchar NativeInterface::callNonvirtualCharMethodA(jobject, jclass, jmethodID, const jvalue *) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::callNonvirtualCharMethodA' is unimplemented!");
-  return 0;
+ jchar NativeInterface::callNonvirtualCharMethodA(jobject const obj, jclass const clazz, jmethodID const mid, const jvalue * const args) const {
+  return ((JMethodID *)mid)->invoke<jchar>(vm, (JClass *)clazz, obj, args);
  }
 
-//TODO implement
- jshort NativeInterface::callNonvirtualShortMethodV(jobject, jclass, jmethodID, va_list) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::callNonvirtualShortMethodV' is unimplemented!");
-  return 0;
+ jshort NativeInterface::callNonvirtualShortMethodV(jobject const obj, jclass const clazz, jmethodID const mid, va_list list) const {
+  return ((JMethodID *)mid)->invoke<jshort>(vm, (JClass *)clazz, obj, list);
  }
 
-//TODO implement
- jshort NativeInterface::callNonvirtualShortMethodA(jobject, jclass, jmethodID, const jvalue *) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::callNonvirtualShortMethodA' is unimplemented!");
-  return 0;
+ jshort NativeInterface::callNonvirtualShortMethodA(jobject const obj, jclass const clazz, jmethodID const mid, const jvalue * const args) const {
+  return ((JMethodID *)mid)->invoke<jshort>(vm, (JClass *)clazz, obj, args);
  }
 
-//TODO implement
- jint NativeInterface::callNonvirtualIntMethodV(jobject, jclass, jmethodID, va_list) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::callNonvirtualIntMethodV' is unimplemented!");
-  return 0;
+ jint NativeInterface::callNonvirtualIntMethodV(jobject const obj, jclass const clazz, jmethodID const mid, va_list list) const {
+  return ((JMethodID *)mid)->invoke<jint>(vm, (JClass *)clazz, obj, list);
  }
 
-//TODO implement
- jint NativeInterface::callNonvirtualIntMethodA(jobject, jclass, jmethodID, const jvalue *) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::callNonvirtualIntMethodA' is unimplemented!");
-  return 0;
+ jint NativeInterface::callNonvirtualIntMethodA(jobject const obj, jclass const clazz, jmethodID const mid, const jvalue * const args) const {
+  return ((JMethodID *)mid)->invoke<jint>(vm, (JClass *)clazz, obj, args);
  }
 
-//TODO implement
- jlong NativeInterface::callNonvirtualLongMethodV(jobject, jclass, jmethodID, va_list) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::callNonvirtualLongMethodV' is unimplemented!");
-  return 0;
+ jlong NativeInterface::callNonvirtualLongMethodV(jobject const obj, jclass const clazz, jmethodID const mid, va_list list) const {
+  return ((JMethodID *)mid)->invoke<jlong>(vm, (JClass *)clazz, obj, list);
  }
 
-//TODO implement
- jlong NativeInterface::callNonvirtualLongMethodA(jobject, jclass, jmethodID, const jvalue *) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::callNonvirtualLongMethodA' is unimplemented!");
-  return 0;
+ jlong NativeInterface::callNonvirtualLongMethodA(jobject const obj, jclass const clazz, jmethodID const mid, const jvalue * const args) const {
+  return ((JMethodID *)mid)->invoke<jlong>(vm, (JClass *)clazz, obj, args);
  }
 
-//TODO implement
- jfloat NativeInterface::callNonvirtualFloatMethodV(jobject, jclass, jmethodID, va_list) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::callNonvirtualFloatMethodV' is unimplemented!");
-  return 0.0f;
+ jfloat NativeInterface::callNonvirtualFloatMethodV(jobject const obj, jclass const clazz, jmethodID const mid, va_list list) const {
+  return ((JMethodID *)mid)->invoke<jfloat>(vm, (JClass *)clazz, obj, list);
  }
 
-//TODO implement
- jfloat NativeInterface::callNonvirtualFloatMethodA(jobject, jclass, jmethodID, const jvalue *) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::callNonvirtualFloatMethodA' is unimplemented!");
-  return 0.0f;
+ jfloat NativeInterface::callNonvirtualFloatMethodA(jobject const obj, jclass const clazz, jmethodID const mid, const jvalue * const args) const {
+  return ((JMethodID *)mid)->invoke<jfloat>(vm, (JClass *)clazz, obj, args);
  }
 
-//TODO implement
- jdouble NativeInterface::callNonvirtualDoubleMethodV(jobject, jclass, jmethodID, va_list) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::callNonvirtualDoubleMethodV' is unimplemented!");
-  return 0.0;
+ jdouble NativeInterface::callNonvirtualDoubleMethodV(jobject const obj, jclass const clazz, jmethodID const mid, va_list list) const {
+  return ((JMethodID *)mid)->invoke<jdouble>(vm, (JClass *)clazz, obj, list);
  }
 
-//TODO implement
- jdouble NativeInterface::callNonvirtualDoubleMethodA(jobject, jclass, jmethodID, const jvalue *) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::callNonvirtualDoubleMethodA' is unimplemented!");
-  return 0.0;
+ jdouble NativeInterface::callNonvirtualDoubleMethodA(jobject const obj, jclass const clazz, jmethodID const mid, const jvalue * const args) const {
+  return ((JMethodID *)mid)->invoke<jdouble>(vm, (JClass *)clazz, obj, args);
  }
 
-//TODO implement
- void NativeInterface::callNonvirtualVoidMethodV(jobject, jclass, jmethodID, va_list) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::callNonvirtualVoidMethodV' is unimplemented!");
+ void NativeInterface::callNonvirtualVoidMethodV(jobject const obj, jclass const clazz, jmethodID const mid, va_list list) const {
+  ((JMethodID *)mid)->invoke<void>(vm, (JClass *)clazz, obj, list);
  }
 
-//TODO implement
- void NativeInterface::callNonvirtualVoidMethodA(jobject, jclass, jmethodID, const jvalue *) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::callNonvirtualVoidMethodA' is unimplemented!");
+ void NativeInterface::callNonvirtualVoidMethodA(jobject const obj, jclass const clazz, jmethodID const mid, const jvalue * const args) const {
+  ((JMethodID *)mid)->invoke<void>(vm, (JClass *)clazz, obj, args);
  }
 
-//TODO implement
- jmethodID NativeInterface::getStaticMethodID(jclass, const char *, const char *) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::getStaticMethodID' is unimplemented!");
-  return 0;
+ jmethodID NativeInterface::getStaticMethodID(jclass const clazz, const char * const name, const char * const sig) const {
+  return ((JClass *)clazz)->getMethod(sig, name);
  }
 
-//TODO implement
- jobject NativeInterface::callStaticObjectMethodV(jclass, jmethodID, va_list) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::callStaticObjectMethodV' is unimplemented!");
-  return nullptr;
+ jobject NativeInterface::callStaticObjectMethodV(jclass const clazz, jmethodID const mid, va_list list) const {
+  return ((JMethodID *)mid)->invoke<jobject>(vm, clazz, list);
  }
 
-//TODO implement
- jobject NativeInterface::callStaticObjectMethodA(jclass, jmethodID, const jvalue *) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::callStaticObjectMethodA' is unimplemented!");
-  return nullptr;
+ jobject NativeInterface::callStaticObjectMethodA(jclass const clazz, jmethodID const mid, const jvalue * const args) const {
+  return ((JMethodID *)mid)->invoke<jobject>(vm, clazz, args);
  }
 
-//TODO implement
- jboolean NativeInterface::callStaticBooleanMethodV(jclass, jmethodID, va_list) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::callStaticBooleanMethodV' is unimplemented!");
-  return 0;
+ jboolean NativeInterface::callStaticBooleanMethodV(jclass const clazz, jmethodID const mid, va_list list) const {
+  return ((JMethodID *)mid)->invoke<jboolean>(vm, clazz, list);
  }
 
-//TODO implement
- jboolean NativeInterface::callStaticBooleanMethodA(jclass, jmethodID, const jvalue *) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::callStaticBooleanMethodA' is unimplemented!");
-  return 0;
+ jboolean NativeInterface::callStaticBooleanMethodA(jclass const clazz, jmethodID const mid, const jvalue * const args) const {
+  return ((JMethodID *)mid)->invoke<jboolean>(vm, clazz, args);
  }
 
-//TODO implement
- jbyte NativeInterface::callStaticByteMethodV(jclass, jmethodID, va_list) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::callStaticByteMethodV' is unimplemented!");
-  return 0;
+ jbyte NativeInterface::callStaticByteMethodV(jclass const clazz, jmethodID const mid, va_list list) const {
+  return ((JMethodID *)mid)->invoke<jbyte>(vm, clazz, list);
  }
 
-//TODO implement
- jbyte NativeInterface::callStaticByteMethodA(jclass, jmethodID, const jvalue *) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::callStaticByteMethodA' is unimplemented!");
-  return 0;
+ jbyte NativeInterface::callStaticByteMethodA(jclass const clazz, jmethodID const mid, const jvalue * const args) const {
+  return ((JMethodID *)mid)->invoke<jbyte>(vm, clazz, args);
  }
 
-//TODO implement
- jchar NativeInterface::callStaticCharMethodV(jclass, jmethodID, va_list) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::callStaticCharMethodV' is unimplemented!");
-  return 0;
+ jchar NativeInterface::callStaticCharMethodV(jclass clazz, jmethodID const mid, va_list list) const {
+  return ((JMethodID *)mid)->invoke<jchar>(vm, clazz, list);
  }
 
-//TODO implement
- jchar NativeInterface::callStaticCharMethodA(jclass, jmethodID, const jvalue *) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::callStaticCharMethodA' is unimplemented!");
-  return 0;
+ jchar NativeInterface::callStaticCharMethodA(jclass const clazz, jmethodID const mid, const jvalue * const args) const {
+  return ((JMethodID *)mid)->invoke<jchar>(vm, clazz, args);
  }
 
-//TODO implement
- jshort NativeInterface::callStaticShortMethodV(jclass, jmethodID, va_list) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::callStaticShortMethodV' is unimplemented!");
-  return 0;
+ jshort NativeInterface::callStaticShortMethodV(jclass const clazz, jmethodID const mid, va_list list) const {
+  return ((JMethodID *)mid)->invoke<jshort>(vm, clazz, list);
  }
 
-//TODO implement
- jshort NativeInterface::callStaticShortMethodA(jclass, jmethodID, const jvalue *) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::callStaticShortMethodA' is unimplemented!");
-  return 0;
+ jshort NativeInterface::callStaticShortMethodA(jclass const clazz, jmethodID const mid, const jvalue * const args) const {
+  return ((JMethodID *)mid)->invoke<jshort>(vm, clazz, args);
  }
 
-//TODO implement
- jint NativeInterface::callStaticIntMethodV(jclass, jmethodID, va_list) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::callStaticIntMethodV' is unimplemented!");
-  return 0;
+ jint NativeInterface::callStaticIntMethodV(jclass const clazz, jmethodID const mid, va_list list) const {
+  return ((JMethodID *)mid)->invoke<jint>(vm, clazz, list);
  }
 
-//TODO implement
- jint NativeInterface::callStaticIntMethodA(jclass, jmethodID, const jvalue *) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::callStaticIntMethodA' is unimplemented!");
-  return 0;
+ jint NativeInterface::callStaticIntMethodA(jclass const clazz, jmethodID const mid, const jvalue * const args) const {
+  return ((JMethodID *)mid)->invoke<jint>(vm, clazz, args);
  }
 
-//TODO implement
- jlong NativeInterface::callStaticLongMethodV(jclass, jmethodID, va_list) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::callStaticLongMethodV' is unimplemented!");
-  return 0;
+ jlong NativeInterface::callStaticLongMethodV(jclass const clazz, jmethodID const mid, va_list list) const {
+  return ((JMethodID *)mid)->invoke<jlong>(vm, clazz, list);
  }
 
-//TODO implement
- jlong NativeInterface::callStaticLongMethodA(jclass, jmethodID, const jvalue *) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::callStaticLongMethodA' is unimplemented!");
-  return 0;
+ jlong NativeInterface::callStaticLongMethodA(jclass const clazz, jmethodID const mid, const jvalue * const args) const {
+  return ((JMethodID *)mid)->invoke<jlong>(vm, clazz, args);
  }
 
-//TODO implement
- jfloat NativeInterface::callStaticFloatMethodV(jclass, jmethodID, va_list) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::callStaticFloatMethodV' is unimplemented!");
-  return 0.0f;
+ jfloat NativeInterface::callStaticFloatMethodV(jclass const clazz, jmethodID const mid, va_list list) const {
+  return ((JMethodID *)mid)->invoke<jfloat>(vm, clazz, list);
  }
 
-//TODO implement
- jfloat NativeInterface::callStaticFloatMethodA(jclass, jmethodID, const jvalue *) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::callStaticFloatMethodA' is unimplemented!");
-  return 0.0f;
+ jfloat NativeInterface::callStaticFloatMethodA(jclass const clazz, jmethodID const mid, const jvalue * const args) const {
+  return ((JMethodID *)mid)->invoke<jfloat>(vm, clazz, args);
  }
 
-//TODO implement
- jdouble NativeInterface::callStaticDoubleMethodV(jclass, jmethodID, va_list) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::callStaticDoubleMethodV' is unimplemented!");
-  return 0.0;
+ jdouble NativeInterface::callStaticDoubleMethodV(jclass const clazz, jmethodID const mid, va_list list) const {
+  return ((JMethodID *)mid)->invoke<jdouble>(vm, clazz, list);
  }
 
-//TODO implement
- jdouble NativeInterface::callStaticDoubleMethodA(jclass, jmethodID, const jvalue *) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::callStaticDoubleMethodA' is unimplemented!");
-  return 0.0;
+ jdouble NativeInterface::callStaticDoubleMethodA(jclass const clazz, jmethodID const mid, const jvalue * const args) const {
+  return ((JMethodID *)mid)->invoke<jdouble>(vm, clazz, args);
  }
 
-//TODO implement
- void NativeInterface::callStaticVoidMethodV(jclass, jmethodID, va_list) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::callStaticVoidMethodV' is unimplemented!");
+ void NativeInterface::callStaticVoidMethodV(jclass const clazz, jmethodID const mid, va_list list) const {
+  ((JMethodID *)mid)->invoke<void>(vm, clazz, list);
  }
 
-//TODO implement
- void NativeInterface::callStaticVoidMethodA(jclass, jmethodID, const jvalue *) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::callStaticVoidMethodA' is unimplemented!");
+ void NativeInterface::callStaticVoidMethodA(jclass const clazz, jmethodID const mid, const jvalue * const args) const {
+  ((JMethodID *)mid)->invoke<void>(vm, clazz, args);
  }
 }

@@ -46,6 +46,15 @@ namespace FakeJni {
   delete[] uuid;
  }
 
+ const JClass * Jvm::findClass(const char * name) {
+  for (const auto& clazz : classes) {
+   if (strcmp(name, clazz->getName()) == 0) {
+    return clazz;
+   }
+  }
+  return nullptr;
+ }
+
  Library * Jvm::getLibrary(const std::string &path) {
   for (const auto &l : libraries) {
    if (l->path == path) {
