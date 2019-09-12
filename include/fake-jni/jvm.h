@@ -1061,7 +1061,7 @@ namespace FakeJni {
    ClassDescriptorElement(R (T::* const func)(Args...), const char * const name, uint32_t modifiers = JMethodID::PUBLIC) noexcept :
     type(MEMBER_FUNCTION),
     processHook([=](JClass * const clazz) -> bool {
-     return clazz->registerMethod(new JMethodID((void (AnyClass::* const)())func, name, modifiers));
+     return clazz->registerMethod(new JMethodID(func, name, modifiers));
     })
    {}
 
@@ -1070,7 +1070,7 @@ namespace FakeJni {
    ClassDescriptorElement(R (* const func)(Args...), const char * const name, uint32_t modifiers = JMethodID::PUBLIC) noexcept :
     type(NON_MEMBER_FUNCTION),
     processHook([=](JClass * const clazz) -> bool {
-     return clazz->registerMethod(new JMethodID((void (* const)())func, name, modifiers));
+     return clazz->registerMethod(new JMethodID(func, name, modifiers));
     })
    {}
 
@@ -1079,7 +1079,7 @@ namespace FakeJni {
    ClassDescriptorElement(Constructor<T, Args...> constructor, uint32_t modifiers = JMethodID::PUBLIC) noexcept :
     type(NON_MEMBER_FUNCTION),
     processHook([=](JClass * const clazz) -> bool {
-     return clazz->registerMethod(new JMethodID((void (* const)())decltype(constructor)::construct, modifiers));
+     return clazz->registerMethod(new JMethodID(decltype(constructor)::construct, modifiers));
     })
    {}
 
@@ -1088,7 +1088,7 @@ namespace FakeJni {
    ClassDescriptorElement(F (T::* const field), const char * const name, uint32_t modifiers = JFieldID::PUBLIC) noexcept :
     type(MEMBER_FIELD),
     processHook([=](JClass * const clazz) -> bool {
-     return clazz->registerField(new JFieldID((int AnyClass::* const)field, name, modifiers));
+     return clazz->registerField(new JFieldID(field, name, modifiers));
     })
    {}
 
@@ -1097,7 +1097,7 @@ namespace FakeJni {
    ClassDescriptorElement(F * const field, const char * const name, uint32_t modifiers = JFieldID::PUBLIC) noexcept :
     type(NON_MEMBER_FIELD),
     processHook([=](JClass * const clazz) -> bool {
-     return clazz->registerField(new JFieldID((void * const)field, name, modifiers));
+     return clazz->registerField(new JFieldID(field, name, modifiers));
     })
    {}
 

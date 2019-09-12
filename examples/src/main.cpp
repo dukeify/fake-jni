@@ -40,8 +40,8 @@ public:
   exampleField2("This constructor is not registered on the JVM!")
  {}
 
- JInt* exampleFunction() {
-  return &exampleField1;
+ JInt exampleFunction() {
+  return exampleField1;
  }
 
  JString* getMyString() {
