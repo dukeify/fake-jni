@@ -1,5 +1,7 @@
 #include "jni.h"
+
 #include "fake-jni/jvm.h"
+#include "fake-jni/array.h"
 
 //Allocate the descriptors for all default native arrays provided by fake-jni
 _DEFINE_NATIVE_ARRAY_DESCRIPTOR(FakeJni::JBooleanArray)

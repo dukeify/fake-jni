@@ -1,6 +1,8 @@
 #include <iostream>
 
 #include "fake-jni/jvm.h"
+#include "fake-jni/array.h"
+#include "fake-jni/string.h"
 
 using namespace FakeJni;
 
@@ -13,35 +15,30 @@ public:
  JInt exampleField1;
  JString exampleField2;
 
- //This constructor is visible to the JNI
+ //This constructor is visible to the JVM
  ExampleClass() :
   exampleField1(10),
   exampleField2("Hello World!")
  {}
 
- //This constructor is visible to the JNI
-// ExampleClass(JInt i, JString *str) :
-//  NativeObject<ExampleClass>(),
-//  exampleField1(i),
-//  exampleField2(*str)
-// {}
-
+ //This constructor is visible to the JVM
  ExampleClass(JInt, JString *) :
   exampleField1(0),
   exampleField2{""}
  {}
 
+ //This constructor is visible to the JVM
  ExampleClass(JDouble, ExampleClass *) :
   exampleField1(0),
   exampleField2{""}
  {}
 
-// //This constructor is not visible to the JNI
-// ExampleClass(JBooleanArray arr):
-//  NativeObject<ExampleClass>(),
-//  exampleField1(-1),
-//  exampleField2("This constructor has no linked delegate!")
-// {}
+ //This constructor is not visible to the JVM and thus no compile-time error is generated
+ //for the illegal constructor prototype
+ ExampleClass(JBooleanArray arr):
+  exampleField1(-1),
+  exampleField2("This constructor is not registered on the JVM!")
+ {}
 
  JInt* exampleFunction() {
   return &exampleField1;
@@ -64,7 +61,6 @@ static void outOfLineMemberFunction() {
  std::cout << "I am JVM static!" << std::endl;
 }
 
-//TODO #19 the JClass instance needs a reference to the NativeClass somehow
 BEGIN_NATIVE_DESCRIPTOR(ExampleClass)
  //Link member functions
  {&ExampleClass::exampleFunction, "exampleFunction"},
@@ -75,10 +71,9 @@ BEGIN_NATIVE_DESCRIPTOR(ExampleClass)
  {&exampleStaticFunction, "theSameFunctionButNotStaticAndWithADifferentName"},
  //Link static function
  {&outOfLineMemberFunction, "woahTheNameIsDifferentAgain"},
- //Register constructor delegates
+ //Register constructors
  {Constructor<ExampleClass> {}},
-// {Constructor<ExampleClass, JInt, JString*> {}}
- //TODO This also needs to be fixed, see TODO document
+ {Constructor<ExampleClass, JInt, JString*> {}},
  {Constructor<ExampleClass, JDouble, ExampleClass *> {}}
 END_NATIVE_DESCRIPTOR
 

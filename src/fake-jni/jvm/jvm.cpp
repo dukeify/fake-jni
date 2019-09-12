@@ -2,6 +2,8 @@
 
 #include "fake-jni/internal/util.h"
 #include "fake-jni/jvm.h"
+#include "fake-jni/array.h"
+#include "fake-jni/string.h"
 
 #include <algorithm>
 
@@ -31,7 +33,17 @@ namespace FakeJni {
   registerClass<JObject>();
   registerClass<JClass>();
   registerClass<JString>();
-  //TODO all arrays
+//  registerClass<JThrowable>();
+//  registerClass<JWeak>();
+  registerClass<JBooleanArray>();
+  registerClass<JByteArray>();
+  registerClass<JCharArray>();
+  registerClass<JShortArray>();
+  registerClass<JIntArray>();
+  registerClass<JFloatArray>();
+  registerClass<JLongArray>();
+  registerClass<JDoubleArray>();
+  registerClass<JObjectArray>();
  }
 
  const char * Jvm::generateJvmUuid() noexcept {

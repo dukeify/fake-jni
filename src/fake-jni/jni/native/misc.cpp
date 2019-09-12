@@ -29,6 +29,7 @@ namespace FakeJni {
  }
 
  jint NativeInterface::unregisterNatives(jclass const jclass) const {
+  bool success = true;
   auto * const clazz = (JClass *)jclass;
   const auto& methods = clazz->getMethods();
   std::vector<JMethodID *> toRemove;
@@ -39,9 +40,9 @@ namespace FakeJni {
    }
   }
   for (auto const mid : toRemove) {
-   clazz->unregisterMethod(mid);
+   success &= clazz->unregisterMethod(mid);
   }
-  return 0;
+  return success ? 0 : -1;
  }
 
 //TODO implement

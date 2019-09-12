@@ -1,4 +1,4 @@
-#include "fake-jni/jvm.h"
+#include "fake-jni/string.h"
 
 #include <cmath>
 #include <cstring>
@@ -25,5 +25,4 @@ namespace FakeJni {
  }
 }
 
-//TODO If we decide to link the JDK functions for java.lang.String, they would go here
 DEFINE_NATIVE_DESCRIPTOR(FakeJni::JString)END_NATIVE_DESCRIPTOR
