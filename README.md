@@ -1,11 +1,19 @@
 # fake-jni
 
-JNI and JVMTI without the Jvm
+JNI and JVMTI without the JVM
 
 ## Cloning
 ```sh
 git clone --depth 1 --recursive https://github.com/meme/fake-jni.git
 ```
+
+## Requirements
+fake-jni has no runtime dependencies :)
+
+## Build Requirements
+ - `CMake` >= 3.8
+ - `libdl`
+ - `make` or `ninja`
 
 ## Usage
 To include `fake-jni` in your CMake project, clone it into your project's root directory and add the following lines to your `CMakeLists.txt`:
@@ -13,14 +21,29 @@ To include `fake-jni` in your CMake project, clone it into your project's root d
 add_subdirectory(fake-jni)
 target_link_libraries(fake-jni)
 ```
-Then simply build as usual:
+
+## Building
+### Build Flags
+| Flag | Usage | Description |
+| :- | :- | :- |
+| `BUILD_FAKE_JNI_TESTS` | `=[ON OFF]` | Builds and runs the test suite |
+| `BUILD_FAKE_JNI_EXAMPLES` | `=[ON OFF]` | Builds and runs the examples |
+| `BUILD_FAKE_JNI_DEBUG` | `=[ON OFF]` | Builds a debug release |
+
+Simply build as usual:
 ```sh
 mkdir build
 cd build
-cmake ..
-make -j`nproc`
+env CC=clang CXX=clang++ cmake ..
+make -j
 ```
-To compile `fake-jni` with debugging enabled, add the make flag `-DFAKE_JNI_DEBUG`
+or optionally build with ninja:
+```sh
+mkdir build
+cd build
+env CC=clang CXX=clang++ cmake -GNinja ..
+ninja -j0
+```
 
 ## Goals
 - Binary compatability with JNI 1.8
