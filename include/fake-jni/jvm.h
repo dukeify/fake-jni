@@ -88,12 +88,26 @@ namespace FakeJni::_CX {\
  };\
 }
 
-#define DEFINE_NATIVE_DESCRIPTOR(clazz) \
-inline const FakeJni::JClass clazz::descriptor { FakeJni::_CX::JClassBreeder<clazz> {
+#define DUAL_OVERLOAD_RESOLVER(_1, _2, OVERLOAD, ...) OVERLOAD
 
-#define BEGIN_NATIVE_DESCRIPTOR(clazz) \
+#define _DEFINE_NATIVE_DESCRIPTOR_2(clazz, modifiers) \
+inline const FakeJni::JClass clazz::descriptor { modifiers, FakeJni::_CX::JClassBreeder<clazz> {
+
+#define _DEFINE_NATIVE_DESCRIPTOR_1(clazz) \
+_DEFINE_NATIVE_DESCRIPTOR_2(clazz, FakeJni::JClass::PUBLIC)
+
+#define DEFINE_NATIVE_DESCRIPTOR(...) \
+DUAL_OVERLOAD_RESOLVER(__VA_ARGS__, _DEFINE_NATIVE_DESCRIPTOR_2, _DEFINE_NATIVE_DESCRIPTOR_1, _) (__VA_ARGS__)
+
+#define _BEGIN_NATIVE_DESCRIPTOR_2(clazz, modifiers) \
 DECLARE_NATIVE_TYPE(clazz)\
-DEFINE_NATIVE_DESCRIPTOR(clazz)
+_DEFINE_NATIVE_DESCRIPTOR_2(clazz, modifiers)
+
+#define _BEGIN_NATIVE_DESCRIPTOR_1(clazz) \
+_BEGIN_NATIVE_DESCRIPTOR_2(clazz, FakeJni::JClass::PUBLIC)
+
+#define BEGIN_NATIVE_DESCRIPTOR(...) \
+DUAL_OVERLOAD_RESOLVER(__VA_ARGS__, _BEGIN_NATIVE_DESCRIPTOR_2, _BEGIN_NATIVE_DESCRIPTOR_1, _) (__VA_ARGS__)
 
 #define END_NATIVE_DESCRIPTOR }};
 
@@ -926,6 +940,8 @@ namespace FakeJni {
   //Internal fake-jni native class metadata
   DEFINE_CLASS_NAME("java/lang/Class")
 
+  const uint32_t modifiers;
+
   //Property associations
   AllocStack<JMethodID *> functions;
   AllocStack<JFieldID *> fields;
@@ -945,7 +961,7 @@ namespace FakeJni {
 
   explicit JClass(JClass &) = delete;
   template<typename T>
-  explicit JClass(_CX::JClassBreeder<T>) noexcept;
+  explicit JClass(Modifiers modifiers, _CX::JClassBreeder<T>) noexcept;
   virtual ~JClass() = default;
 
   bool registerMethod(JMethodID * mid) const noexcept;
@@ -1382,11 +1398,12 @@ namespace FakeJni {
 
  //JClass template members
  template<typename T>
- JClass::JClass(FakeJni::_CX::JClassBreeder<T> breeder) noexcept :
+ JClass::JClass(Modifiers modifiers, _CX::JClassBreeder<T> breeder) noexcept :
   JObject(),
   constructV(decltype(breeder)::template constructorPredicate<va_list>()),
   constructA(decltype(breeder)::template constructorPredicate<const jvalue *>()),
   className(T::name),
+  modifiers(modifiers),
   functions{true},
   fields{true}
  {
