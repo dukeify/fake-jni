@@ -1277,8 +1277,15 @@ namespace FakeJni {
    __is_base_of(JObject, T),
    "Only native classes may be passed to registerClass!"
   );
-  JClass *clazz = const_cast<JClass *>(&T::descriptor);
-  if (std::find(classes.begin(), classes.end(), clazz) != classes.end()) {
+  auto clazz = const_cast<JClass *>(&T::descriptor);
+  bool registered = std::find(classes.begin(), classes.end(), clazz) != classes.end();
+  for (const auto c : classes) {
+   if (strcmp(c->getName(), clazz->getName()) == 0) {
+    registered |= true;
+    break;
+   }
+  }
+  if (registered) {
 #ifdef FAKE_JNI_DEBUG
    fprintf(
     log,

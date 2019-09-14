@@ -8,8 +8,13 @@ namespace FakeJni {
  bool JClass::registerMethod(JMethodID * const mid) const noexcept {
   auto functions_ptr = const_cast<AllocStack<JMethodID *> *>(&functions);
   for (uint32_t i = 0; i < functions_ptr->getSize(); i++) {
-   if (*(*functions_ptr)[i] == *mid) {
-    return false;
+   const auto reg_mid = (*functions_ptr)[i];
+   if (*reg_mid == *mid) {
+    if (strcmp(reg_mid->getName(), mid->getName()) == 0) {
+     if (strcmp(reg_mid->getSignature(), mid->getSignature()) == 0) {
+      return false;
+     }
+    }
    }
   }
   functions_ptr->pushAlloc(mid);
@@ -47,8 +52,13 @@ namespace FakeJni {
  bool JClass::registerField(JFieldID * const fid) const noexcept {
   auto fields_ptr = const_cast<AllocStack<JFieldID *> *>(&fields);
   for (uint32_t i = 0; i < fields_ptr->getSize(); i++) {
-   if (*(*fields_ptr)[i] == *fid) {
-    return false;
+   const auto reg_fid = (*fields_ptr)[i];
+   if (*reg_fid == *fid) {
+    if (strcmp(reg_fid->getName(), fid->getName()) == 0) {
+     if (strcmp(reg_fid->getSignature(), fid->getSignature()) == 0) {
+      return false;
+     }
+    }
    }
   }
   fields_ptr->pushAlloc(fid);
