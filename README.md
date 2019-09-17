@@ -24,11 +24,14 @@ target_link_libraries(fake-jni)
 
 ## Building
 ### Build Flags
-| Flag | Usage | Description |
-| :- | :- | :- |
-| `BUILD_FAKE_JNI_TESTS` | `=[ON OFF]` | Builds and runs the test suite |
-| `BUILD_FAKE_JNI_EXAMPLES` | `=[ON OFF]` | Builds and runs the examples |
-| `BUILD_FAKE_JNI_DEBUG` | `=[ON OFF]` | Builds a debug release |
+| Flag | Usage | Default | Description |
+| :- | :- | :- | :- |
+| `BUILD_FAKE_JNI_TESTS` | `=[ON OFF]` | `ON` | Builds and runs the test suite |
+| `BUILD_FAKE_JNI_EXAMPLES` | `=[ON OFF]` | `ON` | Builds and runs the examples |
+| `BUILD_FAKE_JNI_DEBUG` | `=[ON OFF]` | `OFF` | Builds a debug release |
+| `BUILD_FAKE_JNI_ASAN` | `=[ON OFF]` | `OFF` | Builds with ASAN |
+| `FFI_CC` | `={DESIRED_C_COMPILER}` | `${CMAKE_C_COMPILER}` | Set the C compiler for `libffi` |
+| `FFI_CXX` | `={DESIRED_CXX_COMPILER}` | `${CMAKE_CXX_COMPILER}` | Set the C++ compiler for `libffi` | 
 
 Simply build as usual:
 ```sh
@@ -44,6 +47,16 @@ cd build
 env CC=clang CXX=clang++ cmake -GNinja ..
 ninja -j0
 ```
+
+### Cross Compiling
+To compile for another host you must set the following environment variables:
+ - `CMAKE_CXX_COMPILER_TARGET` - The target architecture
+ - `CC` - The C cross-compiler
+ - `CXX` - The C++ cross-compiler
+ 
+Optionally, you may also set the following variables:
+ - `FFI_CC` - The C cross-compiler for `libffi`
+ - `FFI_CXX` - The C++ cross-compiler for `libffi`
 
 ## Goals
 - Binary compatability with JNI 1.8

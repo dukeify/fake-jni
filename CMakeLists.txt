@@ -15,7 +15,6 @@ if(${BUILD_FAKE_JNI_DEBUG})
         -fstandalone-debug\
         -O0\
         -fno-inline\
-        -fsanitize=address\
         -DFAKE_JNI_DEBUG\
     ")
 else()
@@ -23,13 +22,25 @@ else()
     set(compiler_flags "-O3")
 endif()
 
-set(CMAKE_CXX_FLAGS ${compiler_flags})
-set(CMAKE_C_FLAGS ${compiler_flags})
+if(${BUILD_FAKE_JNI_ASAN})
+    set(compiler_flgs ${compiler_flags} -fsanitize=address)
+endif()
+
+set(CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} ${compiler_flags})
+set(CMAKE_C_FLAGS ${CMAKE_C_FLAGS} ${compiler_flags})
+
+if(NOT ${FFI_CC})
+    set(FFI_CC ${CMAKE_C_COMPILER})
+endif()
+
+if(NOT ${FFI_CXX})
+    set(FFI_CXX ${CMAKE_CXX_COMPILER})
+endif()
 
 ExternalProject_Add(ffi
-    SOURCE_DIR ${CMAKE_SOURCE_DIR}/libffi
+    SOURCE_DIR ${PROJECT_SOURCE_DIR}/libffi
     UPDATE_COMMAND ""
-    CONFIGURE_COMMAND <SOURCE_DIR>/autogen.sh && <SOURCE_DIR>/configure --disable-shared --disable-builddir --prefix=<INSTALL_DIR>
+    CONFIGURE_COMMAND <SOURCE_DIR>/autogen.sh && <SOURCE_DIR>/configure --disable-shared --disable-builddir --prefix=<INSTALL_DIR> --host=${CMAKE_CXX_COMPILER_TARGET} CC=${FFI_CC} CXX=${FFI_CXX}
     BUILD_IN_SOURCE 1
     BUILD_BYPRODUCTS <INSTALL_DIR>/lib/libffi.a
 )

@@ -926,15 +926,13 @@ namespace FakeJni {
   };
  }
 
- class JClass final : public JObject, public _jclass {
+ class JClass : public JObject, public _jclass {
  private:
   JObject
    * (* const constructV)(JavaVM *, const char *, va_list),
    * (* const constructA)(JavaVM *, const char *, const jvalue *);
 
   const char * const className;
-
-  //TODO modifiers
 
  public:
   //Internal fake-jni native class metadata
@@ -961,7 +959,7 @@ namespace FakeJni {
 
   explicit JClass(JClass &) = delete;
   template<typename T>
-  explicit JClass(Modifiers modifiers, _CX::JClassBreeder<T>) noexcept;
+  explicit JClass(Modifiers modifiers, _CX::JClassBreeder<T> breeder) noexcept;
   virtual ~JClass() = default;
 
   bool registerMethod(JMethodID * mid) const noexcept;
@@ -1049,8 +1047,8 @@ namespace FakeJni {
   //Needs to be const to allow attaching agents / JNI modules at runtime
   virtual Library * attachLibrary(
    const std::string &rpath,
-   const std::string &options,
-   LibraryOptions loptions
+   const std::string &options = "",
+   LibraryOptions loptions = {&dlopen, &dlsym, &dlclose}
   ) const;
   virtual bool removeLibrary(const std::string& path, const std::string& options) const;
   virtual void start();
@@ -1333,6 +1331,7 @@ namespace FakeJni {
   }
 
   //Class members
+  //TODO convert to template function breeder rather than lambda predicate
   template<typename T>
   template<typename A>
   constexpr typename JClassBreeder<T, nullptr>::template constructor_func_t<A> JClassBreeder<T, true>::constructorPredicate() noexcept {

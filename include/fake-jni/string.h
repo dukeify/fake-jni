@@ -15,11 +15,14 @@ namespace FakeJni {
 
   static constexpr JString * const EMPTY = const_cast<JString *>(&EMPTY_STR);
 
-  JString(const JString &str);
+  JString();
+  JString(const JString & str);
   JString(JInt size);
   JString(const char * str);
 
-  bool operator==(const JString& str) const;
+  bool operator==(const JString & str) const;
+  bool operator==(const char * str) const;
+  bool operator==(const std::string & str) const;
  };
 }
 
