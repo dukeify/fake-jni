@@ -24,6 +24,9 @@
 #include <cstdint>
 #include <cstring>
 #include <functional>
+#include <map>
+#include <mutex>
+#include <shared_mutex>
 
 //Internal JFieldID macros
 #define _ASSERT_FIELD_JNI_COMPLIANCE \
@@ -1014,7 +1017,9 @@ namespace FakeJni {
   std::vector<Library *> libraries;
   std::vector<JClass *> classes;
   //TODO if classloaders are ever implemented, this property will be handled by the ClassLoader model
-  AllocStack<JObject *> instances{true};
+//  AllocStack<JObject *> instances{true};
+  std::map<const JClass *, AllocStack<JObject *>> instances;
+  mutable std::shared_mutex instances_mutex;
 
  protected:
   static AllocStack<Jvm *> vms;
@@ -1049,7 +1054,9 @@ namespace FakeJni {
   virtual void setJvmtiEnv(const JvmtiEnv& env);
   virtual JvmtiEnv& getJvmtiEnv() const;
 
-  virtual const AllocStack<JObject *>& getInstances() const;
+  const AllocStack<JObject *>& operator[](const JClass* clazz) const;
+  AllocStack<JObject *>& operator[](const JClass* clazz);
+  void pushInstance(JObject *inst);
 
   inline virtual bool isRunning() const {
    return running;
@@ -1331,10 +1338,12 @@ namespace FakeJni {
   );
   auto clazz = const_cast<JClass *>(&T::descriptor);
   bool registered = std::find(classes.begin(), classes.end(), clazz) != classes.end();
-  for (const auto c : classes) {
-   if (strcmp(c->getName(), clazz->getName()) == 0) {
-    registered |= true;
-    break;
+  if (!registered) {
+   for (const auto c : classes) {
+    if (strcmp(c->getName(), clazz->getName()) == 0) {
+     registered |= true;
+     break;
+    }
    }
   }
   if (registered) {
@@ -1348,6 +1357,8 @@ namespace FakeJni {
 #endif
    return false;
   } else {
+   std::unique_lock lock(instances_mutex);
+   instances[clazz].setDeallocate(true);
    classes.push_back(clazz);
   }
   return true;
@@ -1402,7 +1413,8 @@ namespace FakeJni {
       } else {
        baseInst = (JObject *)inst;
       }
-      return const_cast<AllocStack<JObject *>&>(jvm->getInstances()).pushAlloc(JClassBreeder<T>::deallocator, baseInst);
+//      return const_cast<AllocStack<JObject *>&>(jvm->getInstances()).pushAlloc(JClassBreeder<T>::deallocator, baseInst);
+      return (*jvm)[&descriptor].pushAlloc(JClassBreeder<T>::deallocator, baseInst);
      }
     }
     return nullptr;

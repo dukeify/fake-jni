@@ -6,6 +6,8 @@
 #include "fake-jni/string.h"
 
 #include <algorithm>
+#include <mutex>
+#include <shared_mutex>
 
 //Non-template members of Jvm
 namespace FakeJni {
@@ -134,8 +136,23 @@ namespace FakeJni {
   return jvmtiEnv;
  }
 
- inline const AllocStack<JObject *>& Jvm::getInstances() const {
-  return instances;
+// inline const AllocStack<JObject *>& Jvm::getInstances() const {
+//  return instances;
+// }
+
+ AllocStack<JObject *>& Jvm::operator[](const JClass *clazz) {
+  std::unique_lock lock(instances_mutex);
+  return instances[clazz];
+ }
+
+ const AllocStack<JObject *>& Jvm::operator[](const JClass *clazz) const {
+  std::shared_lock lock(instances_mutex);
+  auto& vm = const_cast<Jvm&>(*this);
+  return (vm.instances)[clazz];
+ }
+
+ void Jvm::pushInstance(JObject *inst) {
+  (*this)[&inst->getClass()].pushAlloc(inst);
  }
 
  Jvm::~Jvm() {

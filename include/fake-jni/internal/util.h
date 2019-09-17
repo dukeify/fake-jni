@@ -47,10 +47,9 @@ namespace FakeJni {
    **next = nullptr;
   uint32_t size = 0;
   std::mutex m;
+  bool dealloc;
 
  public:
-  const bool dealloc;
-
   AllocStack(bool dealloc = false) noexcept : dealloc(dealloc) {}
 
   ~AllocStack() {
@@ -60,9 +59,10 @@ namespace FakeJni {
      const auto deallocator = elem->entry.dealloc;
      if (deallocator) {
       deallocator(elem->entry.t);
-     } else {
-      delete elem->entry.t;
      }
+//     else {
+//      delete elem->entry.t;
+//     }
     }
     List<Entry> *copy = elem;
     elem = copy->next;
@@ -173,6 +173,14 @@ namespace FakeJni {
     }
    }
    return false;
+  }
+
+  bool deallocates() {
+   return dealloc;
+  }
+
+  void setDeallocate(bool dealloc) {
+   this->dealloc = dealloc;
   }
  };
 }
