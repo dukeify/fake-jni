@@ -57,7 +57,7 @@ namespace _CX {\
 
 #define _DEFINE_NATIVE_ARRAY_DESCRIPTOR(fake_object) \
 DEFINE_NATIVE_DESCRIPTOR(fake_object) \
- {&fake_object::length, "length"}\
+ {Field<&fake_object::length> {}, "length"}\
 END_NATIVE_DESCRIPTOR
 
 namespace FakeJni {

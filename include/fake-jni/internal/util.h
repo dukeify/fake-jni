@@ -165,5 +165,14 @@ namespace FakeJni {
   uint32_t getSize() const noexcept {
    return size;
   }
+
+  bool contains(const T& t) const noexcept {
+   for (unsigned int i = 0; i < getSize(); i++) {
+    if ((*this)[i] == t) {
+     return true;
+    }
+   }
+   return false;
+  }
  };
 }

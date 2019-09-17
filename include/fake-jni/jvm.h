@@ -62,7 +62,9 @@ namespace FakeJni::_CX {\
  };\
 }
 
-#define DEFINE_CLASS_NAME(str) \
+#define DUAL_OVERLOAD_RESOLVER(_1, _2, OVERLOAD, ...) OVERLOAD
+
+#define _DEFINE_CLASS_NAME_1(str) \
 static constexpr const char name[] = str;\
 static const JClass descriptor;\
 inline static const JClass * getDescriptor() noexcept {\
@@ -71,6 +73,13 @@ inline static const JClass * getDescriptor() noexcept {\
 virtual const JClass & getClass() const noexcept override {\
  return descriptor;\
 }
+
+#define _DEFINE_CLASS_NAME_2(str, baseClass) \
+_DEFINE_CLASS_NAME_1(str)\
+static constexpr const auto& base = baseClass::descriptor;
+
+#define DEFINE_CLASS_NAME(...) \
+DUAL_OVERLOAD_RESOLVER(__VA_ARGS__, _DEFINE_CLASS_NAME_2, _DEFINE_CLASS_NAME_1, ...) (__VA_ARGS__)
 
 #define DECLARE_NATIVE_TYPE(clazz) \
 namespace FakeJni::_CX {\
@@ -87,8 +96,6 @@ namespace FakeJni::_CX {\
   static constexpr const bool hasComplexHierarchy = CastDefined<clazz>::value;\
  };\
 }
-
-#define DUAL_OVERLOAD_RESOLVER(_1, _2, OVERLOAD, ...) OVERLOAD
 
 #define _DEFINE_NATIVE_DESCRIPTOR_2(clazz, modifiers) \
 inline const FakeJni::JClass clazz::descriptor { modifiers, FakeJni::_CX::JClassBreeder<clazz> {
@@ -832,6 +839,9 @@ namespace FakeJni {
   static /*const*/ char * verifySignature(const char * sig);
   static ffi_cif * getFfiPrototype(const char * signature, const char * name);
 
+  template<typename R, typename A>
+  R internalInvoke(JavaVM * vm, void * clazzOrInst, A args) const;
+
  public:
   enum Modifiers : uint32_t {
    PUBLIC = 1,
@@ -876,12 +886,12 @@ namespace FakeJni {
    }
   }
 
-  bool operator ==(JMethodID& mid) const noexcept;
+  bool operator ==(const JMethodID& mid) const noexcept;
   bool operator ==(JNINativeMethod*& mid) const;
   template<typename R, typename A>
   R invoke(JavaVM * vm, void * clazzOrInst, A args) const;
-  template<typename R, typename T>
-  R invoke(JavaVM * const vm, JClass * const clazz, void * const inst, T args) const;
+  template<typename R, typename A>
+  R invoke(JavaVM * const vm, JClass * const clazz, void * const inst, A args) const;
  };
 
  //Template glue code for native class registration
@@ -900,6 +910,12 @@ namespace FakeJni {
    static constexpr const auto deallocator = &_CX::Deallocator<T>::deallocate;
 
    const std::initializer_list<ClassDescriptorElement> descriptorElements;
+   const JClass& parent = []() constexpr noexcept -> const JClass& {
+    if constexpr(_CX::BaseDefined<T>::value) {
+     return T::base;
+    }
+    return JObject::descriptor;
+   }();
 
    constexpr JClassBreeder(decltype(descriptorElements) descriptorElements) noexcept;
    constexpr JClassBreeder() noexcept = default;
@@ -939,6 +955,7 @@ namespace FakeJni {
   DEFINE_CLASS_NAME("java/lang/Class")
 
   const uint32_t modifiers;
+  const JClass& parent;
 
   //Property associations
   AllocStack<JMethodID *> functions;
@@ -959,7 +976,7 @@ namespace FakeJni {
 
   explicit JClass(JClass &) = delete;
   template<typename T>
-  explicit JClass(Modifiers modifiers, _CX::JClassBreeder<T> breeder) noexcept;
+  explicit JClass(uint32_t modifiers, _CX::JClassBreeder<T> breeder) noexcept;
   virtual ~JClass() = default;
 
   bool registerMethod(JMethodID * mid) const noexcept;
@@ -1059,59 +1076,29 @@ namespace FakeJni {
  namespace _CX {
   class ClassDescriptorElement {
   public:
-   enum DescriptorType {
-    MEMBER_FUNCTION,
-    NON_MEMBER_FUNCTION,
-    MEMBER_FIELD,
-    NON_MEMBER_FIELD
-   };
-
-   const DescriptorType type;
-
    const std::function<bool (JClass * const)> processHook;
 
-   //Constructor for member functions
-   template<typename R, typename T, typename... Args>
-   ClassDescriptorElement(R (T::* const func)(Args...), const char * const name, uint32_t modifiers = JMethodID::PUBLIC) noexcept :
-    type(MEMBER_FUNCTION),
+   //Constructor for functions
+   template<auto F>
+   constexpr ClassDescriptorElement(Function<F> function, const char * const name, uint32_t modifiers = JMethodID::PUBLIC) noexcept :
     processHook([=](JClass * const clazz) -> bool {
-     return clazz->registerMethod(new JMethodID(func, name, modifiers));
+     return clazz->registerMethod(new JMethodID(function.function, name, modifiers));
     })
    {}
 
-   //Constructor for non-member functions
-   template<typename R, typename... Args>
-   ClassDescriptorElement(R (* const func)(Args...), const char * const name, uint32_t modifiers = JMethodID::PUBLIC) noexcept :
-    type(NON_MEMBER_FUNCTION),
+   //Constructor for fields
+   template<auto F>
+   constexpr ClassDescriptorElement(Field<F> field, const char * const name, uint32_t modifiers = JFieldID::PUBLIC) noexcept :
     processHook([=](JClass * const clazz) -> bool {
-     return clazz->registerMethod(new JMethodID(func, name, modifiers));
+     return clazz->registerField(new JFieldID(field.field, name, modifiers));
     })
    {}
 
    //Constructor for constructors
    template<typename T, typename... Args>
-   ClassDescriptorElement(Constructor<T, Args...> constructor, uint32_t modifiers = JMethodID::PUBLIC) noexcept :
-    type(NON_MEMBER_FUNCTION),
+   constexpr ClassDescriptorElement(Constructor<T, Args...> constructor, uint32_t modifiers = JMethodID::PUBLIC) noexcept :
     processHook([=](JClass * const clazz) -> bool {
      return clazz->registerMethod(new JMethodID(decltype(constructor)::construct, modifiers));
-    })
-   {}
-
-   //Constructor for member fields
-   template<typename F, typename T>
-   ClassDescriptorElement(F (T::* const field), const char * const name, uint32_t modifiers = JFieldID::PUBLIC) noexcept :
-    type(MEMBER_FIELD),
-    processHook([=](JClass * const clazz) -> bool {
-     return clazz->registerField(new JFieldID(field, name, modifiers));
-    })
-   {}
-
-   //Constructor for non-member fields
-   template<typename F>
-   ClassDescriptorElement(F * const field, const char * const name, uint32_t modifiers = JFieldID::PUBLIC) noexcept :
-    type(NON_MEMBER_FIELD),
-    processHook([=](JClass * const clazz) -> bool {
-     return clazz->registerField(new JFieldID(field, name, modifiers));
     })
    {}
 
@@ -1119,6 +1106,23 @@ namespace FakeJni {
    inline bool process(JClass * const clazz) const {
     return processHook(clazz);
    }
+  };
+
+  template<typename T>
+  class BaseDefined<T, CX::void_t<decltype(T::base)>> : public CX::true_type {
+  private:
+   struct BaseTypeAssertion {
+    constexpr BaseTypeAssertion() noexcept {
+     static_assert(
+      CX::IsSame<JClass, typename CX::ComponentTypeResolver<decltype(T::base)>::type>::value,
+      "The member field 'base' is reserved for internal fake-jni usage!"
+     );
+    }
+   };
+
+   //Will be constructed if T::base is defined
+   //Static assertion will fail if base is not a compliant type
+   static constexpr const BaseTypeAssertion assert;
   };
  }
 }
@@ -1222,24 +1226,81 @@ namespace FakeJni {
  }
 
  //Performs virtual dispatch
- template<typename R, typename T>
- R JMethodID::invoke(JavaVM * const vm, void * const clazzOrInst, T args) const {
+ template<typename R, typename A>
+ R JMethodID::invoke(JavaVM * const vm, void * const clazzOrInst, A args) const {
+  auto* clazz = &((JObject *)clazzOrInst)->getClass();
+  if (strcmp(clazz->getName(), "java/lang/Class") == 0) {
+   //Static method, no virtual dispatch
+   if (type == MEMBER_FUNC) {
+    throw std::runtime_error(
+     "FATAL: Tried to invoke '"
+      + std::string(name)
+      + signature
+      + "' as a static method!"
+    );
+   }
+   return internalInvoke<R, A>(vm, clazzOrInst, args);
+  } else {
+   //Member method, virtual dispatch
+   while (clazz != JObject::getDescriptor()) {
+    const auto& methods = clazz->getMethods();
+    for (unsigned int i = 0; i < methods.getSize(); i++) {
+     const auto method = methods[i];
+     if (strcmp(name, method->getName()) == 0) {
+      if (strcmp(signature, method->getSignature()) == 0) {
+       return method->internalInvoke<R, A>(vm, clazzOrInst, args);
+      }
+     }
+    }
+    clazz = &clazz->parent;
+   }
+   throw std::runtime_error(
+    "FATAL: Could not perform virtual function invocation for '"
+    + std::string(name)
+    + signature
+    + "' since no classes in the inheritance hierarchy of '"
+    + clazz->getName()
+    + "'register a matching overload!"
+   );
+  }
+ }
+
+ //Does not perform virtual dispatch
+ template<typename R, typename A>
+ R JMethodID::invoke(JavaVM * const vm, JClass * const clazz, void * const inst, A args) const {
+  const auto mid = clazz->getMethod(signature, name);
+  if (!mid) {
+   throw std::runtime_error(
+    "FATAL: Class '"
+     + std::string(clazz->getName())
+     + "' does not contain a method matching the signature: '"
+     + name
+     + signature
+     + "'!");
+  }
+  return mid->internalInvoke<R, A>(vm, inst, args);
+ }
+
+ template<typename R, typename A>
+ R JMethodID::internalInvoke(JavaVM * vm, void * clazzOrInst, A args) const {
+  using arg_t = typename CX::ComponentTypeResolver<A>::type;
   switch (type) {
    case MEMBER_FUNC:
-    return ((R (*)(void * const, member_func_t, T))getFunctionProxy<T>())(clazzOrInst, memberFunc, args);
+    return ((R (*)(void * const, member_func_t, A))getFunctionProxy<A>())(clazzOrInst, memberFunc, args);
    case STATIC_FUNC:
-    return ((R (*)(static_func_t, T))getFunctionProxy<T>())(staticFunc, args);
+    return ((R (*)(static_func_t, A))getFunctionProxy<A>())(staticFunc, args);
    case REGISTER_NATIVES_FUNC: {
     const auto argc = descriptor->nargs - 2;
     void * values[descriptor->nargs];
     values[0] = &((Jvm *)vm)->getJniEnv();
     values[1] = clazzOrInst;
     //set up arguments
-    const auto resolverOffset = CX::IsSame<T, jvalue *>::value ? argc : 0;
+    const auto resolverOffset = CX::IsSame<arg_t, jvalue>::value ? argc : 0;
     for (unsigned int i = 0; i < argc; i++) {
-     values[i + 2] = ((void * (*)(T))resolvers[i + resolverOffset])(args);
+     values[i + 2] = ((void * (*)(A))resolvers[i + resolverOffset])(args);
     }
-    if constexpr (CX::IsSame<T, va_list>::value) {
+    //Would be CX::IsSame<T, va_list> but this comparison is always false
+    if constexpr (!CX::IsSame<arg_t, jvalue>::value) {
      va_end(args);
     }
     if constexpr(CX::IsSame<R, void>::value) {
@@ -1259,13 +1320,6 @@ namespace FakeJni {
     }
    }
   }
- }
-
- //TODO
- //Does not perform virtual dispatch
- template<typename R, typename T>
- R JMethodID::invoke(JavaVM * const vm, JClass * const clazz, void * const inst, T args) const {
-  throw std::runtime_error("FATAL: Nonvirtual JNI function invocation is not currently supported!");
  }
 
  //Jvm template members
@@ -1404,12 +1458,13 @@ namespace FakeJni {
 
  //JClass template members
  template<typename T>
- JClass::JClass(Modifiers modifiers, _CX::JClassBreeder<T> breeder) noexcept :
+ JClass::JClass(uint32_t modifiers, _CX::JClassBreeder<T> breeder) noexcept :
   JObject(),
   constructV(decltype(breeder)::template constructorPredicate<va_list>()),
   constructA(decltype(breeder)::template constructorPredicate<const jvalue *>()),
   className(T::name),
   modifiers(modifiers),
+  parent(breeder.parent),
   functions{true},
   fields{true}
  {

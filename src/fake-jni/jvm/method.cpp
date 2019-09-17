@@ -180,7 +180,7 @@ namespace FakeJni {
   }
  }
 
- bool JMethodID::operator ==(JMethodID & mid) const noexcept {
+ bool JMethodID::operator ==(const JMethodID & mid) const noexcept {
   return (name == mid.name)
    && (strcmp(signature, mid.signature) == 0)
    && (type == mid.type)

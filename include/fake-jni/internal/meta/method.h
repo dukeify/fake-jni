@@ -302,55 +302,5 @@ namespace FakeJni {
    inline static constexpr const auto signature =
     CX::Concat<SignatureGenerator<false, R, Args...>::prefix, EvaluateFold<Args...>::fold, suffix>::result;
   };
-
-  //Invocation function generators
-  //TODO REMOVE THIS
-  class JClass;
-
-  //TODO move func_t, accessor_t and getInvokeFunc<T> here
-  // have to change FunctionAccessor so that it takes just the function as the argument
-  template<typename F>
-  struct InvocationGenerator;
-
-  template<typename T, typename R, typename... Args>
-  struct InvocationGenerator<R (T::*)(Args...)> {
-   using func_t = R (T::*)(Args...);
-   using accessor_t = FunctionAccessor<sizeof...(Args), func_t>;
-
-   template<typename A>
-   [[gnu::always_inline]]
-   static constexpr auto& getInvokeFunc() noexcept {
-    return accessor_t::template invokeV<>;
-   }
-
-   template<>
-   [[gnu::always_inline]]
-   static constexpr auto& getInvokeFunc<jvalue *>() noexcept {
-    return accessor_t::template invokeA<>;
-   }
-
-   template<typename A>
-   [[gnu::always_inline]]
-   static inline R virtualInvoke(JavaVM * const vm, void * const clazzOrInst, A args) {
-    return getInvokeFunc<A>()(vm, clazzOrInst, args);
-   }
-
-   template<typename A>
-   [[gnu::always_inline]]
-   static inline R nonVirtualInvoke(JavaVM * const vm, JClass * const clazz, void * const inst, A args) {
-    //TODO perform inheritance checks before slicing
-    if (false) {
-     throw std::runtime_error(
-      "FATAL: Cannot invoke non-virtual function on type '"
-       + clazz->getName()
-       + "' for an object of type '"
-       + ((JObject *)inst)->getClass()->getName()
-       + "' which are not related by inheritance!"
-     );
-    }
-    T t = *(T*)inst;
-    return getInvokeFunc<A>()(vm, clazz, (void *)&t, args);
-   }
-  };
  }
 }

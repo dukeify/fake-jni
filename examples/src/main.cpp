@@ -52,7 +52,7 @@ public:
   std::cout << "From ExampleClass: " << d << std::endl;
  }
 
- static void imNotLinkedToAnything(const char *str) {
+ static void imNotLinkedToAnything(const char * str) {
   std::cout << str << std::endl;
  }
 };
@@ -63,14 +63,14 @@ static void outOfLineMemberFunction() {
 
 BEGIN_NATIVE_DESCRIPTOR(ExampleClass)
  //Link member functions
- {&ExampleClass::exampleFunction, "exampleFunction"},
- {&ExampleClass::getMyString, "getMyString"},
+ {Function<&ExampleClass::exampleFunction> {}, "exampleFunction"},
+ {Function<&ExampleClass::getMyString> {}, "getMyString"},
  //Link static function
- {&exampleStaticFunction, "exampleStaticFunction", JMethodID::STATIC},
+ {Function<&exampleStaticFunction> {}, "exampleStaticFunction", JMethodID::STATIC},
  //Link member function
- {&exampleStaticFunction, "theSameFunctionButNotStaticAndWithADifferentName"},
+ {Function<&exampleStaticFunction> {}, "theSameFunctionButNotStaticAndWithADifferentName"},
  //Link static function
- {&outOfLineMemberFunction, "woahTheNameIsDifferentAgain"},
+ {Function<&outOfLineMemberFunction> {}, "woahTheNameIsDifferentAgain"},
  //Register constructors
  {Constructor<ExampleClass> {}},
  {Constructor<ExampleClass, JInt, JString*> {}},
@@ -85,16 +85,17 @@ int main(int argc, char **argv) {
  //Create a shiny new fake JVM instance
  Jvm vm;
 
- //Register ExampleClass on the VM)
+ //Register ExampleClass on the JVM instance
  vm.registerClass<ExampleClass>();
 
  //Attach this binary as a native library
- //no path to current binary, no options, custom library dl functions
- vm.attachLibrary("", "", {&dlopen, &dlsym, &dlclose});
+ //no path to current binary, no options, no custom library dl functions
+ vm.attachLibrary("");
 
  //Start fake-jni
 // vm->start();
 
+ //Not necessary
  vm.unregisterClass<ExampleClass>();
 
  //Clean up
