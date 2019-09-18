@@ -47,12 +47,16 @@ const FakeJni::JClass FakeJni::JArray<fake_object>::descriptor {\
 namespace FakeJni {
  //Utility base, not a registered fake-jni type
  template<typename T>
- class JArray : public JObject {
+ class JArray;
+
+ //Immutable array base
+ template<typename T>
+ class JArray<const T> : public JObject {
   friend T;
+  friend JArray<T>;
 
  private:
   using meta = typename _CX::JniArrayTypeBase<T>;
-  static constexpr const char arrayPrefix[] = "[";
 
   const JInt length;
 
@@ -60,6 +64,33 @@ namespace FakeJni {
 
  public:
   using component = typename meta::component_t;
+
+  component * const array;
+
+  template<typename E>
+  JArray(std::initializer_list<E>);
+  JArray(const JArray<T> & array);
+  explicit JArray(JInt size);
+  explicit JArray();
+  virtual ~JArray();
+
+  inline virtual JInt getLength() const {
+   return length;
+  }
+
+  const component& operator[](JInt i) const;
+  JArray<const T>& operator=(const JArray<const T>& arr) const;
+ };
+
+ //Mutable array implementation
+ template<typename T>
+ class JArray : public JArray<const T> {
+ private:
+  static constexpr const char arrayPrefix[] = "[";
+
+ public:
+  using JArray<const T>::JArray;
+  using component = typename JArray<const T>::component;
 
   //fake-jni metadata
   static constexpr const auto name = CX::Concat<arrayPrefix, _CX::JniTypeBase<T>::signature>::result;
@@ -71,26 +102,13 @@ namespace FakeJni {
    return descriptor;
   }
 
-  component * const array;
-
-  template<typename E>
-  JArray(std::initializer_list<E>);
-  explicit JArray(const JArray<T> &array);
-  explicit JArray(JInt size);
-  explicit JArray();
-  virtual ~JArray();
-
-  inline virtual JInt getLength() const {
-   return length;
-  }
-
+  JArray<T>& operator=(const JArray<T> & arr) const;
   component& operator[](JInt i);
-  const component& operator[](JInt i) const;
  };
 
- //JArray template members
+ //Immutable JArray template members
  template<typename T>
- inline JInt JArray<T>::boundsCheck(JInt len) {
+ inline JInt JArray<const T>::boundsCheck(JInt len) {
   if (len < 0) {
    throw std::out_of_range("FATAL: Arrays cannot have a negative size!");
   }
@@ -99,24 +117,28 @@ namespace FakeJni {
 
  template<typename T>
  template<typename E>
- JArray<T>::JArray(std::initializer_list<E> list) : JArray((JInt)list.size()) {
+ JArray<const T>::JArray(std::initializer_list<E> list) : JArray((JInt)list.size()) {
 //  static_assert((CX::IsSame<T, TS>::value && ...), "Arrays can only hold one type!");
 //  if constexpr(length > 0) {
 //   const T temp[] = {ts...};
 //   memcpy(array, temp, length);
 //  }
-  for (unsigned long i = 0; i < list.size(); i++) {
-   array[i] = list[i];
+  size_t i = 0;
+  for (auto& element : list) {
+   array[i++] = element;
   }
+//  for (unsigned long i = 0; i < list.size(); i++) {
+//   array[i] = list[i];
+//  }
  }
 
  template<typename T>
- JArray<T>::JArray(const JArray<T> &array) : JArray(array.length) {
+ JArray<const T>::JArray(const JArray<T> & array) : JArray(array.length) {
   memcpy(array, array.array, length);
  }
 
  template<typename T>
- JArray<T>::JArray(const JInt size) :
+ JArray<const T>::JArray(const JInt size) :
   length(boundsCheck(size)),
   array(new component[length])
  {
@@ -124,25 +146,36 @@ namespace FakeJni {
  }
 
  template<typename T>
- JArray<T>::JArray() : JArray(0)
+ JArray<const T>::JArray() : JArray(0)
  {}
 
  template<typename T>
- JArray<T>::~JArray() {
+ JArray<const T>::~JArray() {
   delete[] array;
  }
 
  template<typename T>
- typename JArray<T>::component& JArray<T>::operator[](const JInt i) {
-  if (i > length) {
-   throw std::out_of_range("Requested index out of range!");
-  }
+ const typename JArray<const T>::component& JArray<const T>::operator[](const JInt i) const {
   return array[i];
  }
 
  template<typename T>
- const typename JArray<T>::component& JArray<T>::operator[](const JInt i) const {
-  return (*const_cast<JArray<T> *>(this))[i];
+ JArray<const T>& JArray<const T>::operator=(const JArray<const T> &arr) const {
+  return const_cast<JArray<const T>&>(*this);
+ }
+
+ //Mutable JArray template members
+ template<typename T>
+ typename JArray<T>::component& JArray<T>::operator[](const JInt i) {
+  if (i > JArray<const T>::length) {
+   throw std::out_of_range("Requested index out of range!");
+  }
+  return JArray<const T>::array[i];
+ }
+
+ template<typename T>
+ JArray<T>& JArray<T>::operator=(const JArray<T> &arr) const {
+  return const_cast<JArray<T>&>(*this);
  }
 }
 

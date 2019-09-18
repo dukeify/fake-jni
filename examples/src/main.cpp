@@ -71,6 +71,9 @@ BEGIN_NATIVE_DESCRIPTOR(ExampleClass)
  {Function<&exampleStaticFunction> {}, "theSameFunctionButNotStaticAndWithADifferentName"},
  //Link static function
  {Function<&outOfLineMemberFunction> {}, "woahTheNameIsDifferentAgain"},
+ //Link member fields
+ {Field<&ExampleClass::exampleField1> {}, "exampleField1"},
+ {Field<&ExampleClass::exampleField2> {}, "exampleField2"},
  //Register constructors
  {Constructor<ExampleClass> {}},
  {Constructor<ExampleClass, JInt, JString*> {}},
@@ -81,7 +84,7 @@ END_NATIVE_DESCRIPTOR
 int main(int argc, char **argv) {
  //Make a JString
  JString test{"Hello World!"};
-
+ 
  //Create a shiny new fake JVM instance
  Jvm vm;
 

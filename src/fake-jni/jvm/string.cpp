@@ -9,18 +9,19 @@ namespace FakeJni {
  JString::JString() : JString(EMPTY_STR)
  {}
 
- JString::JString(const JString &str) : JCharArray(str.getLength())
+ JString::JString(const JString &str) : JString(str.getLength())
  {
   memcpy(array, str.array, (size_t)str.getLength());
  }
 
- JString::JString(const JInt size) : JCharArray(size)
+ JString::JString(const JInt size) :
+  JCharArray((JInt)ceil((int)size * (sizeof(char) / ((double)sizeof(JChar))))),
+  length(size)
  {}
 
- JString::JString(const char * str) :
-  JString((JInt)ceil((int)strlen(str) * (sizeof(char) / ((double)sizeof(JChar)))))
+ JString::JString(const char * str) : JString((JInt)strlen(str))
  {
-  memcpy(array, str, (size_t)getLength());
+  memcpy(array, str, (size_t)length);
  }
 
  bool JString::operator==(const JString & str) const {
@@ -33,6 +34,14 @@ namespace FakeJni {
 
  bool JString::operator==(const std::string & str) const {
   return (*this) == str.c_str();
+ }
+
+ JString& JString::operator=(const FakeJni::JString &str) const {
+  return const_cast<JString&>(*this);
+ }
+
+ JInt JString::getLength() const {
+  return length;
  }
 }
 

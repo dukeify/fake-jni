@@ -303,4 +303,54 @@ namespace FakeJni {
     CX::Concat<SignatureGenerator<false, R, Args...>::prefix, EvaluateFold<Args...>::fold, suffix>::result;
   };
  }
+
+ template<auto F, typename T = decltype(F), auto = CX::IsFunction<T>::value>
+ struct Function;
+
+ template<auto F>
+ struct Function<F, decltype(F), nullptr> {
+  static constexpr const auto function = F;
+
+  constexpr Function() noexcept = default;
+ };
+
+ template<auto F, typename T, typename R, typename... Args>
+ struct Function<F, R (T::*)(Args...), true> : Function<F, decltype(F), nullptr> {
+  constexpr Function() noexcept {
+   static_assert(
+    !CX::IsVirtualFunction<F>::value,
+    "Virtual functions cannot be registered with fake-jni! If you intend to register an overload for a native base "
+    "type, you must register a function with the exact same name and signature as the target function in the base."
+   );
+  }
+ };
+
+ template<auto F, typename R, typename... Args>
+ struct Function<F, R (*)(Args...), true> : Function<F, decltype(F), nullptr> {
+  using Function<F, decltype(F), nullptr>::Function;
+ };
+
+ template<auto F, typename R, typename... Args>
+ struct Function<F, R (&)(Args...), true> : Function<F, decltype(F), nullptr> {
+  using Function<F, decltype(F), nullptr>::Function;
+ };
+
+ template<auto F, typename R, typename... Args>
+ struct Function<F, R (Args...), true> : Function<F, decltype(F), nullptr> {
+  using Function<F, decltype(F), nullptr>::Function;
+ };
+
+ //Wrapper template for constructor detection and registration
+ template<typename T, typename... Args>
+ class Constructor {
+ public:
+  constexpr Constructor() noexcept {
+   static_assert(CX::HasConstructor<T, Args...>::value, "Tried to register non-existent constructor!");
+  }
+
+  [[gnu::always_inline]]
+  inline static T * construct(Args... args) {
+   return new T(args...);
+  }
+ };
 }

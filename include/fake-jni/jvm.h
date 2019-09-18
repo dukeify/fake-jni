@@ -1080,7 +1080,6 @@ namespace FakeJni {
   const decltype(instances)& getAllInstances() const;
   void pushInstance(JObject *inst);
 
-
   inline virtual bool isRunning() const {
    return running;
   }

@@ -25,14 +25,14 @@ if(${BUILD_FAKE_JNI_ASAN})
     set(compiler_flags "-fsanitize=address ${compiler_flags}")
 endif()
 
-set(CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} ${compiler_flags})
-set(CMAKE_C_FLAGS ${CMAKE_C_FLAGS} ${compiler_flags})
+set(CMAKE_CXX_FLAGS ${compiler_flags})
+set(CMAKE_C_FLAGS ${compiler_flags})
 
-if(NOT ${FFI_CC})
+if(NOT DEFINED FFI_CC)
     set(FFI_CC ${CMAKE_C_COMPILER})
 endif()
 
-if(NOT ${FFI_CXX})
+if(NOT DEFINED FFI_CXX)
     set(FFI_CXX ${CMAKE_CXX_COMPILER})
 endif()
 

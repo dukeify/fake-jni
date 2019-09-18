@@ -90,4 +90,24 @@ namespace FakeJni {
    }
   };
  }
+
+ template<auto F, typename T = decltype(F), auto = CX::IsField<T>::value>
+ struct Field;
+
+ template<auto F>
+ struct Field<F, decltype(F), nullptr> {
+  static constexpr const auto field = F;
+
+  constexpr Field() noexcept = default;
+ };
+
+ template<auto F, typename C, typename T>
+ struct Field<F, T C::*, true> : Field<F, decltype(F), nullptr> {
+  using Field<F, decltype(F), nullptr>::Field;
+ };
+
+ template<auto F, typename T>
+ struct Field<F, T *, true> : Field<F, decltype(F), nullptr> {
+  using Field<F, decltype(F), nullptr>::Field;
+ };
 }
