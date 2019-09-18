@@ -83,6 +83,7 @@ namespace FakeJni {
   JArray(std::initializer_list<component>);
   explicit JArray(const JArray<T> & array);
   explicit JArray(JInt size);
+  explicit JArray(T * arr, JInt length);
   JArray();
   virtual ~JArray();
 
@@ -150,6 +151,13 @@ namespace FakeJni {
   array(new component[length])
  {
   static_assert(__is_base_of(_jarray, T), "T must be derived from _jarray!");
+ }
+
+ template<typename T>
+ JArray<const T>::JArray(T * const arr, const JInt length) : JArray(length) {
+  for (JInt i = 0; i < length; i++) {
+   array[i] = arr[i];
+  }
  }
 
  template<typename T>
