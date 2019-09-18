@@ -84,7 +84,7 @@ END_NATIVE_DESCRIPTOR
 int main(int argc, char **argv) {
  //Make a JString
  JString test{"Hello World!"};
- 
+
  //Create a shiny new fake JVM instance
  Jvm vm;
 

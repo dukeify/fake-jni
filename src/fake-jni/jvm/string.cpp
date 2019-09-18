@@ -25,11 +25,19 @@ namespace FakeJni {
  }
 
  bool JString::operator==(const JString & str) const {
-  return memcmp((char *)array, (char *)str.array, (size_t)std::min(getLength(), str.getLength())) == 0;
+  const auto sLen = str.getLength();
+  if (length == sLen) {
+   return memcmp((char *)array, (char *)str.array, (size_t)length) == 0;
+  }
+  return false;
  }
 
  bool JString::operator==(const char * str) const {
-  return memcmp((char *)array, str, std::min((size_t)getLength(), strlen(str))) == 0;
+  const auto sLen = strlen(str);
+  if ((size_t)length == sLen) {
+   return memcmp((char *)array, str, (size_t)length) == 0;
+  }
+  return false;
  }
 
  bool JString::operator==(const std::string & str) const {
