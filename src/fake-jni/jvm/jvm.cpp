@@ -11,6 +11,16 @@
 
 //Non-template members of Jvm
 namespace FakeJni {
+ //Class descriptors for all primitives
+ BEGIN_NATIVE_PRIMITIVE_DESCRIPTOR(JVoid, voidDescriptor) END_NATIVE_DESCRIPTOR
+ BEGIN_NATIVE_PRIMITIVE_DESCRIPTOR(JBoolean, booleanDescriptor) END_NATIVE_DESCRIPTOR
+ BEGIN_NATIVE_PRIMITIVE_DESCRIPTOR(JByte, byteDescriptor) END_NATIVE_DESCRIPTOR
+ BEGIN_NATIVE_PRIMITIVE_DESCRIPTOR(JChar, shortDescriptor) END_NATIVE_DESCRIPTOR
+ BEGIN_NATIVE_PRIMITIVE_DESCRIPTOR(JShort, intDescriptor) END_NATIVE_DESCRIPTOR
+ BEGIN_NATIVE_PRIMITIVE_DESCRIPTOR(JInt, floatDescriptor) END_NATIVE_DESCRIPTOR
+ BEGIN_NATIVE_PRIMITIVE_DESCRIPTOR(JFloat, longDescriptor) END_NATIVE_DESCRIPTOR
+ BEGIN_NATIVE_PRIMITIVE_DESCRIPTOR(JLong, doubleDescriptor) END_NATIVE_DESCRIPTOR
+
  AllocStack<Jvm *> Jvm::vms;
 
  Jvm::Jvm(FILE *log) :
@@ -46,6 +56,14 @@ namespace FakeJni {
   registerClass<JLongArray>();
   registerClass<JDoubleArray>();
   registerClass<JObjectArray>();
+  registerClass(&voidDescriptor);
+  registerClass(&booleanDescriptor);
+  registerClass(&byteDescriptor);
+  registerClass(&shortDescriptor);
+  registerClass(&intDescriptor);
+  registerClass(&floatDescriptor);
+  registerClass(&longDescriptor);
+  registerClass(&doubleDescriptor);
  }
 
  const char * Jvm::generateJvmUuid() noexcept {
@@ -150,6 +168,10 @@ namespace FakeJni {
   return (const_cast<Jvm&>(*this).instances)[clazz];
  }
 
+ const decltype(Jvm::instances)& Jvm::getAllInstances() const {
+  return instances;
+ }
+
  void Jvm::pushInstance(JObject *inst) {
   (*this)[&inst->getClass()].pushAlloc(inst);
  }
@@ -162,6 +184,50 @@ namespace FakeJni {
   }
   libraries.clear();
   delete[] uuid;
+ }
+
+ bool Jvm::registerClass(const JClass *clazz) {
+  bool registered = std::find(classes.begin(), classes.end(), clazz) != classes.end();
+  if (!registered) {
+   for (const auto c : classes) {
+    if (strcmp(c->getName(), clazz->getName()) == 0) {
+     registered |= true;
+     break;
+    }
+   }
+  }
+  if (registered) {
+#ifdef FAKE_JNI_DEBUG
+   fprintf(
+    log,
+    "WARNING: Class '%s' is already registered on the JVM instance '%s'!\n",
+    clazz->getName(),
+    uuid
+   );
+#endif
+   return false;
+  } else {
+   std::unique_lock lock(instances_mutex);
+   instances[clazz].setDeallocate(true);
+   classes.push_back(const_cast<JClass *>(clazz));
+  }
+  return true;
+ }
+
+ bool Jvm::unregisterClass(const JClass *clazz) {
+  const auto end = classes.end();
+  const auto found = end != classes.erase(std::remove(classes.begin(), end, clazz), end);
+#ifdef FAKE_JNI_DEBUG
+  if (!found) {
+   fprintf(
+    log,
+    "WARNING: Class '%s' is not registered on the JVM instance '%s'!\n",
+    clazz->getName(),
+    uuid
+   );
+  }
+#endif
+  return found;
  }
 
  const JClass * Jvm::findClass(const char * name) const {

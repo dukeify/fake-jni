@@ -67,6 +67,8 @@ namespace FakeJni::_CX {\
 
 #define DUAL_OVERLOAD_RESOLVER(_1, _2, OVERLOAD, ...) OVERLOAD
 
+#define TRI_OVERLOAD_RESOLVER(_1, _2, _3, OVERLOAD, ...) OVERLOAD
+
 #define _DEFINE_CLASS_NAME_1(str) \
 static constexpr const char name[] = str;\
 static const JClass descriptor;\
@@ -119,7 +121,26 @@ _BEGIN_NATIVE_DESCRIPTOR_2(clazz, FakeJni::JClass::PUBLIC)
 #define BEGIN_NATIVE_DESCRIPTOR(...) \
 DUAL_OVERLOAD_RESOLVER(__VA_ARGS__, _BEGIN_NATIVE_DESCRIPTOR_2, _BEGIN_NATIVE_DESCRIPTOR_1, _) (__VA_ARGS__)
 
+#define _BEGIN_NATIVE_PRIMITIVE_DESCRIPTOR_3(primitive, descriptorName, modifiers) \
+const FakeJni::JClass descriptorName { modifiers, FakeJni::_CX::JClassBreeder<primitive> {
+
+#define _BEGIN_NATIVE_PRIMITIVE_DESCRIPTOR_2(primitive, descriptorName) \
+_BEGIN_NATIVE_PRIMITIVE_DESCRIPTOR_3(primitive, descriptorName, FakeJni::JClass::PUBLIC)
+
+#define BEGIN_NATIVE_PRIMITIVE_DESCRIPTOR(...) \
+TRI_OVERLOAD_RESOLVER(__VA_ARGS__, _BEGIN_NATIVE_PRIMITIVE_DESCRIPTOR_3, _BEGIN_NATIVE_PRIMITIVE_DESCRIPTOR_2, _) (__VA_ARGS__)
+
 #define END_NATIVE_DESCRIPTOR }};
+
+#define _DECLARE_NATIVE_PRIMITIVE_DESCRIPTOR_3(primitive, signature, descriptorName) \
+DEFINE_JNI_TYPE(primitive, signature)\
+const FakeJni::JClass descriptorName;
+
+#define _DECLARE_NATIVE_PRIMITIVE_DESCRIPTOR_2(primitive, signature) \
+_DECLARE_NATIVE_PRIMITIVE_DESCRIPTOR_3(primitive, signature, primitive##Descriptor)
+
+#define DECLARE_NATIVE_PRIMITIVE_DESCRIPTOR(...) \
+TRI_OVERLOAD_RESOLVER(__VA_ARGS__, _DECLARE_NATIVE_PRIMITIVE_DESCRIPTOR_3, _DECLARE_NATIVE_PRIMITIVE_DESCRIPTOR_2, _) (__VA_ARGS__)
 
 namespace FakeJni {
  //Forward declare JObject to define metadata templates
@@ -910,8 +931,6 @@ namespace FakeJni {
    template<typename A>
    using constructor_func_t = JObject * (*)(JavaVM * vm, const char * signature, A args);
 
-   static constexpr const auto deallocator = &_CX::Deallocator<T>::deallocate;
-
    const std::initializer_list<ClassDescriptorElement> descriptorElements;
    const JClass& parent = []() constexpr noexcept -> const JClass& {
     if constexpr(_CX::BaseDefined<T>::value) {
@@ -979,7 +998,9 @@ namespace FakeJni {
 
   explicit JClass(JClass &) = delete;
   template<typename T>
-  explicit JClass(uint32_t modifiers, _CX::JClassBreeder<T> breeder) noexcept;
+  explicit JClass(uint32_t modifiers, _CX::JClassBreeder<T, true> breeder) noexcept;
+  template<typename T>
+  explicit JClass(uint32_t modifiers, _CX::JClassBreeder<T, false> breeder) noexcept;
   virtual ~JClass() = default;
 
   bool registerMethod(JMethodID * mid) const noexcept;
@@ -1056,7 +1077,9 @@ namespace FakeJni {
 
   const AllocStack<JObject *>& operator[](const JClass* clazz) const;
   AllocStack<JObject *>& operator[](const JClass* clazz);
+  const decltype(instances)& getAllInstances() const;
   void pushInstance(JObject *inst);
+
 
   inline virtual bool isRunning() const {
    return running;
@@ -1066,6 +1089,8 @@ namespace FakeJni {
   bool registerClass();
   template<typename T>
   bool unregisterClass();
+  bool registerClass(const JClass *clazz);
+  bool unregisterClass(const JClass * clazz);
   const JClass * findClass(const char * name) const;
   virtual Library * getLibrary(const std::string& path) const;
   //Needs to be const to allow attaching agents / JNI modules at runtime
@@ -1129,7 +1154,7 @@ namespace FakeJni {
 
    //Will be constructed if T::base is defined
    //Static assertion will fail if base is not a compliant type
-   static constexpr const BaseTypeAssertion assert;
+   static constexpr const BaseTypeAssertion assert{};
   };
  }
 }
@@ -1336,32 +1361,7 @@ namespace FakeJni {
    __is_base_of(JObject, T),
    "Only native classes may be passed to registerClass!"
   );
-  auto clazz = const_cast<JClass *>(&T::descriptor);
-  bool registered = std::find(classes.begin(), classes.end(), clazz) != classes.end();
-  if (!registered) {
-   for (const auto c : classes) {
-    if (strcmp(c->getName(), clazz->getName()) == 0) {
-     registered |= true;
-     break;
-    }
-   }
-  }
-  if (registered) {
-#ifdef FAKE_JNI_DEBUG
-   fprintf(
-    log,
-    "WARNING: Class '%s' is already registered on the JVM instance '%s'!\n",
-    clazz->getName(),
-    uuid
-   );
-#endif
-   return false;
-  } else {
-   std::unique_lock lock(instances_mutex);
-   instances[clazz].setDeallocate(true);
-   classes.push_back(clazz);
-  }
-  return true;
+  return registerClass(&T::descriptor);
  }
 
  template<typename T>
@@ -1370,20 +1370,7 @@ namespace FakeJni {
    __is_base_of(JObject, T),
    "Only native classes may be passed to unregisterClass!"
   );
-  const auto clazz = &T::descriptor;
-  const auto end = classes.end();
-  const auto found = end != classes.erase(std::remove(classes.begin(), end, clazz), end);
-#ifdef FAKE_JNI_DEBUG
-  if (!found) {
-   fprintf(
-    log,
-    "WARNING: Class '%s' is not registered on the JVM instance '%s'!\n",
-    clazz->getName(),
-    uuid
-   );
-  }
-#endif
-  return found;
+  return unregisterClass(&T::descriptor);
  }
 
  //_CX::JClassImpl template members
@@ -1414,7 +1401,7 @@ namespace FakeJni {
        baseInst = (JObject *)inst;
       }
 //      return const_cast<AllocStack<JObject *>&>(jvm->getInstances()).pushAlloc(JClassBreeder<T>::deallocator, baseInst);
-      return (*jvm)[&descriptor].pushAlloc(JClassBreeder<T>::deallocator, baseInst);
+      return (*jvm)[&descriptor].pushAlloc(&_CX::Deallocator<T>::deallocate, baseInst);
      }
     }
     return nullptr;
@@ -1470,7 +1457,7 @@ namespace FakeJni {
 
  //JClass template members
  template<typename T>
- JClass::JClass(uint32_t modifiers, _CX::JClassBreeder<T> breeder) noexcept :
+ JClass::JClass(uint32_t modifiers, _CX::JClassBreeder<T, true> breeder) noexcept :
   JObject(),
   constructV(decltype(breeder)::template constructorPredicate<va_list>()),
   constructA(decltype(breeder)::template constructorPredicate<const jvalue *>()),
@@ -1484,4 +1471,31 @@ namespace FakeJni {
    d.process(this);
   }
  }
+
+ template<typename T>
+ JClass::JClass(uint32_t modifiers, _CX::JClassBreeder<T, false> breeder) noexcept :
+  JObject(),
+  constructV(decltype(breeder)::template constructorPredicate<va_list>()),
+  constructA(decltype(breeder)::template constructorPredicate<const jvalue *>()),
+  className(_CX::JniTypeBase<T>::signature),
+  modifiers(modifiers),
+  parent(breeder.parent),
+  functions{true},
+  fields{true}
+ {
+  for (const auto& d : breeder.descriptorElements) {
+   d.process(this);
+  }
+ }
+
+//Primitive type class descriptors
+ extern const JClass
+  voidDescriptor,
+  booleanDescriptor,
+  byteDescriptor,
+  shortDescriptor,
+  intDescriptor,
+  floatDescriptor,
+  longDescriptor,
+  doubleDescriptor;
 }
