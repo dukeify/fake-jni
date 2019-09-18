@@ -147,8 +147,7 @@ namespace FakeJni {
 
  const AllocStack<JObject *>& Jvm::operator[](const JClass *clazz) const {
   std::shared_lock lock(instances_mutex);
-  auto& vm = const_cast<Jvm&>(*this);
-  return (vm.instances)[clazz];
+  return (const_cast<Jvm&>(*this).instances)[clazz];
  }
 
  void Jvm::pushInstance(JObject *inst) {

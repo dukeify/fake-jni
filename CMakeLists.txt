@@ -22,7 +22,7 @@ else()
 endif()
 
 if(${BUILD_FAKE_JNI_ASAN})
-    set(compiler_flgs ${compiler_flags} -fsanitize=address)
+    set(compiler_flags "-fsanitize=address ${compiler_flags}")
 endif()
 
 set(CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} ${compiler_flags})

@@ -17,7 +17,7 @@ namespace FakeJni {
     }
    }
   }
-  functions_ptr->pushAlloc(mid);
+  functions_ptr->pushAlloc([](void *mid) { delete (JMethodID*)mid; }, mid);
   return true;
  }
 
@@ -61,7 +61,7 @@ namespace FakeJni {
     }
    }
   }
-  fields_ptr->pushAlloc(fid);
+  fields_ptr->pushAlloc([](void *fid) { delete (JFieldID*)fid; }, fid);
   return true;
  }
 
