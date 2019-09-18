@@ -9,18 +9,19 @@ namespace FakeJni {
  private:
   static const JString EMPTY_STR;
 
+  JInt length;
+
  public:
   DEFINE_CLASS_NAME("java/lang/String")
   using cast = typename CX::ExplicitCastGenerator<JString, JCharArray, JClass, JObject>;
 
   static constexpr JString * const EMPTY = const_cast<JString *>(&EMPTY_STR);
 
-  const JInt length;
-
   JString();
   JString(const JString & str);
   explicit JString(JInt size);
   JString(const char * str);
+  virtual ~JString() = default;
 
   bool operator==(const JString & str) const;
   bool operator==(const char * str) const;
@@ -28,7 +29,7 @@ namespace FakeJni {
   template<typename T>
   bool operator!=(T operand) const;
   JString& operator=(const JString& str) const;
-  virtual JInt getLength() const override;
+  JInt getLength() const;
  };
 
  template<typename T>

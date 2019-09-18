@@ -11,6 +11,7 @@ namespace FakeJni {\
   class JniArrayTypeBase<fake_object> {\
   public:\
    using component_t = component_type;\
+   static constexpr const auto isRegisteredType = true;\
   };\
  }\
  namespace _CX {\
@@ -56,30 +57,44 @@ namespace FakeJni {
   friend JArray<T>;
 
  private:
-  using meta = typename _CX::JniArrayTypeBase<T>;
+  template<bool = _CX::JniArrayTypeBase<T>::isRegisteredType>
+  struct ComponentTrait;
 
-  const JInt length;
+  template<>
+  struct ComponentTrait<false> : CX::false_type {
+   using component_t = T;
+  };
+
+  template<>
+  struct ComponentTrait<true> : CX::true_type {
+   using component_t = typename _CX::JniArrayTypeBase<T>::component_t;
+  };
+
+ public:
+  using component = typename ComponentTrait<>::component_t;
+
+ private:
+  JInt length;
+  component * array;
 
   static JInt boundsCheck(JInt len);
 
  public:
-  using component = typename meta::component_t;
-
-  component * const array;
-
-  template<typename E>
-  JArray(std::initializer_list<E>);
-  JArray(const JArray<T> & array);
+  JArray(std::initializer_list<component>);
+  explicit JArray(const JArray<T> & array);
   explicit JArray(JInt size);
-  explicit JArray();
+  JArray();
   virtual ~JArray();
 
-  inline virtual JInt getLength() const {
+  inline JInt getLength() const {
    return length;
   }
 
+  inline component* getArray() const {
+   return const_cast<JArray<const T>&>(*this).array;
+  }
+
   const component& operator[](JInt i) const;
-  JArray<const T>& operator=(const JArray<const T>& arr) const;
  };
 
  //Mutable array implementation
@@ -103,6 +118,7 @@ namespace FakeJni {
   }
 
   JArray<T>& operator=(const JArray<T> & arr) const;
+  const component& operator[](JInt i) const;
   component& operator[](JInt i);
  };
 
@@ -116,20 +132,11 @@ namespace FakeJni {
  }
 
  template<typename T>
- template<typename E>
- JArray<const T>::JArray(std::initializer_list<E> list) : JArray((JInt)list.size()) {
-//  static_assert((CX::IsSame<T, TS>::value && ...), "Arrays can only hold one type!");
-//  if constexpr(length > 0) {
-//   const T temp[] = {ts...};
-//   memcpy(array, temp, length);
-//  }
+ JArray<const T>::JArray(std::initializer_list<component> list) : JArray((JInt)list.size()) {
   size_t i = 0;
-  for (auto& element : list) {
+  for (auto element : list) {
    array[i++] = element;
   }
-//  for (unsigned long i = 0; i < list.size(); i++) {
-//   array[i] = list[i];
-//  }
  }
 
  template<typename T>
@@ -159,12 +166,12 @@ namespace FakeJni {
   return array[i];
  }
 
+ //Mutable JArray template members
  template<typename T>
- JArray<const T>& JArray<const T>::operator=(const JArray<const T> &arr) const {
-  return const_cast<JArray<const T>&>(*this);
+ const typename JArray<T>::component& JArray<T>::operator[](JInt i) const {
+  return JArray<const T>::operator[](i);
  }
 
- //Mutable JArray template members
  template<typename T>
  typename JArray<T>::component& JArray<T>::operator[](const JInt i) {
   if (i > JArray<const T>::length) {
@@ -175,7 +182,16 @@ namespace FakeJni {
 
  template<typename T>
  JArray<T>& JArray<T>::operator=(const JArray<T> &arr) const {
-  return const_cast<JArray<T>&>(*this);
+  auto& ref = const_cast<JArray<T>&>(*this);
+  if (ref.length != arr.length) {
+   ref.length = arr.length;
+   delete[] ref.array;
+   ref.array = new component[ref.length];
+  }
+  for (JInt i = 0; i < ref.length; i++) {
+   ref.array[i] = arr.array[i];
+  }
+  return ref;
  }
 }
 

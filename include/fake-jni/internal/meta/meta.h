@@ -38,7 +38,11 @@ namespace FakeJni::_CX {
 
  //Native array metadata template
  template<typename T>
- class JniArrayTypeBase;
+ class JniArrayTypeBase {
+ public:
+  using component_t = void;
+  static constexpr const auto isRegisteredType = false;
+ };
 
  //Strip pointers off of JniTypeBase specializations and instantiations
  template<typename T>

@@ -11,7 +11,7 @@ namespace FakeJni {
 
  JString::JString(const JString &str) : JString(str.getLength())
  {
-  memcpy(array, str.array, (size_t)str.getLength());
+  memcpy(getArray(), str.getArray(), (size_t)str.getLength());
  }
 
  JString::JString(const JInt size) :
@@ -21,13 +21,13 @@ namespace FakeJni {
 
  JString::JString(const char * str) : JString((JInt)strlen(str))
  {
-  memcpy(array, str, (size_t)length);
+  memcpy(getArray(), str, (size_t)length);
  }
 
  bool JString::operator==(const JString & str) const {
   const auto sLen = str.getLength();
   if (length == sLen) {
-   return memcmp((char *)array, (char *)str.array, (size_t)length) == 0;
+   return memcmp((char *)getArray(), (char *)str.getArray(), (size_t)length) == 0;
   }
   return false;
  }
@@ -35,7 +35,7 @@ namespace FakeJni {
  bool JString::operator==(const char * str) const {
   const auto sLen = strlen(str);
   if ((size_t)length == sLen) {
-   return memcmp((char *)array, str, (size_t)length) == 0;
+   return memcmp((char *)getArray(), str, (size_t)length) == 0;
   }
   return false;
  }
@@ -45,7 +45,10 @@ namespace FakeJni {
  }
 
  JString& JString::operator=(const FakeJni::JString &str) const {
-  return const_cast<JString&>(*this);
+  auto& ref = const_cast<JString&>(*this);
+  ref.length = str.length;
+  JArray<JCharArray>::operator=(str);
+  return ref;
  }
 
  JInt JString::getLength() const {
