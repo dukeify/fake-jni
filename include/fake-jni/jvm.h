@@ -746,7 +746,6 @@ namespace FakeJni {
    return &descriptor;
   }
 
-  explicit JObject(const JObject&) = delete;
   constexpr JObject() = default;
   virtual ~JObject() = default;
   virtual const JClass & getClass() const noexcept;
@@ -976,6 +975,8 @@ namespace FakeJni {
   //Internal fake-jni native class metadata
   DEFINE_CLASS_NAME("java/lang/Class")
 
+  using cast = CX::ExplicitCastGenerator<JClass, JObject, _jobject>;
+
   const uint32_t modifiers;
   const JClass& parent;
 
@@ -1088,10 +1089,10 @@ namespace FakeJni {
   bool registerClass();
   template<typename T>
   bool unregisterClass();
-  bool registerClass(const JClass *clazz);
-  bool unregisterClass(const JClass * clazz);
-  const JClass * findClass(const char * name) const;
-  virtual Library * getLibrary(const std::string& path) const;
+  virtual bool registerClass(const JClass * clazz);
+  virtual bool unregisterClass(const JClass * clazz);
+  virtual const JClass * findClass(const char * name) const;
+  virtual Library * getLibrary(const std::string & path) const;
   //Needs to be const to allow attaching agents / JNI modules at runtime
   virtual Library * attachLibrary(
    const std::string &rpath,
@@ -1395,7 +1396,7 @@ namespace FakeJni {
       const auto inst = method->invoke<T *>(vm, nullptr, args);
       JObject * baseInst;
       if constexpr(_CX::JniTypeBase<T>::hasComplexHierarchy) {
-       baseInst = T::cast::cast(inst);
+       baseInst = (JObject *)T::cast::cast(inst);
       } else {
        baseInst = (JObject *)inst;
       }

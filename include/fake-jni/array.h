@@ -36,6 +36,10 @@ template<>\
 const FakeJni::JClass FakeJni::JArray<FakeJni::fake_object>::descriptor;
 
 //User macros
+#define DECLARE_NATIVE_ARRAY_DESCRIPTOR(fake_object) \
+template<>\
+const FakeJni::JClass FakeJni::JArray<fake_object>::descriptor;
+
 #define DEFINE_NATIVE_ARRAY_DESCRIPTOR(fake_object) \
 template<>\
 const FakeJni::JClass FakeJni::JArray<fake_object>::descriptor {\
