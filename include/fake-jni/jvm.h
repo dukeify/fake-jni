@@ -969,6 +969,7 @@ namespace FakeJni {
    * (* const constructV)(JavaVM *, const char *, va_list),
    * (* const constructA)(JavaVM *, const char *, const jvalue *);
 
+  const bool isArbitrary;
   const char * const className;
 
  public:
@@ -1005,7 +1006,7 @@ namespace FakeJni {
   explicit JClass(const char * name, uint32_t modifiers = PUBLIC) noexcept;
   virtual ~JClass() = default;
 
-  bool registerMethod(JMethodID * mid) const noexcept;
+  bool registerMethod(JMethodID * mid) const;
   bool unregisterMethod(JMethodID * mid) const noexcept;
   JMethodID * getMethod(const char * sig, const char * name) const noexcept;
   const AllocStack<JMethodID *>& getMethods() const noexcept;
@@ -1462,6 +1463,7 @@ namespace FakeJni {
   JObject(),
   constructV(decltype(breeder)::template constructorPredicate<va_list>()),
   constructA(decltype(breeder)::template constructorPredicate<const jvalue *>()),
+  isArbitrary(false),
   className(T::name),
   modifiers(modifiers),
   parent(breeder.parent),
@@ -1478,6 +1480,7 @@ namespace FakeJni {
   JObject(),
   constructV(decltype(breeder)::template constructorPredicate<va_list>()),
   constructA(decltype(breeder)::template constructorPredicate<const jvalue *>()),
+  isArbitrary(false),
   className(_CX::JniTypeBase<T>::signature),
   modifiers(modifiers),
   parent(breeder.parent),

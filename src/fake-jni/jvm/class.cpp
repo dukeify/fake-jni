@@ -16,6 +16,7 @@ namespace FakeJni {
   constructA([](JavaVM * const, const char * const, const jvalue *) -> JObject * {
    _ERROR_ARBITRARY_CLASS
   }),
+  isArbitrary(true),
   className(name),
   modifiers(modifiers),
   parent(JObject::descriptor),
@@ -23,7 +24,14 @@ namespace FakeJni {
   fields{true}
  {}
 
- bool JClass::registerMethod(JMethodID * const mid) const noexcept {
+ bool JClass::registerMethod(JMethodID * const mid) const {
+  if (isArbitrary) {
+   if (mid->type == JMethodID::MEMBER_FUNC) {
+    throw std::runtime_error(
+     "FATAL: You cannot register a member function on an arbitrary class that cannot be instantiated!"
+    );
+   }
+  }
   auto functions_ptr = const_cast<AllocStack<JMethodID *> *>(&functions);
   for (uint32_t i = 0; i < functions_ptr->getSize(); i++) {
    const auto reg_mid = (*functions_ptr)[i];
