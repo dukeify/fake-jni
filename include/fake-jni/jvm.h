@@ -805,7 +805,7 @@ namespace FakeJni {
 
   bool operator ==(JFieldID &fid) const noexcept;
   template<typename T>
-  T get(JObject * obj);
+  T& get(JObject * obj);
   void set(JObject * obj, void * value);
  };
 
@@ -1013,6 +1013,7 @@ namespace FakeJni {
   bool registerField(JFieldID * fid) const noexcept;
   bool unregisterField(JFieldID * fid) const noexcept;
   JFieldID * getField(const char * name) const noexcept;
+  JFieldID * getField(const char * sig, const char * name) const noexcept;
   const AllocStack<JFieldID *>& getFields() const noexcept;
   virtual const char * getName() const noexcept;
   //Object construction for c-varargs
@@ -1078,14 +1079,12 @@ namespace FakeJni {
   virtual void setJvmtiEnv(const JvmtiEnv& env);
   virtual JvmtiEnv& getJvmtiEnv() const;
 
-  const AllocStack<JObject *>& operator[](const JClass* clazz) const;
-  AllocStack<JObject *>& operator[](const JClass* clazz);
-  const decltype(instances)& getAllInstances() const;
-  void pushInstance(JObject *inst);
-
-  inline virtual bool isRunning() const {
-   return running;
-  }
+  virtual const AllocStack<JObject *>& operator[](const JClass* clazz) const;
+  virtual AllocStack<JObject *>& operator[](const JClass* clazz);
+  virtual const decltype(instances)& getAllInstances() const;
+  virtual bool addInstance(JObject * inst);
+  virtual bool removeInstance(JObject * inst);
+  virtual bool isRunning() const;
 
   template<typename T>
   bool registerClass();
@@ -1196,11 +1195,11 @@ namespace FakeJni {
  }
 
  template<typename T>
- T JFieldID::get(JObject * const obj) {
+ T& JFieldID::get(JObject * const obj) {
   if (isStatic) {
-   return ((T (*)(void *))proxyGetFunc)(staticProp);
+   return ((T& (*)(void *))proxyGetFunc)(staticProp);
   } else {
-   return ((T (*)(void *, void *))proxyGetFunc)(obj, memberProp);
+   return ((T& (*)(void *, memberProp_t))proxyGetFunc)(obj, memberProp);
   }
  }
 

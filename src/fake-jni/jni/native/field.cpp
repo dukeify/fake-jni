@@ -4,213 +4,165 @@
 #include <stdexcept>
 
 namespace FakeJni {
-//TODO implement
- jfieldID NativeInterface::getFieldID(jclass, const char *, const char *) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::getFieldID' is unimplemented!");
-  return 0;
+ jfieldID NativeInterface::getFieldID(jclass jclazz, const char * name, const char * sig) const {
+  auto fid = ((JClass *)jclazz)->getField(sig, name);
+  if ((fid->getModifiers() & JFieldID::STATIC) == JFieldID::STATIC) {
+   return nullptr;
+  }
+  return fid;
  }
 
-//TODO implement
- jobject NativeInterface::getObjectField(jobject, jfieldID) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::getObjectField' is unimplemented!");
+ jobject NativeInterface::getObjectField(jobject jobj, jfieldID jfid) const {
+  return &((JFieldID *)jfid)->get<JObject>((JObject *)jobj);
+ }
+
+ jboolean NativeInterface::getBooleanField(jobject jobj, jfieldID jfid) const {
+  return ((JFieldID *)jfid)->get<JBoolean>((JObject *)jobj);
+ }
+
+ jbyte NativeInterface::getByteField(jobject jobj, jfieldID jfid) const {
+  return ((JFieldID *)jfid)->get<JByte>((JObject *)jobj);
+ }
+
+ jchar NativeInterface::getCharField(jobject jobj, jfieldID jfid) const {
+  return ((JFieldID *)jfid)->get<JChar>((JObject *)jobj);
+ }
+
+ jshort NativeInterface::getShortField(jobject jobj, jfieldID jfid) const {
+  return ((JFieldID *)jfid)->get<JShort>((JObject *)jobj);
+ }
+
+ jint NativeInterface::getIntField(jobject jobj, jfieldID jfid) const {
+  return ((JFieldID *)jfid)->get<JInt>((JObject *)jobj);
+ }
+
+ jlong NativeInterface::getLongField(jobject jobj, jfieldID jfid) const {
+  return ((JFieldID *)jfid)->get<JLong>((JObject *)jobj);
+ }
+
+ jfloat NativeInterface::getFloatField(jobject jobj, jfieldID jfid) const {
+  return ((JFieldID *)jfid)->get<JFloat>((JObject *)jobj);
+ }
+
+ jdouble NativeInterface::getDoubleField(jobject jobj, jfieldID jfid) const {
+  return ((JFieldID *)jfid)->get<JDouble>((JObject *)jobj);
+ }
+
+ void NativeInterface::setObjectField(jobject jobj, jfieldID jfid, jobject value) const {
+  ((JFieldID *)jfid)->set((JObject *)jobj, value);
+ }
+
+ void NativeInterface::setBooleanField(jobject jobj, jfieldID jfid, jboolean value) const {
+  ((JFieldID *)jfid)->set((JObject *)jobj, &value);
+ }
+
+ void NativeInterface::setByteField(jobject jobj, jfieldID jfid, jbyte value) const {
+  ((JFieldID *)jfid)->set((JObject *)jobj, &value);
+ }
+
+ void NativeInterface::setCharField(jobject jobj, jfieldID jfid, jchar value) const {
+  ((JFieldID *)jfid)->set((JObject *)jobj, &value);
+ }
+
+ void NativeInterface::setShortField(jobject jobj, jfieldID jfid, jshort value) const {
+  ((JFieldID *)jfid)->set((JObject *)jobj, &value);
+ }
+
+ void NativeInterface::setIntField(jobject jobj, jfieldID jfid, jint value) const {
+  ((JFieldID *)jfid)->set((JObject *)jobj, &value);
+ }
+
+ void NativeInterface::setLongField(jobject jobj, jfieldID jfid, jlong value) const {
+  ((JFieldID *)jfid)->set((JObject *)jobj, &value);
+ }
+
+
+ void NativeInterface::setFloatField(jobject jobj, jfieldID jfid, jfloat value) const {
+  ((JFieldID *)jfid)->set((JObject *)jobj, &value);
+ }
+
+ void NativeInterface::setDoubleField(jobject jobj, jfieldID jfid, jdouble value) const {
+  ((JFieldID *)jfid)->set((JObject *)jobj, &value);
+ }
+
+ jfieldID NativeInterface::getStaticFieldID(jclass jclazz, const char * name, const char * sig) const {
+  auto fid = ((JClass *)jclazz)->getField(sig, name);
+  if ((fid->getModifiers() & JFieldID::STATIC) == JFieldID::STATIC) {
+   return fid;
+  }
   return nullptr;
  }
 
-//TODO implement
- jboolean NativeInterface::getBooleanField(jobject, jfieldID) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::getBooleanField' is unimplemented!");
-  return 0;
+ jobject NativeInterface::getStaticObjectField(jclass, jfieldID jfid) const {
+  return &((JFieldID *)jfid)->get<JObject>(nullptr);
  }
 
-//TODO implement
- jbyte NativeInterface::getByteField(jobject, jfieldID) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::getByteField' is unimplemented!");
-  return 0;
+ jboolean NativeInterface::getStaticBooleanField(jclass, jfieldID jfid) const {
+  return ((JFieldID *)jfid)->get<JBoolean>(nullptr);
  }
 
-//TODO implement
- jchar NativeInterface::getCharField(jobject, jfieldID) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::getCharField' is unimplemented!");
-  return 0;
+ jbyte NativeInterface::getStaticByteField(jclass, jfieldID jfid) const {
+  return ((JFieldID *)jfid)->get<JBoolean>(nullptr);
  }
 
-//TODO implement
- jshort NativeInterface::getShortField(jobject, jfieldID) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::getShortField' is unimplemented!");
-  return 0;
+ jchar NativeInterface::getStaticCharField(jclass, jfieldID jfid) const {
+  return ((JFieldID *)jfid)->get<JChar>(nullptr);
  }
 
-//TODO implement
- jint NativeInterface::getIntField(jobject, jfieldID) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::getIntField' is unimplemented!");
-  return 0;
+ jshort NativeInterface::getStaticShortField(jclass, jfieldID jfid) const {
+  return ((JFieldID *)jfid)->get<JShort>(nullptr);
  }
 
-//TODO implement
- jlong NativeInterface::getLongField(jobject, jfieldID) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::getLongField' is unimplemented!");
-  return 0;
+ jint NativeInterface::getStaticIntField(jclass, jfieldID jfid) const {
+  return ((JFieldID *)jfid)->get<JInt>(nullptr);
  }
 
-//TODO implement
- jfloat NativeInterface::getFloatField(jobject, jfieldID) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::getFloatField' is unimplemented!");
-  return 0.0f;
- }
-
-//TODO implement
- jdouble NativeInterface::getDoubleField(jobject, jfieldID) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::getDoubleField' is unimplemented!");
-  return 0.0;
- }
-
-//TODO implement
- void NativeInterface::setObjectField(jobject, jfieldID, jobject) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::setObjectField' is unimplemented!");
- }
-
-//TODO implement
- void NativeInterface::setBooleanField(jobject, jfieldID, jboolean b) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::setBooleanField' is unimplemented!");
- }
-
-//TODO implement
- void NativeInterface::setByteField(jobject, jfieldID, jbyte) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::setByteField' is unimplemented!");
- }
-
-//TODO implement
- void NativeInterface::setCharField(jobject, jfieldID, jchar) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::setCharField' is unimplemented!");
- }
-
-//TODO implement
- void NativeInterface::setShortField(jobject, jfieldID, jshort) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::setShortField' is unimplemented!");
- }
-
-//TODO implement
- void NativeInterface::setIntField(jobject, jfieldID, jint) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::setIntField' is unimplemented!");
- }
-
-//TODO implement
- void NativeInterface::setLongField(jobject, jfieldID, jlong) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::setLongField' is unimplemented!");
- }
-
-//TODO implement
- void NativeInterface::setFloatField(jobject, jfieldID, jfloat) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::setFloatField' is unimplemented!");
- }
-
-//TODO implement
- void NativeInterface::setDoubleField(jobject, jfieldID, jdouble) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::setDoubleField' is unimplemented!");
- }
-
-//TODO implement
- jfieldID NativeInterface::getStaticFieldID(jclass, const char *, const char *) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::getStaticFieldID' is unimplemented!");
-  return 0;
- }
-
-//TODO implement
- jobject NativeInterface::getStaticObjectField(jclass, jfieldID) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::getStaticObjectField' is unimplemented!");
-  return nullptr;
- }
-
-//TODO implement
- jboolean NativeInterface::getStaticBooleanField(jclass, jfieldID) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::getStaticBooleanField' is unimplemented!");
-  return 0;
- }
-
-//TODO implement
- jbyte NativeInterface::getStaticByteField(jclass, jfieldID) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::getStaticByteField' is unimplemented!");
-  return 0;
- }
-
-//TODO implement
- jchar NativeInterface::getStaticCharField(jclass, jfieldID) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::getStaticCharField' is unimplemented!");
-  return 0;
- }
-
-//TODO implement
- jshort NativeInterface::getStaticShortField(jclass, jfieldID) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::getStaticShortField' is unimplemented!");
-  return 0;
- }
-
-//TODO implement
- jint NativeInterface::getStaticIntField(jclass, jfieldID) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::getStaticIntField' is unimplemented!");
-  return 0;
- }
-
-//TODO implement
  jlong NativeInterface::getStaticLongField(jclass, jfieldID) const {
   throw std::runtime_error("FATAL: 'JVMNativeInterface_::getStaticLongField' is unimplemented!");
   return 0;
  }
 
-//TODO implement
- jfloat NativeInterface::getStaticFloatField(jclass, jfieldID) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::getStaticFloatField' is unimplemented!");
-  return 0.0f;
+ jfloat NativeInterface::getStaticFloatField(jclass, jfieldID jfid) const {
+  return ((JFieldID *)jfid)->get<JFloat>(nullptr);
  }
 
-//TODO implement
- jdouble NativeInterface::getStaticDoubleField(jclass, jfieldID) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::getStaticDoubleField' is unimplemented!");
-  return 0.0;
+ jdouble NativeInterface::getStaticDoubleField(jclass, jfieldID jfid) const {
+  return ((JFieldID *)jfid)->get<JDouble>(nullptr);
  }
 
-//TODO implement
- void NativeInterface::setStaticObjectField(jclass, jfieldID, jobject) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::setStaticObjectField' is unimplemented!");
+ void NativeInterface::setStaticObjectField(jclass, jfieldID jfid, jobject value) const {
+  ((JFieldID *)jfid)->set(nullptr, value);
  }
 
-//TODO implement
- void NativeInterface::setStaticBooleanField(jclass, jfieldID, jboolean b) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::setStaticBooleanField' is unimplemented!");
+ void NativeInterface::setStaticBooleanField(jclass, jfieldID jfid, jboolean value) const {
+  ((JFieldID *)jfid)->set(nullptr, &value);
  }
 
-//TODO implement
- void NativeInterface::setStaticByteField(jclass, jfieldID, jbyte) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::setStaticByteField' is unimplemented!");
+ void NativeInterface::setStaticByteField(jclass, jfieldID jfid, jbyte value) const {
+  ((JFieldID *)jfid)->set(nullptr, &value);
  }
 
-//TODO implement
- void NativeInterface::setStaticCharField(jclass, jfieldID, jchar) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::setStaticCharField' is unimplemented!");
+ void NativeInterface::setStaticCharField(jclass, jfieldID jfid, jchar value) const {
+  ((JFieldID *)jfid)->set(nullptr, &value);
  }
 
-//TODO implement
- void NativeInterface::setStaticShortField(jclass, jfieldID, jshort) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::setStaticShortField' is unimplemented!");
+ void NativeInterface::setStaticShortField(jclass, jfieldID jfid, jshort value) const {
+  ((JFieldID *)jfid)->set(nullptr, &value);
  }
 
-//TODO implement
- void NativeInterface::setStaticIntField(jclass, jfieldID, jint) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::setStaticIntField' is unimplemented!");
+ void NativeInterface::setStaticIntField(jclass, jfieldID jfid, jint value) const {
+  ((JFieldID *)jfid)->set(nullptr, &value);
  }
 
-//TODO implement
- void NativeInterface::setStaticLongField(jclass, jfieldID, jlong) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::setStaticLongField' is unimplemented!");
+ void NativeInterface::setStaticLongField(jclass, jfieldID jfid, jlong value) const {
+  ((JFieldID *)jfid)->set(nullptr, &value);
  }
 
-//TODO implement
- void NativeInterface::setStaticFloatField(jclass, jfieldID, jfloat) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::setStaticFloatField' is unimplemented!");
+ void NativeInterface::setStaticFloatField(jclass, jfieldID jfid, jfloat value) const {
+  ((JFieldID *)jfid)->set(nullptr, &value);
  }
 
-//TODO implement
- void NativeInterface::setStaticDoubleField(jclass, jfieldID, jdouble) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::setStaticDoubleField' is unimplemented!");
+ void NativeInterface::setStaticDoubleField(jclass, jfieldID jfid, jdouble value) const {
+  ((JFieldID *)jfid)->set(nullptr, &value);
  }
 }

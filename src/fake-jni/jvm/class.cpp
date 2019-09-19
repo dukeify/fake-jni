@@ -32,9 +32,10 @@ namespace FakeJni {
     );
    }
   }
-  auto functions_ptr = const_cast<AllocStack<JMethodID *> *>(&functions);
-  for (uint32_t i = 0; i < functions_ptr->getSize(); i++) {
-   const auto reg_mid = (*functions_ptr)[i];
+  auto& functions_ref = const_cast<AllocStack<JMethodID *>&>(functions);
+  const auto size = functions_ref.getSize();
+  for (uint32_t i = 0; i < size; i++) {
+   const auto reg_mid = functions_ref[i];
    if (*reg_mid == *mid) {
     if (strcmp(reg_mid->getName(), mid->getName()) == 0) {
      if (strcmp(reg_mid->getSignature(), mid->getSignature()) == 0) {
@@ -43,15 +44,16 @@ namespace FakeJni {
     }
    }
   }
-  functions_ptr->pushAlloc([](void *mid) { delete (JMethodID*)mid; }, mid);
+  functions_ref.pushAlloc([](void *mid) { delete (JMethodID*)mid; }, mid);
   return true;
  }
 
  bool JClass::unregisterMethod(FakeJni::JMethodID * const mid) const noexcept {
-  auto functions_ptr = const_cast<AllocStack<JMethodID *> *>(&functions);
-  for (unsigned int i = 0; i < functions_ptr->getSize(); i++) {
-   if ((*functions_ptr)[i] == mid) {
-    functions_ptr->removeAlloc(mid);
+  auto& functions_ref = const_cast<AllocStack<JMethodID *>&>(functions);
+  const auto size = functions_ref.getSize();
+  for (unsigned int i = 0; i < size; i++) {
+   if (functions_ref[i] == mid) {
+    functions_ref.removeAlloc(mid);
     return true;
    }
   }
@@ -59,9 +61,10 @@ namespace FakeJni {
  }
 
  JMethodID * JClass::getMethod(const char * sig, const char * name) const noexcept {
-  auto functions_ptr = const_cast<AllocStack<JMethodID *> *>(&functions);
-  for (unsigned int i = 0; i < functions_ptr->getSize(); i++) {
-   const auto& func = (*functions_ptr)[i];
+  auto& functions_ref = const_cast<AllocStack<JMethodID *>&>(functions);
+  const auto size = functions_ref.getSize();
+  for (unsigned int i = 0; i < size; i++) {
+   const auto& func = functions_ref[i];
    if (strcmp(name, func->getName()) == 0) {
     if (strcmp(sig, func->getSignature()) == 0) {
      return func;
@@ -76,9 +79,10 @@ namespace FakeJni {
  }
 
  bool JClass::registerField(JFieldID * const fid) const noexcept {
-  auto fields_ptr = const_cast<AllocStack<JFieldID *> *>(&fields);
-  for (uint32_t i = 0; i < fields_ptr->getSize(); i++) {
-   const auto reg_fid = (*fields_ptr)[i];
+  auto& fields_ref = const_cast<AllocStack<JFieldID *>&>(fields);
+  const auto size = fields_ref.getSize();
+  for (uint32_t i = 0; i < size; i++) {
+   const auto reg_fid = fields_ref[i];
    if (*reg_fid == *fid) {
     if (strcmp(reg_fid->getName(), fid->getName()) == 0) {
      if (strcmp(reg_fid->getSignature(), fid->getSignature()) == 0) {
@@ -87,15 +91,16 @@ namespace FakeJni {
     }
    }
   }
-  fields_ptr->pushAlloc([](void *fid) { delete (JFieldID*)fid; }, fid);
+  fields_ref.pushAlloc([](void *fid) { delete (JFieldID*)fid; }, fid);
   return true;
  }
 
  bool JClass::unregisterField(FakeJni::JFieldID * const fid) const noexcept {
-  auto fields_ptr = const_cast<AllocStack<JFieldID *> *>(&fields);
-  for (unsigned int i = 0; i < fields_ptr->getSize(); i++) {
-   if ((*fields_ptr)[i] == fid) {
-    fields_ptr->removeAlloc(fid);
+  auto& fields_ref = const_cast<AllocStack<JFieldID *>&>(fields);
+  const auto size = fields_ref.getSize();
+  for (unsigned int i = 0; i < size; i++) {
+   if (fields_ref[i] == fid) {
+    fields_ref.removeAlloc(fid);
     return true;
    }
   }
@@ -103,11 +108,26 @@ namespace FakeJni {
  }
 
  JFieldID * JClass::getField(const char * name) const noexcept {
-  auto fields_ptr = const_cast<AllocStack<JFieldID *> *>(&fields);
-  for (unsigned int i = 0; i < fields_ptr->getSize(); i++) {
-   const auto& field = (*fields_ptr)[i];
+  auto& fields_ref = const_cast<AllocStack<JFieldID *>&>(fields);
+  const auto size = fields_ref.getSize();
+  for (unsigned int i = 0; i < size; i++) {
+   const auto& field = fields_ref[i];
    if (strcmp(name, field->getName()) == 0) {
     return field;
+   }
+  }
+  return nullptr;
+ }
+
+ JFieldID* JClass::getField(const char * sig, const char * name) const noexcept {
+  auto& fields_ref = const_cast<AllocStack<JFieldID *>&>(fields);
+  const auto size = fields_ref.getSize();
+  for (unsigned int i = 0; i < size; i++) {
+   const auto& field = fields_ref[i];
+   if (strcmp(sig, field->getSignature()) == 0) {
+    if (strcmp(name, field->getName()) == 0) {
+     return field;
+    }
    }
   }
   return nullptr;

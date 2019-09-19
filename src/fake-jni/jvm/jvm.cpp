@@ -172,8 +172,21 @@ namespace FakeJni {
   return instances;
  }
 
- void Jvm::pushInstance(JObject *inst) {
-  (*this)[&inst->getClass()].pushAlloc(inst);
+ bool Jvm::addInstance(JObject *inst) {
+  auto& instances = (*this)[&inst->getClass()];
+  if (!instances.contains(inst)) {
+   instances.pushAlloc(inst);
+   return true;
+  }
+  return false;
+ }
+
+ bool Jvm::removeInstance(FakeJni::JObject *inst) {
+  return (*this)[&inst->getClass()].removeAlloc(inst);
+ }
+
+ bool Jvm::isRunning() const {
+  return running;
  }
 
  Jvm::~Jvm() {
