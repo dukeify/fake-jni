@@ -4,7 +4,25 @@
 
 #include <vector>
 
+#define _ERROR_ARBITRARY_CLASS \
+throw std::runtime_error("FATAL: Cannot construct an arbitrary class with no native backing!");
+
 namespace FakeJni {
+ JClass::JClass(const char *name, uint32_t modifiers) noexcept :
+  JObject(),
+  constructV([](JavaVM * const, const char * const, va_list) -> JObject * {
+   _ERROR_ARBITRARY_CLASS
+  }),
+  constructA([](JavaVM * const, const char * const, const jvalue *) -> JObject * {
+   _ERROR_ARBITRARY_CLASS
+  }),
+  className(name),
+  modifiers(modifiers),
+  parent(JObject::descriptor),
+  functions{true},
+  fields{true}
+ {}
+
  bool JClass::registerMethod(JMethodID * const mid) const noexcept {
   auto functions_ptr = const_cast<AllocStack<JMethodID *> *>(&functions);
   for (uint32_t i = 0; i < functions_ptr->getSize(); i++) {

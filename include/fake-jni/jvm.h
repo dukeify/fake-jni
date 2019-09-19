@@ -1002,6 +1002,7 @@ namespace FakeJni {
   explicit JClass(uint32_t modifiers, _CX::JClassBreeder<T, true> breeder) noexcept;
   template<typename T>
   explicit JClass(uint32_t modifiers, _CX::JClassBreeder<T, false> breeder) noexcept;
+  explicit JClass(const char * name, uint32_t modifiers = PUBLIC) noexcept;
   virtual ~JClass() = default;
 
   bool registerMethod(JMethodID * mid) const noexcept;

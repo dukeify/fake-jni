@@ -269,7 +269,7 @@ namespace FakeJni {
      path.c_str()
     );
 #endif
-    if (library->jniLoad()) {
+    if (!library->jniLoad()) {
      throw std::runtime_error("FATAL: Error initializing JNI library: '" + path + "'");
     }
    }
