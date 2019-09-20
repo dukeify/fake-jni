@@ -13,7 +13,7 @@ namespace FakeJni {
   return vm;
  }
 
- JvmtiEnv& JvmtiEnv::operator=(const JvmtiEnv &env) noexcept {
-  return const_cast<JvmtiEnv&>(env);
+ void JvmtiEnv::setJvmtiInterface(JvmtiInterface& interface) noexcept {
+  functions = &interface;
  }
 }

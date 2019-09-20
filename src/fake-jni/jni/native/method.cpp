@@ -3,7 +3,7 @@
 
 namespace FakeJni {
  jmethodID NativeInterface::getMethodID(jclass const jclazz, const char * const name, const char * const sig) const {
-  return ((JClass *)jclazz)->getMethod(sig, name);
+  return const_cast<JMethodID *>(((JClass *)jclazz)->getMethod(sig, name));
  }
 
  jobject NativeInterface::callObjectMethodV(jobject const obj, jmethodID const mid, va_list list) const {
@@ -167,7 +167,7 @@ namespace FakeJni {
  }
 
  jmethodID NativeInterface::getStaticMethodID(jclass const clazz, const char * const name, const char * const sig) const {
-  return ((JClass *)clazz)->getMethod(sig, name);
+  return const_cast<JMethodID *>(((JClass *)clazz)->getMethod(sig, name));
  }
 
  jobject NativeInterface::callStaticObjectMethodV(jclass const clazz, jmethodID const mid, va_list list) const {

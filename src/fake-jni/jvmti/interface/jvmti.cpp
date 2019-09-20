@@ -718,8 +718,4 @@ namespace FakeJni {
    return ji->getLocalInstance(env, thread, depth, value_ptr);
   };
  }
-
- JvmtiInterface& JvmtiInterface::operator=(const FakeJni::JvmtiInterface &ji) noexcept {
-  return const_cast<JvmtiInterface&>(ji);
- }
 }

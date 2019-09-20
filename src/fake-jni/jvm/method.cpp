@@ -42,13 +42,12 @@ struct NativeInvocationManager {
 
  template<>
  static void * allocate<va_list>(va_list list) {
-  const auto data = new Arg;
-  *data = FakeJni::_CX::getVArg<Arg>(list);
-  return (void *)data;
+  return new Arg;
  }
 
  template<>
  static void * allocate<jvalue *>(jvalue * const values) {
+  printf("jvalue * allocate!\n");
   const auto data = new Arg;
   *data = FakeJni::_CX::getAArg<Arg>(values);
   return (void *)data;
@@ -120,7 +119,11 @@ namespace FakeJni {
      _SIG_PREAMBLE(J, ffi_type_sint64)
      _SIG_PREAMBLE(D, ffi_type_double)
      case ')': continue;
-     default: _SIG_PARSE_FAILURE
+     default: {
+      if (!(inside_array || inside_obj_stmt)) {
+       _SIG_PARSE_FAILURE
+      }
+     }
     }
    }
    //No arguments were parsed, not even the return type

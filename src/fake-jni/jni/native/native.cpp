@@ -1037,8 +1037,4 @@ namespace FakeJni {
    return ni->getObjectRefType(obj);
   };
  }
-
- inline NativeInterface& NativeInterface::operator=(const NativeInterface& ni) noexcept {
-  return const_cast<NativeInterface&>(ni);
- }
 }

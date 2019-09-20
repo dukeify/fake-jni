@@ -20,7 +20,7 @@ namespace FakeJni {
  // once exceptions are implemented, add this functionality
  jint NativeInterface::registerNatives(jclass clazz, const JNINativeMethod * methods, const jint numMethods) const {
   bool success = true;
-  const auto jclass = (JClass * const)clazz;
+  const auto jclass = (JClass *)clazz;
   for (int i = 0; i < numMethods; i++) {
    methods += i;
    success &= jclass->registerMethod(new JMethodID(methods));
@@ -32,7 +32,7 @@ namespace FakeJni {
   bool success = true;
   auto * const clazz = (JClass *)jclass;
   const auto& methods = clazz->getMethods();
-  std::vector<JMethodID *> toRemove;
+  std::vector<const JMethodID *> toRemove;
   for (unsigned int i = 0; i < methods.getSize(); i++) {
    const auto mid = methods[i];
    if (mid->type == JMethodID::REGISTER_NATIVES_FUNC) {
@@ -57,9 +57,8 @@ namespace FakeJni {
   return 0;
  }
 
-//TODO implement
- jint NativeInterface::getJavaVM(JavaVM **) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::getJavaVM' is unimplemented!");
+ jint NativeInterface::getJavaVM(JavaVM **pVm) const {
+  *pVm = const_cast<Jvm *>(&vm);
   return 0;
  }
 }

@@ -267,39 +267,38 @@ namespace FakeJni {
   //SFINAE functions to generate JNI function signatures
   //Fold expression evaluators
   //Evaluator for non-empty fold
-  template<typename... Args>
-  class EvaluateFold {
-  public:
-   inline static constexpr const auto fold = CX::Concat<(JniTypeBase<Args>::signature, ...)>::result;
+  template<typename...>
+  struct EvaluateFold;
+
+  template<typename T, typename... Args>
+  struct EvaluateFold<T, Args...> {
+   static constexpr const auto fold = CX::Concat<JniTypeBase<T>::signature, EvaluateFold<Args...>::fold>::result;
   };
 
   //Evaluator for empty folds
   template<>
-  class EvaluateFold<> {
-  public:
-   inline static constexpr const char fold[] = "";
+  struct EvaluateFold<> {
+   static constexpr const char fold[] = "";
   };
 
   template<bool IsConstructor, typename R, typename... Args>
-  class SignatureGenerator;
+  struct SignatureGenerator;
 
   //Generator for regular functions
   template<typename R, typename... Args>
-  class SignatureGenerator<false, R, Args...> {
-  public:
-   inline static constexpr const char
+  struct SignatureGenerator<false, R, Args...> {
+   static constexpr const char
     prefix[] = "(",
     suffix[] = ")";
-   inline static constexpr const auto signature =
+   static constexpr const auto signature =
     CX::Concat<prefix, EvaluateFold<Args...>::fold, suffix, JniTypeBase<R>::signature>::result;
   };
 
   //Generator for constructors
   template<typename R, typename... Args>
-  class SignatureGenerator<true, R, Args...> {
-  public:
-   inline static constexpr const char suffix[] = ")V";
-   inline static constexpr const auto signature =
+  struct SignatureGenerator<true, R, Args...> {
+   static constexpr const char suffix[] = ")V";
+   static constexpr const auto signature =
     CX::Concat<SignatureGenerator<false, R, Args...>::prefix, EvaluateFold<Args...>::fold, suffix>::result;
   };
  }

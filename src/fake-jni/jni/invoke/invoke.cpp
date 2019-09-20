@@ -46,8 +46,4 @@ namespace FakeJni {
    return jvm->getInvokeInterface().attachCurrentThread(jvm, penv, args);
   };
  }
-
- inline InvokeInterface& InvokeInterface::operator=(const InvokeInterface& ii) noexcept {
-  return const_cast<InvokeInterface&>(ii);
- }
 }

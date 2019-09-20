@@ -10,13 +10,14 @@ namespace FakeJni {
   return {};
  }
 
+ //TODO implement
  jobject NativeInterface::newGlobalRef(jobject const jobj) const {
-  (const_cast<Jvm&>(vm)).addInstance((JObject *)jobj);
-  return jobj;
+  throw std::runtime_error("FATAL: 'JVMNativeInterface_::newGlobalRef' os unimplemented!");
  }
 
+ //TODO implement
  void NativeInterface::deleteGlobalRef(jobject const jobj) const {
-  (const_cast<Jvm&>(vm)).removeInstance((JObject *)jobj);
+  throw std::runtime_error("FATAL: 'JVMNativeInterface_::deleteGlobalRef' os unimplemented!");
  }
 
 //TODO implement

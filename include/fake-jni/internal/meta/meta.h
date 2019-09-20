@@ -40,7 +40,6 @@ namespace FakeJni::_CX {
  template<typename T>
  class JniArrayTypeBase {
  public:
-  using component_t = void;
   static constexpr const auto isRegisteredType = false;
  };
 

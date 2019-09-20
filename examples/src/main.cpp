@@ -80,13 +80,32 @@ BEGIN_NATIVE_DESCRIPTOR(ExampleClass)
  {Constructor<ExampleClass, JDouble, ExampleClass *> {}}
 END_NATIVE_DESCRIPTOR
 
+jint test(JNIEnv *env, jobject obj, JObject * a, JDouble b, JDouble c) {
+ printf("Obj type: %s\n", a->getClass().getName());
+ printf("0x%lx %f %f\n", (intptr_t)a, b, c);
+ return 314;
+}
+
+JClass dummy{"bruh"};
+
 //fake-jni in action
 int main(int argc, char **argv) {
+ JNINativeMethod nm {
+  "test",
+  "(L;DD)V",
+  (void *)&test
+ };
+
  //Make a JString
  JString test{"Hello World!"};
 
  //Create a shiny new fake JVM instance
  Jvm vm;
+
+ auto mid = new JMethodID{&nm};
+ dummy.registerMethod(mid);
+ auto result = mid->invoke<jint>(vm, &dummy, &dummy, (JDouble)2, (JDouble)3);
+ printf("FUNCTION RETURNED: %d(0x%x)\n", result, result);
 
  //Register ExampleClass on the JVM instance
  vm.registerClass<ExampleClass>();

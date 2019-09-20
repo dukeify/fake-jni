@@ -58,7 +58,7 @@ namespace FakeJni {
     if (dealloc) {
      const auto deallocator = elem->entry.dealloc;
      if (deallocator) {
-      deallocator(elem->entry.t);
+      deallocator((void *)elem->entry.t);
      }
 //     else {
 //      delete elem->entry.t;
@@ -75,6 +75,7 @@ namespace FakeJni {
   }
 
   //Pushes a new allocation to the end of the list, with a custom deallocator
+  //TODO default the deallocator lambda
   T pushAlloc(void (* const deallocator)(void *), T t) {
    std::scoped_lock<std::mutex> mLock(m);
    size += 1;
@@ -125,7 +126,7 @@ namespace FakeJni {
    if (dealloc) {
     const auto deallocator = elem->entry.dealloc;
     if (deallocator) {
-     deallocator(elem->entry.t);
+     deallocator((void *)elem->entry.t);
     } else {
      delete elem->entry.t;
     }

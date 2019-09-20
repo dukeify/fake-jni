@@ -24,7 +24,28 @@ namespace FakeJni {
   fields{true}
  {}
 
- bool JClass::registerMethod(JMethodID * const mid) const {
+ JClass::JClass(const JClass& clazz) noexcept :
+  JObject(),
+  constructV(clazz.constructV),
+  constructA(clazz.constructA),
+  isArbitrary(clazz.isArbitrary),
+  className(clazz.className),
+  modifiers(clazz.modifiers),
+  parent(clazz.parent),
+  functions{false},
+  fields{false}
+ {
+  auto size = clazz.functions.getSize();
+  for (unsigned int i = 0; i < size; i++) {
+   functions.pushAlloc(clazz.functions[i]);
+  }
+  size = clazz.fields.getSize();
+  for (unsigned int i = 0; i < size; i++) {
+   fields.pushAlloc(clazz.fields[i]);
+  }
+ }
+
+ bool JClass::registerMethod(const JMethodID * const mid) const {
   if (isArbitrary) {
    if (mid->type == JMethodID::MEMBER_FUNC) {
     throw std::runtime_error(
@@ -32,7 +53,7 @@ namespace FakeJni {
     );
    }
   }
-  auto& functions_ref = const_cast<AllocStack<JMethodID *>&>(functions);
+  auto& functions_ref = const_cast<AllocStack<const JMethodID *>&>(functions);
   const auto size = functions_ref.getSize();
   for (uint32_t i = 0; i < size; i++) {
    const auto reg_mid = functions_ref[i];
@@ -44,24 +65,16 @@ namespace FakeJni {
     }
    }
   }
-  functions_ref.pushAlloc([](void *mid) { delete (JMethodID*)mid; }, mid);
+  functions_ref.pushAlloc([](void *mid) { delete (JMethodID *)mid; }, mid);
   return true;
  }
 
- bool JClass::unregisterMethod(FakeJni::JMethodID * const mid) const noexcept {
-  auto& functions_ref = const_cast<AllocStack<JMethodID *>&>(functions);
-  const auto size = functions_ref.getSize();
-  for (unsigned int i = 0; i < size; i++) {
-   if (functions_ref[i] == mid) {
-    functions_ref.removeAlloc(mid);
-    return true;
-   }
-  }
-  return false;
+ bool JClass::unregisterMethod(const JMethodID * const mid) const noexcept {
+  return const_cast<AllocStack<const JMethodID *>&>(functions).removeAlloc(mid);
  }
 
- JMethodID * JClass::getMethod(const char * sig, const char * name) const noexcept {
-  auto& functions_ref = const_cast<AllocStack<JMethodID *>&>(functions);
+ const JMethodID * JClass::getMethod(const char * sig, const char * name) const noexcept {
+  auto& functions_ref = const_cast<AllocStack<const JMethodID *>&>(functions);
   const auto size = functions_ref.getSize();
   for (unsigned int i = 0; i < size; i++) {
    const auto& func = functions_ref[i];
@@ -74,41 +87,33 @@ namespace FakeJni {
   return nullptr;
  }
 
- const AllocStack<JMethodID *>& JClass::getMethods() const noexcept {
+ const AllocStack<const JMethodID *>& JClass::getMethods() const noexcept {
   return functions;
  }
 
  bool JClass::registerField(JFieldID * const fid) const noexcept {
-  auto& fields_ref = const_cast<AllocStack<JFieldID *>&>(fields);
+  auto& fields_ref = const_cast<AllocStack<const JFieldID *>&>(fields);
   const auto size = fields_ref.getSize();
   for (uint32_t i = 0; i < size; i++) {
    const auto reg_fid = fields_ref[i];
    if (*reg_fid == *fid) {
-    if (strcmp(reg_fid->getName(), fid->getName()) == 0) {
-     if (strcmp(reg_fid->getSignature(), fid->getSignature()) == 0) {
-      return false;
-     }
+    return false;
+   } else if (strcmp(reg_fid->getName(), fid->getName()) == 0) {
+    if (strcmp(reg_fid->getSignature(), fid->getSignature()) == 0) {
+     return false;
     }
    }
   }
-  fields_ref.pushAlloc([](void *fid) { delete (JFieldID*)fid; }, fid);
+  fields_ref.pushAlloc([](void *fid) { delete (JFieldID *)fid; }, fid);
   return true;
  }
 
- bool JClass::unregisterField(FakeJni::JFieldID * const fid) const noexcept {
-  auto& fields_ref = const_cast<AllocStack<JFieldID *>&>(fields);
-  const auto size = fields_ref.getSize();
-  for (unsigned int i = 0; i < size; i++) {
-   if (fields_ref[i] == fid) {
-    fields_ref.removeAlloc(fid);
-    return true;
-   }
-  }
-  return false;
+ bool JClass::unregisterField(JFieldID * const fid) const noexcept {
+  return const_cast<AllocStack<const JFieldID *>&>(fields).removeAlloc(fid);
  }
 
- JFieldID * JClass::getField(const char * name) const noexcept {
-  auto& fields_ref = const_cast<AllocStack<JFieldID *>&>(fields);
+ const JFieldID * JClass::getField(const char * name) const noexcept {
+  auto& fields_ref = const_cast<AllocStack<const JFieldID *>&>(fields);
   const auto size = fields_ref.getSize();
   for (unsigned int i = 0; i < size; i++) {
    const auto& field = fields_ref[i];
@@ -119,8 +124,8 @@ namespace FakeJni {
   return nullptr;
  }
 
- JFieldID* JClass::getField(const char * sig, const char * name) const noexcept {
-  auto& fields_ref = const_cast<AllocStack<JFieldID *>&>(fields);
+ const JFieldID * JClass::getField(const char * sig, const char * name) const noexcept {
+  auto& fields_ref = const_cast<AllocStack<const JFieldID *>&>(fields);
   const auto size = fields_ref.getSize();
   for (unsigned int i = 0; i < size; i++) {
    const auto& field = fields_ref[i];
@@ -133,7 +138,7 @@ namespace FakeJni {
   return nullptr;
  }
 
- const AllocStack<JFieldID *>& JClass::getFields() const noexcept {
+ const AllocStack<const JFieldID *>& JClass::getFields() const noexcept {
   return fields;
  }
 

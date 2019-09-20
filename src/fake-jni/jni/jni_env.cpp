@@ -13,7 +13,7 @@ namespace FakeJni {
   return vm;
  }
 
- JniEnv& JniEnv::operator=(const JniEnv &env) noexcept {
-  return const_cast<JniEnv&>(env);
+ void JniEnv::setNativeInterface(FakeJni::NativeInterface &interface) noexcept {
+  functions = &interface;
  }
 }

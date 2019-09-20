@@ -76,6 +76,7 @@ target_compile_options(fake-jni PUBLIC
     -Wno-gnu-anonymous-struct
     -Wno-nested-anon-types
     -Wno-vla-extension
+    -Wno-zero-length-array
 )
 
 set(BUILD_FAKE_JNI_TESTS ON CACHE BOOL "Enables fake-jni tests")

@@ -9,7 +9,7 @@ namespace FakeJni {
   if ((fid->getModifiers() & JFieldID::STATIC) == JFieldID::STATIC) {
    return nullptr;
   }
-  return fid;
+  return const_cast<JFieldID *>(fid);
  }
 
  jobject NativeInterface::getObjectField(jobject jobj, jfieldID jfid) const {
@@ -88,7 +88,7 @@ namespace FakeJni {
  jfieldID NativeInterface::getStaticFieldID(jclass jclazz, const char * name, const char * sig) const {
   auto fid = ((JClass *)jclazz)->getField(sig, name);
   if ((fid->getModifiers() & JFieldID::STATIC) == JFieldID::STATIC) {
-   return fid;
+   return const_cast<JFieldID *>(fid);
   }
   return nullptr;
  }

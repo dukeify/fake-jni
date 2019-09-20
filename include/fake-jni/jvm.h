@@ -50,6 +50,24 @@ static_assert(\
  "Registered JNI functions may only accept JNI types and pointers to _jobject or derived classes!"\
 );
 
+#define _INTERNAL_INVOKE_VA_ARG(type, ffi_type) \
+if (ffi_arg_t == &ffi_type) {\
+ auto *value = values[i + 2];\
+ if constexpr(sizeof(type) > sizeof(int)) {\
+  *((type *)value) = (type)va_arg(args, double);\
+ } else {\
+  *((type *)value) = (type)va_arg(args, int);\
+ }\
+ continue;\
+}
+
+#define _INTERNAL_INVOKE_CLEANUP \
+delete (JNIEnv **)values[0];\
+delete (jobject *)values[1];\
+for (unsigned int i = 0; i < argc; i++) {\
+ ((void (*)(void *))deallocators[i])(values[i + 2]);\
+}
+
 //FAKE-JNI API MACROS
 #define DEFINE_JNI_TYPE(target, sig) \
 namespace FakeJni::_CX {\
@@ -179,7 +197,7 @@ namespace FakeJni {
   explicit InvokeInterface(const Jvm& vm);
   explicit InvokeInterface(const InvokeInterface&) = delete;
   virtual ~InvokeInterface() = default;
-  virtual InvokeInterface& operator=(const InvokeInterface& ii) noexcept;
+  InvokeInterface& operator=(const InvokeInterface& ii) = delete;
 
   //jni/invoke/misc.cpp
   virtual jint getEnv(Jvm *vm, void **penv, jint version) const;
@@ -233,7 +251,8 @@ namespace FakeJni {
   explicit NativeInterface(const Jvm& vm);
   explicit NativeInterface(const NativeInterface &) = delete;
   virtual ~NativeInterface() = default;
-  virtual NativeInterface& operator=(const NativeInterface& ni) noexcept;
+//  virtual NativeInterface& operator=(const NativeInterface& ni) noexcept;
+  NativeInterface& operator=(const NativeInterface& ni) = delete;
 
   //jni/native/exception.cpp
   virtual jint throw_(jthrowable) const;
@@ -497,7 +516,7 @@ namespace FakeJni {
   explicit JvmtiInterface(const Jvm& vm);
   explicit JvmtiInterface(const JvmtiInterface&) = delete;
   virtual ~JvmtiInterface() = default;
-  virtual JvmtiInterface& operator=(const JvmtiInterface& ji) noexcept;
+  JvmtiInterface& operator=(const JvmtiInterface& ji) = delete;
 
   //jvmti/thread.cpp
   virtual jvmtiError getAllThreads(jvmtiEnv* env, jint* threads_count_ptr, jthread** threads_ptr) const;
@@ -660,8 +679,9 @@ namespace FakeJni {
   explicit JniEnv(const Jvm& vm) noexcept;
   explicit JniEnv(const JniEnv&) = delete;
   virtual ~JniEnv() = default;
-  virtual JniEnv& operator=(const JniEnv& env) noexcept;
+  JniEnv& operator=(const JniEnv& env) = delete;
   virtual const Jvm& getVM() const noexcept;
+  virtual void setNativeInterface(NativeInterface& interface) noexcept;
  };
 
  class JvmtiEnv : public jvmtiEnv {
@@ -671,8 +691,9 @@ namespace FakeJni {
   explicit JvmtiEnv(const Jvm& vm) noexcept;
   explicit JvmtiEnv(const JvmtiEnv&) = delete;
   virtual ~JvmtiEnv() = default;
-  virtual JvmtiEnv& operator=(const JvmtiEnv& env) noexcept;
+  JvmtiEnv& operator=(const JvmtiEnv& env) = delete;
   virtual const Jvm& getVM() const noexcept;
+  void setJvmtiInterface(JvmtiInterface& interface) noexcept;
  };
 
  using dlopen_t = void * (* const)(const char * filename, int flags);
@@ -735,7 +756,7 @@ namespace FakeJni {
  class JClass;
 
  //JNI _jobject and java/lang/Object implementation
- class JObject : public _jobject {
+ class JObject : public _jclass {
  public:
   //Internal fake-jni native class metadata
   //DEFINE_CLASS_NAME cant be used since this is the virtual base
@@ -746,7 +767,7 @@ namespace FakeJni {
    return &descriptor;
   }
 
-  constexpr JObject() = default;
+  JObject() = default;
   virtual ~JObject() = default;
   virtual const JClass & getClass() const noexcept;
  };
@@ -915,6 +936,8 @@ namespace FakeJni {
   R invoke(JavaVM * vm, void * clazzOrInst, A args) const;
   template<typename R, typename A>
   R invoke(JavaVM * const vm, JClass * const clazz, void * const inst, A args) const;
+  template<typename R>
+  R invoke(const Jvm& vm, const JObject * clazzOrInst, ...) const;
  };
 
  //Template glue code for native class registration
@@ -963,7 +986,7 @@ namespace FakeJni {
   };
  }
 
- class JClass : public JObject, public _jclass {
+ class JClass : public JObject {
  private:
   JObject
    * (* const constructV)(JavaVM *, const char *, va_list),
@@ -982,8 +1005,8 @@ namespace FakeJni {
   const JClass& parent;
 
   //Property associations
-  AllocStack<JMethodID *> functions;
-  AllocStack<JFieldID *> fields;
+  AllocStack<const JMethodID *> functions;
+  AllocStack<const JFieldID *> fields;
 
   enum Modifiers : uint32_t {
    PUBLIC = 1,
@@ -998,23 +1021,23 @@ namespace FakeJni {
    ENUM = 16384
   };
 
-  explicit JClass(JClass &) = delete;
   template<typename T>
   explicit JClass(uint32_t modifiers, _CX::JClassBreeder<T, true> breeder) noexcept;
   template<typename T>
   explicit JClass(uint32_t modifiers, _CX::JClassBreeder<T, false> breeder) noexcept;
   explicit JClass(const char * name, uint32_t modifiers = PUBLIC) noexcept;
+  JClass(const JClass& clazz) noexcept;
   virtual ~JClass() = default;
 
-  bool registerMethod(JMethodID * mid) const;
-  bool unregisterMethod(JMethodID * mid) const noexcept;
-  JMethodID * getMethod(const char * sig, const char * name) const noexcept;
-  const AllocStack<JMethodID *>& getMethods() const noexcept;
+  bool registerMethod(const JMethodID * mid) const;
+  bool unregisterMethod(const JMethodID * mid) const noexcept;
+  const JMethodID * getMethod(const char * sig, const char * name) const noexcept;
+  const AllocStack<const JMethodID *>& getMethods() const noexcept;
   bool registerField(JFieldID * fid) const noexcept;
   bool unregisterField(JFieldID * fid) const noexcept;
-  JFieldID * getField(const char * name) const noexcept;
-  JFieldID * getField(const char * sig, const char * name) const noexcept;
-  const AllocStack<JFieldID *>& getFields() const noexcept;
+  const JFieldID * getField(const char * name) const noexcept;
+  const JFieldID * getField(const char * sig, const char * name) const noexcept;
+  const AllocStack<const JFieldID *>& getFields() const noexcept;
   virtual const char * getName() const noexcept;
   //Object construction for c-varargs
   JObject * newInstance(JavaVM * vm, const char * signature, va_list list) const;
@@ -1030,21 +1053,25 @@ namespace FakeJni {
 
  private:
   FILE * const log;
-  InvokeInterface& invoke;
-  NativeInterface& native;
-  JvmtiInterface& jvmti;
-  JniEnv& jniEnv;
-  JvmtiEnv& jvmtiEnv;
+  InvokeInterface * invoke;
+  NativeInterface * native;
+  JvmtiInterface * jvmti;
+  JniEnv * jniEnv;
+  JvmtiEnv * jvmtiEnv;
 
   //TODO on the first invocation of any JNI, JNIEnv or JVMTI functions, set this flag to true
   bool running;
 
-  std::vector<Library *> libraries;
-  std::vector<JClass *> classes;
+//  std::vector<Library *> libraries;
+//  std::vector<JClass *> classes;
+  AllocStack<const Library *> libraries;
+  AllocStack<const JClass *> classes;
   //TODO if classloaders are ever implemented, this property will be handled by the ClassLoader model
 //  AllocStack<JObject *> instances{true};
   std::map<const JClass *, AllocStack<JObject *>> instances;
   mutable std::shared_mutex instances_mutex;
+
+  bool removeLibrary(const Library * library, const std::string& options);
 
  protected:
   static AllocStack<Jvm *> vms;
@@ -1059,28 +1086,34 @@ namespace FakeJni {
   virtual const char * generateJvmUuid() noexcept;
 
   //Interface and Env api
-  virtual InvokeInterface& createDefaultInvokeInterface() const;
-  virtual void setInvokeInterface(const InvokeInterface& ii);
+  template<typename T>
+  void setInvokeInterface();
+  virtual void setInvokeInterface(InvokeInterface * ii);
   virtual InvokeInterface& getInvokeInterface() const;
 
-  virtual NativeInterface& createDefaultNativeInterface() const;
-  virtual void setNativeInterface(const NativeInterface& ni);
+  template<typename T>
+  void setNativeInterface();
+  virtual void setNativeInterface(NativeInterface * ni);
   virtual NativeInterface& getNativeInterface() const;
 
-  virtual JvmtiInterface& createDefaultJvmtiInterface() const;
-  virtual void setJvmtiInterface(const JvmtiInterface& jvmti);
+  template<typename T>
+  void setJvmtiInterface();
+  virtual void setJvmtiInterface(JvmtiInterface * jvmti);
   virtual JvmtiInterface& getJvmtiInterface() const;
 
-  virtual JniEnv& createDefaultJniEnv() const;
-  virtual void setJniEnv(const JniEnv env);
+  template<typename T>
+  void setJniEnv();
+  virtual void setJniEnv(JniEnv * env);
   virtual JniEnv& getJniEnv() const;
 
-  virtual JvmtiEnv& createDefaultJvmtiEnv() const;
-  virtual void setJvmtiEnv(const JvmtiEnv& env);
+  template<typename T>
+  void setJvmtiEnv();
+  virtual void setJvmtiEnv(JvmtiEnv * env);
   virtual JvmtiEnv& getJvmtiEnv() const;
-
-  virtual const AllocStack<JObject *>& operator[](const JClass* clazz) const;
-  virtual AllocStack<JObject *>& operator[](const JClass* clazz);
+  
+  virtual const AllocStack<const JClass *>& getClasses() const;
+  virtual const AllocStack<JObject *>& operator[](const JClass * clazz) const;
+  virtual AllocStack<JObject *>& operator[](const JClass * clazz);
   virtual const decltype(instances)& getAllInstances() const;
   virtual bool addInstance(JObject * inst);
   virtual bool removeInstance(JObject * inst);
@@ -1093,14 +1126,14 @@ namespace FakeJni {
   virtual bool registerClass(const JClass * clazz);
   virtual bool unregisterClass(const JClass * clazz);
   virtual const JClass * findClass(const char * name) const;
-  virtual Library * getLibrary(const std::string & path) const;
   //Needs to be const to allow attaching agents / JNI modules at runtime
-  virtual Library * attachLibrary(
-   const std::string &rpath,
-   const std::string &options = "",
+  virtual void attachLibrary(
+   const std::string & rpath,
+   const std::string & options = "",
    LibraryOptions loptions = {&dlopen, &dlsym, &dlclose}
-  ) const;
-  virtual bool removeLibrary(const std::string& path, const std::string& options) const;
+  );
+  virtual bool removeLibrary(const std::string & path, const std::string & options);
+  virtual const AllocStack<const Library *>& getLibraries() const;
   virtual void start();
   virtual void destroy();
  };
@@ -1261,7 +1294,7 @@ namespace FakeJni {
  //Performs virtual dispatch
  template<typename R, typename A>
  R JMethodID::invoke(JavaVM * const vm, void * const clazzOrInst, A args) const {
-  auto* clazz = &((JObject *)clazzOrInst)->getClass();
+  auto * clazz = &((JObject *)clazzOrInst)->getClass();
   if (strcmp(clazz->getName(), "java/lang/Class") == 0) {
    //Static method, no virtual dispatch
    if (type == MEMBER_FUNC) {
@@ -1314,6 +1347,13 @@ namespace FakeJni {
   return mid->internalInvoke<R, A>(vm, inst, args);
  }
 
+ template<typename R>
+ R JMethodID::invoke(const Jvm& vm, const JObject * clazzOrInst, ...) const {
+  va_list list;
+  va_start(list, clazzOrInst);
+  return internalInvoke<R>(const_cast<Jvm *>(&vm), (void *)clazzOrInst, list);
+ }
+
  template<typename R, typename A>
  R JMethodID::internalInvoke(JavaVM * vm, void * clazzOrInst, A args) const {
   using arg_t = typename CX::ComponentTypeResolver<A>::type;
@@ -1325,30 +1365,43 @@ namespace FakeJni {
    case REGISTER_NATIVES_FUNC: {
     const auto argc = descriptor->nargs - 2;
     void * values[descriptor->nargs];
-    values[0] = &((Jvm *)vm)->getJniEnv();
-    values[1] = clazzOrInst;
+    values[0] = new JNIEnv*;
+    values[1] = new jobject*;
+    *((JNIEnv **)values[0]) = &((Jvm *)vm)->getJniEnv();
+    *((jobject *)values[1]) = (jobject)clazzOrInst;
     //set up arguments
     const auto resolverOffset = CX::IsSame<arg_t, jvalue>::value ? argc : 0;
     for (unsigned int i = 0; i < argc; i++) {
      values[i + 2] = ((void * (*)(A))resolvers[i + resolverOffset])(args);
     }
-    //Would be CX::IsSame<T, va_list> but this comparison is always false
+
+    //Would be CX::IsSame<T, va_list> but this comparison is not guaranteed
+    //Copy all primitives or object pointers into values (va_list only, jvalue* is done above)
     if constexpr (!CX::IsSame<arg_t, jvalue>::value) {
+     for (unsigned int i = 0; i < argc; i++) {
+      const auto* ffi_arg_t = descriptor->arg_types[i + 2];
+      _INTERNAL_INVOKE_VA_ARG(JByte, ffi_type_sint8)
+      _INTERNAL_INVOKE_VA_ARG(JChar, ffi_type_uint16)
+      _INTERNAL_INVOKE_VA_ARG(JShort, ffi_type_sint16)
+      _INTERNAL_INVOKE_VA_ARG(JInt, ffi_type_sint32)
+      _INTERNAL_INVOKE_VA_ARG(JFloat, ffi_type_float)
+      _INTERNAL_INVOKE_VA_ARG(JLong, ffi_type_sint64)
+      _INTERNAL_INVOKE_VA_ARG(JDouble, ffi_type_double)
+//      _INTERNAL_INVOKE_VA_ARG(JObject *, ffi_type_pointer)
+      if (ffi_arg_t == &ffi_type_pointer) {
+       *((JObject **)values[i + 2]) = va_arg(args, JObject *);
+       continue;
+      }
+     }
      va_end(args);
     }
     if constexpr(CX::IsSame<R, void>::value) {
      ffi_call(descriptor, FFI_FN(fnPtr), nullptr, values);
-     //clean up arguments
-     for (unsigned int i = 0; i < argc; i++) {
-      ((void (*)(void *))deallocators[i])(values[i + 2]);
-     }
+     _INTERNAL_INVOKE_CLEANUP
     } else {
      R r;
      ffi_call(descriptor, FFI_FN(fnPtr), (void *)&r, values);
-     //clean up arguments
-     for (unsigned int i = 0; i < argc; i++) {
-      ((void (*)(void *))deallocators[i])(values[i + 2]);
-     }
+     _INTERNAL_INVOKE_CLEANUP
      return r;
     }
    }
@@ -1374,6 +1427,36 @@ namespace FakeJni {
   return unregisterClass(&T::descriptor);
  }
 
+ template<typename T>
+ void Jvm::setInvokeInterface() {
+  static_assert(__is_base_of(InvokeInterface, T), "You must register a subtype of InvokeInterface!");
+  setInvokeInterface(new T{*this});
+ }
+
+ template<typename T>
+ void Jvm::setNativeInterface() {
+  static_assert(__is_base_of(NativeInterface, T), "You must register a subtype of NativeInterface!");
+  setNativeInterface(new T{*this});
+ }
+
+ template<typename T>
+ void Jvm::setJvmtiInterface() {
+  static_assert(__is_base_of(JvmtiInterface, T), "You must register a subtype of JvmtiInterface!");
+  setJvmtiInterface(new T{*this});
+ }
+
+ template<typename T>
+ void Jvm::setJniEnv() {
+  static_assert(__is_base_of(JniEnv, T), "You must register a subtype of JniEnv!");
+  setJniEnv(new T{*this});
+ }
+
+ template<typename T>
+ void Jvm::setJvmtiEnv() {
+  static_assert(__is_base_of(JvmtiEnv, T), "You must register a subtype of JvmtiEnv!");
+  setJvmtiInterface(new T{*this});
+ }
+
  //_CX::JClassImpl template members
  namespace _CX {
   template<typename T>
@@ -1392,7 +1475,7 @@ namespace FakeJni {
     JClass& descriptor = const_cast<JClass&>(T::descriptor);
     Jvm * const jvm = (Jvm * const)vm;
     for (uint32_t i = 0; i < descriptor.functions.getSize(); i++) {
-     JMethodID * const method = (descriptor.functions)[i];
+     const auto& method = (descriptor.functions)[i];
      if (strcmp(method->getSignature(), signature) == 0 && strcmp(method->getName(), "<init>") == 0) {
       const auto inst = method->invoke<T *>(vm, nullptr, args);
       JObject * baseInst;
@@ -1401,7 +1484,6 @@ namespace FakeJni {
       } else {
        baseInst = (JObject *)inst;
       }
-//      return const_cast<AllocStack<JObject *>&>(jvm->getInstances()).pushAlloc(JClassBreeder<T>::deallocator, baseInst);
       return (*jvm)[&descriptor].pushAlloc(&_CX::Deallocator<T>::deallocate, baseInst);
      }
     }
