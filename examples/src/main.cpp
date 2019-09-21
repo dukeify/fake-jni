@@ -92,7 +92,7 @@ JClass dummy{"bruh"};
 int main(int argc, char **argv) {
  JNINativeMethod nm {
   "test",
-  "(L;DD)V",
+  "(L;DD)I",
   (void *)&test
  };
 
@@ -104,6 +104,7 @@ int main(int argc, char **argv) {
 
  auto mid = new JMethodID{&nm};
  dummy.registerMethod(mid);
+
  auto result = mid->invoke<jint>(vm, &dummy, &dummy, (JDouble)2, (JDouble)3);
  printf("FUNCTION RETURNED: %d(0x%x)\n", result, result);
 

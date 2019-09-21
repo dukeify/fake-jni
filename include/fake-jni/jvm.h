@@ -1398,6 +1398,7 @@ namespace FakeJni {
     if constexpr(CX::IsSame<R, void>::value) {
      ffi_call(descriptor, FFI_FN(fnPtr), nullptr, values);
      _INTERNAL_INVOKE_CLEANUP
+     return;
     } else {
      using return_t = typename CX::select_if_true<sizeof(R) < sizeof(long), ffi_arg, R>::type;
      return_t result;
