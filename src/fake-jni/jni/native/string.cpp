@@ -1,33 +1,28 @@
 #include "jni.h"
+
 #include "fake-jni/jvm.h"
+#include "fake-jni/string.h"
+
+#include <cx/unsafe.h>
 
 #include <stdexcept>
 
 namespace FakeJni {
-//TODO implement
- jstring NativeInterface::newString(const jchar *chars, jsize size) const {
-
+ //TODO implement
+ jstring NativeInterface::newString(const jchar * chars, jsize size) const {
   return nullptr;
  }
 
-//TODO implement
- jsize NativeInterface::getStringLength(jstring) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::getStringLength' is unimplemented!");
-  return 0;
+ jsize NativeInterface::getStringLength(jstring jstr) const {
+  return CX::union_cast<JString *>(jstr)->getLength();
  }
 
-//TODO implement
- jchar* NativeInterface::getStringChars(jstring, jboolean *) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::getStringChars' is unimplemented!");
-  return nullptr;
+ jchar * NativeInterface::getStringChars(jstring jstr, jboolean * copy) const {
+  return CX::union_cast<JString *>(jstr)->getArray();
  }
 
-//TODO implement
- void NativeInterface::releaseStringChars(jstring, const jchar *) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::releaseStringChars' is unimplemented!");
- }
+ void NativeInterface::releaseStringChars(jstring jstr, const jchar * chars) const {}
 
-//TODO implement
  jstring NativeInterface::newStringUTF(const char *) const {
   throw std::runtime_error("FATAL: 'JVMNativeInterface_::newStringUTF' is unimplemented!");
   return nullptr;
@@ -39,11 +34,7 @@ namespace FakeJni {
   return 0;
  }
 
-//TODO implement
- char* NativeInterface::getStringUTFChars(jstring, jboolean *) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::getStringUTFChars' is unimplemented!");
-  return nullptr;
- }
+ char* NativeInterface::getStringUTFChars(jstring jstr, jboolean * copy) const {}
 
 //TODO implement
  void NativeInterface::releaseStringUTFChars(jstring, const char *) const {

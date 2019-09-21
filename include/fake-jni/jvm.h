@@ -192,7 +192,7 @@ namespace FakeJni {
 //JNI / JVMTI WRAPPER API
  class InvokeInterface : public JNIInvokeInterface_ {
  public:
-  const Jvm& vm;
+  Jvm& vm;
 
   //jni/invoke/invoke.cpp
   explicit InvokeInterface(const Jvm& vm);
@@ -246,7 +246,7 @@ namespace FakeJni {
   static void _CallStaticVoidMethod(JNIEnv *env, jclass clazz, jmethodID jmid, ...);
 
  public:
-  const Jvm& vm;
+  Jvm& vm;
 
   //jni/native/native.cpp
   explicit NativeInterface(const Jvm& vm);
@@ -511,7 +511,7 @@ namespace FakeJni {
   static jvmtiError _SetEventNotificationMode(jvmtiEnv* env, jvmtiEventMode mode, jvmtiEvent event_type, jthread event_thread, ...);
 
  public:
-  const Jvm& vm;
+  Jvm& vm;
 
   //jvmti/jvmti.cpp
   explicit JvmtiInterface(const Jvm& vm);
@@ -673,7 +673,7 @@ namespace FakeJni {
 
  class JniEnv : public JNIEnv {
  public:
-  const Jvm& vm;
+  Jvm& vm;
 
  public:
   //jni/jni_env.cpp
@@ -687,7 +687,7 @@ namespace FakeJni {
 
  class JvmtiEnv : public jvmtiEnv {
  public:
-  const Jvm& vm;
+  Jvm& vm;
 
   explicit JvmtiEnv(const Jvm& vm) noexcept;
   explicit JvmtiEnv(const JvmtiEnv&) = delete;
@@ -1086,6 +1086,8 @@ namespace FakeJni {
  public:
   explicit Jvm(FILE * log = stdout);
   virtual ~Jvm();
+
+  Jvm& operator=(const Jvm&) const = delete;
 
   //Other properties
   virtual FILE * getLog() const;

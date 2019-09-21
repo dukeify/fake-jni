@@ -7,7 +7,7 @@
 namespace FakeJni {
  JvmtiInterface::JvmtiInterface(const Jvm& vm) :
   jvmtiInterface_1(),
-  vm(vm)
+  vm(const_cast<Jvm &>(vm))
  {
   reserved1
    = reserved3

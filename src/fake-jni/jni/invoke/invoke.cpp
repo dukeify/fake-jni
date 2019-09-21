@@ -14,7 +14,7 @@
 namespace FakeJni {
  InvokeInterface::InvokeInterface(const Jvm& vm) :
   JNIInvokeInterface_(),
-  vm(vm)
+  vm(const_cast<Jvm &>(vm))
  {
   reserved0
    = reserved1

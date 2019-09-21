@@ -4,7 +4,7 @@
 namespace FakeJni {
  JniEnv::JniEnv(const Jvm& vm) noexcept :
   JNIEnv(),
-  vm(vm)
+  vm(const_cast<Jvm &>(vm))
  {
   functions = &vm.getNativeInterface();
  }

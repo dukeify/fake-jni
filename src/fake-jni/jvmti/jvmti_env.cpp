@@ -4,7 +4,7 @@
 namespace FakeJni {
  JvmtiEnv::JvmtiEnv(const Jvm& vm) noexcept :
   jvmtiEnv(),
-  vm(vm)
+  vm(const_cast<Jvm &>(vm))
  {
   functions = &vm.getJvmtiInterface();
  }
