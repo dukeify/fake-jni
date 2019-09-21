@@ -121,7 +121,15 @@ namespace FakeJni {
   public:
    [[gnu::always_inline]]
    inline static T getVArg(va_list list) {
-    return (T)va_arg(list, double);
+    if constexpr(sizeof(T) > sizeof(long double)) {
+     throw std::runtime_error(
+      "FATAL: Cannot consume va_arg larger than 'long double'! Use a pointer instead."
+     );
+    } else if constexpr(sizeof(T) > sizeof(double)) {
+     return (T)va_arg(list, long double);
+    } else {
+     return (T)va_arg(list, double);
+    }
    }
   };
 
