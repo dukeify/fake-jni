@@ -34,7 +34,9 @@ namespace FakeJni {
   return 0;
  }
 
- char* NativeInterface::getStringUTFChars(jstring jstr, jboolean * copy) const {}
+ char * NativeInterface::getStringUTFChars(jstring jstr, jboolean * copy) const {
+  return (char *)CX::union_cast<JString *>(jstr)->getArray();
+ }
 
 //TODO implement
  void NativeInterface::releaseStringUTFChars(jstring, const char *) const {
