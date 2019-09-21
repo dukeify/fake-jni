@@ -33,14 +33,42 @@ namespace FakeJni {\
    static constexpr const auto signature = JniTypeBase<fake_object>::signature;\
    static constexpr const bool hasComplexHierarchy = JniTypeBase<fake_object>::hasComplexHierarchy;\
   };\
+  template<>\
+  class JniTypeBase<jni_struct> {\
+  public:\
+   static constexpr const bool isRegisteredType = JniTypeBase<fake_object>::isRegisteredType;\
+   static constexpr const bool isClass = JniTypeBase<fake_object>::isClass;\
+   static constexpr const auto signature = JniTypeBase<fake_object>::signature;\
+   static constexpr const bool hasComplexHierarchy = JniTypeBase<fake_object>::hasComplexHierarchy;\
+  };\
  }\
- class fake_object : public JArray<fake_object>, public jni_struct {\
+ class fake_object : public JArray<fake_object> {\
  public:\
+  template<typename T>\
+  operator T() const;\
   using JArray<fake_object>::JArray;\
   inline static const JClass * getDescriptor() noexcept {\
    return JArray<fake_object>::getDescriptor();\
   }\
  };\
+ template<typename T>\
+ fake_object::operator T() const {\
+  using component_t = typename CX::ComponentTypeResolver<T>::type;\
+  constexpr const auto \
+   downcast = __is_base_of(fake_object, component_t),\
+   upcast = __is_base_of(component_t, fake_object),\
+   jnicast = CX::MatchAny<component_t, _jobject, _jarray, jni_struct>::value;\
+   static_assert(\
+    downcast || upcast || jnicast,\
+    #fake_object " can only be upcast, downcast, or converted to _jobject, _jarray or " #jni_struct\
+   );\
+   auto ptr = const_cast<fake_object *>(this);\
+   if constexpr(downcast || upcast) {\
+    return (T&)*ptr;\
+   } else if constexpr(jnicast) {\
+    return CX::union_cast<T>(this)();\
+   }\
+ }\
 }\
 template<>\
 const FakeJni::JClass FakeJni::JArray<FakeJni::fake_object>::descriptor;
@@ -127,6 +155,9 @@ namespace FakeJni {
   static JInt boundsCheck(JInt len);
 
  public:
+  template<typename C>
+  operator C() const;
+
   JArray(std::initializer_list<component>);
   explicit JArray(const JArray<T> & array);
   explicit JArray(JInt size);
@@ -168,6 +199,27 @@ namespace FakeJni {
  };
 
  //Immutable JArray template members
+ template<typename T>
+ template<typename C>
+ JArray<const T>::operator C() const {
+  using array_t = JArray<const T>;
+  using component_t = typename CX::ComponentTypeResolver<T>::type;
+  constexpr const auto
+   downcast = __is_base_of(array_t, component_t),
+   upcast = __is_base_of(component_t, array_t),
+   jnicast = CX::MatchAny<component_t, _jobject, _jarray>::value;
+  static_assert(
+   downcast || upcast || jnicast,
+   "JString can only be upcast, downcast, or converted to _jobject or _jstring!"
+  );
+  auto ptr = const_cast<array_t *>(this);
+  if constexpr(upcast || downcast) {
+   return (T&)*ptr;
+  } else if constexpr (jnicast) {
+   return CX::union_cast<T>(this)();
+  }
+ }
+
  template<typename T>
  inline JInt JArray<const T>::boundsCheck(JInt len) {
   if (len < 0) {

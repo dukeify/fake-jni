@@ -1,5 +1,7 @@
 #pragma once
 
+#include "jni.h"
+
 #include <cx/idioms.h>
 #include <cx/classes.h>
 
@@ -25,6 +27,25 @@ namespace FakeJni::_CX {
 
  //Stub type for generating pointer-to-member types
  class AnyClass;
+
+ //Jni-class identity template
+ template<typename T>
+ struct IsJniClass : CX::false_type {};
+
+ template<> struct IsJniClass<_jobject> : CX::true_type {};
+ template<> struct IsJniClass<_jclass> : CX::true_type {};
+ template<> struct IsJniClass<_jthrowable> : CX::true_type {};
+ template<> struct IsJniClass<_jstring> : CX::true_type {};
+ template<> struct IsJniClass<_jarray> : CX::true_type {};
+ template<> struct IsJniClass<_jbooleanArray> : CX::true_type {};
+ template<> struct IsJniClass<_jbyteArray> : CX::true_type {};
+ template<> struct IsJniClass<_jcharArray> : CX::true_type {};
+ template<> struct IsJniClass<_jshortArray> : CX::true_type {};
+ template<> struct IsJniClass<_jintArray> : CX::true_type {};
+ template<> struct IsJniClass<_jlongArray> : CX::true_type {};
+ template<> struct IsJniClass<_jfloatArray> : CX::true_type {};
+ template<> struct IsJniClass<_jdoubleArray> : CX::true_type {};
+ template<> struct IsJniClass<_jobjectArray> : CX::true_type {};
 
  //JNI Type metadata template
  template<typename>

@@ -15,11 +15,13 @@ namespace FakeJni {
  }
 
  jobject NativeInterface::newObjectV(jclass clazz, jmethodID mid, va_list args) const {
-  return ((JClass *)clazz)->newInstance(const_cast<Jvm *>(&vm), ((JMethodID *)mid)->getSignature(), args);
+  auto inst = ((JClass *)clazz)->newInstance(const_cast<Jvm *>(&vm), ((JMethodID *)mid)->getSignature(), args);;
+  return CX::union_cast<jobject>(inst)();
  }
 
  jobject NativeInterface::newObjectA(jclass const clazz, jmethodID const mid, const jvalue * const args) const {
-  return ((JClass *)clazz)->newInstance(const_cast<Jvm *>(&vm), ((JMethodID *)mid)->getSignature(), args);
+  auto inst = ((JClass *)clazz)->newInstance(const_cast<Jvm *>(&vm), ((JMethodID *)mid)->getSignature(), args);
+  return CX::union_cast<jobject>(inst)();
  }
 
  jclass NativeInterface::getObjectClass(jobject const obj) const {

@@ -3,9 +3,11 @@
 #include "fake-jni/jvm.h"
 #include "fake-jni/array.h"
 
-//JNI _jstring and java/lang/String implementation
+#include "cx/unsafe.h"
+
+//JNI java/lang/String implementation
 namespace FakeJni {
- class JString : public _jstring, public JCharArray {
+ class JString : public JCharArray {
  private:
   static const JString EMPTY_STR;
 
@@ -13,7 +15,10 @@ namespace FakeJni {
 
  public:
   DEFINE_CLASS_NAME("java/lang/String")
-  using cast = typename CX::ExplicitCastGenerator<JString, JCharArray, JClass, JObject>;
+//  using cast = typename CX::ExplicitCastGenerator<JString, JCharArray, JClass, JObject>;
+
+  template<typename T>
+  operator T() const;
 
   static constexpr JString * const EMPTY = const_cast<JString *>(&EMPTY_STR);
 
@@ -33,9 +38,29 @@ namespace FakeJni {
  };
 
  template<typename T>
+ JString::operator T() const {
+  using component_t = typename CX::ComponentTypeResolver<T>::type;
+  constexpr const auto
+   downcast = __is_base_of(JString, component_t),
+   upcast = __is_base_of(component_t, JString),
+   jnicast = CX::MatchAny<component_t, _jobject, _jstring>::value;
+  static_assert(
+   downcast || upcast || jnicast,
+   "JString can only be upcast, downcast, or converted to _jobject or _jstring!"
+  );
+  auto ptr = const_cast<JString *>(this);
+  if constexpr(upcast || downcast) {
+   return (T&)*ptr;
+  } else if constexpr (jnicast) {
+   return CX::union_cast<T>(this)();
+  }
+ }
+
+ template<typename T>
  bool JString::operator!=(const T operand) const {
   return !operator==(operand);
  }
 }
 
+DEFINE_JNI_TYPE(_jstring, "java/lang/String")
 DECLARE_NATIVE_TYPE(FakeJni::JString)

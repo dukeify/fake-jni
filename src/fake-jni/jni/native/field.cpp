@@ -1,5 +1,8 @@
 #include "jni.h"
+
 #include "fake-jni/jvm.h"
+
+#include "cx/unsafe.h"
 
 #include <stdexcept>
 
@@ -13,7 +16,7 @@ namespace FakeJni {
  }
 
  jobject NativeInterface::getObjectField(jobject jobj, jfieldID jfid) const {
-  return &((JFieldID *)jfid)->get<JObject>((JObject *)jobj);
+  return CX::union_cast<jobject>(&((JFieldID *)jfid)->get<JObject>((JObject *)jobj))();
  }
 
  jboolean NativeInterface::getBooleanField(jobject jobj, jfieldID jfid) const {
@@ -94,7 +97,7 @@ namespace FakeJni {
  }
 
  jobject NativeInterface::getStaticObjectField(jclass, jfieldID jfid) const {
-  return &((JFieldID *)jfid)->get<JObject>(nullptr);
+  return CX::union_cast<jobject>(&((JFieldID *)jfid)->get<JObject>(nullptr))();
  }
 
  jboolean NativeInterface::getStaticBooleanField(jclass, jfieldID jfid) const {

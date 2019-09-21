@@ -32,20 +32,6 @@ namespace FakeJni {
    }
   };
 
-  template<typename T>
-  class VerifyJniFunctionArguments<T> {
-  public:
-   [[gnu::always_inline]]
-   inline static constexpr bool verify() {
-    using resolver = ComponentTypeResolver<T>;
-    if constexpr(__is_class(typename resolver::type)) {
-     return __is_base_of(_jobject, typename resolver::type) && resolver::indirectionCount == 1U;
-    } else {
-     return JniTypeBase<T>::isRegisteredType && resolver::indirectionCount == 0U;
-    }
-   }
-  };
-
   template<>
   class VerifyJniFunctionArguments<> {
   public:

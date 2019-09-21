@@ -13,6 +13,7 @@
 #include "cx/classes.h"
 #include "cx/idioms.h"
 #include "cx/strings.h"
+#include "cx/unsafe.h"
 
 #include <ffi.h>
 
@@ -31,7 +32,7 @@
 //Internal JFieldID macros
 #define _ASSERT_FIELD_JNI_COMPLIANCE \
 static_assert(\
- __is_base_of(JObject, T) || _CX::JniTypeBase<T>::isRegisteredType,\
+ __is_base_of(_jobject, T) || _CX::JniTypeBase<T>::isRegisteredType,\
  "Field type is not a valid JNI type!"\
 );\
 static_assert(\
@@ -43,11 +44,11 @@ static_assert(\
 #define _ASSERT_JNI_FUNCTION_COMPLIANCE \
 static_assert(\
  _CX::VerifyJniFunctionArguments<R>::verify(),\
- "Registered JNI functions may only return JNI types and pointers to _jobject or derived classes!"\
+ "Registered JNI functions may only return JNI types and pointers to JObject or derived classes!"\
 );\
 static_assert(\
  _CX::VerifyJniFunctionArguments<Args...>::verify(),\
- "Registered JNI functions may only accept JNI types and pointers to _jobject or derived classes!"\
+ "Registered JNI functions may only accept JNI types and pointers to JObject or derived classes!"\
 );
 
 #define _INTERNAL_INVOKE_VA_ARG(type, ffi_type) \
@@ -755,8 +756,8 @@ namespace FakeJni {
 
  class JClass;
 
- //JNI _jobject and java/lang/Object implementation
- class JObject : public _jclass {
+ //Jni java/lang/Object implementation
+ class JObject {
  public:
   //Internal fake-jni native class metadata
   //DEFINE_CLASS_NAME cant be used since this is the virtual base
@@ -766,6 +767,9 @@ namespace FakeJni {
   inline static const JClass * getDescriptor() noexcept {
    return &descriptor;
   }
+
+  template<typename T>
+  operator T() const;
 
   JObject() = default;
   virtual ~JObject() = default;
@@ -999,7 +1003,10 @@ namespace FakeJni {
   //Internal fake-jni native class metadata
   DEFINE_CLASS_NAME("java/lang/Class")
 
-  using cast = CX::ExplicitCastGenerator<JClass, JObject, _jobject>;
+//  using cast = CX::ExplicitCastGenerator<JClass, JObject, _jobject>;
+
+  template<typename T>
+  operator T() const;
 
   const uint32_t modifiers;
   const JClass& parent;
@@ -1190,6 +1197,21 @@ namespace FakeJni {
    //Static assertion will fail if base is not a compliant type
    static constexpr const BaseTypeAssertion assert{};
   };
+
+  template<typename T>
+  class VerifyJniFunctionArguments<T> {
+  public:
+   [[gnu::always_inline]]
+   inline static constexpr bool verify() {
+    using resolver = ComponentTypeResolver<T>;
+    using arg_t = typename resolver::type;
+    if constexpr(__is_class(arg_t)) {
+     return __is_base_of(JObject, arg_t) && resolver::indirectionCount == 1U;
+    } else {
+     return JniTypeBase<T>::isRegisteredType && resolver::indirectionCount == 0U;
+    }
+   }
+  };
  }
 }
 
@@ -1198,6 +1220,17 @@ DECLARE_NATIVE_TYPE(FakeJni::JClass)
 
 //fake-jni API definitions
 namespace FakeJni {
+ //JObject template members
+ template<typename T>
+ JObject::operator T() const {
+  using component_t = typename CX::ComponentTypeResolver<T>::type;
+  constexpr const auto downcast = __is_base_of(JObject, T);
+  static_assert(
+   downcast || CX::IsSame<_jobject, component_t>::value,
+   "JObject can only be downcasted and converted to _jobject!"
+  );
+ }
+
  //JFieldID template members
  template<typename T, typename M>
  JFieldID::JFieldID(T M::* const member, const char * const name, const uint32_t modifiers) noexcept :
@@ -1530,7 +1563,7 @@ namespace FakeJni {
 
    [[gnu::always_inline]]
    inline static componentType* getAArg(jvalue *values) {
-    static_assert(__is_base_of(_jobject, componentType), "Illegal JNI function parameter type!");
+    static_assert(__is_base_of(JObject, componentType), "Illegal JNI function parameter type!");
     if constexpr(CastDefined<componentType>::value) {
      return componentType::cast::cast((JObject*)values->l);
     } else {
@@ -1541,6 +1574,25 @@ namespace FakeJni {
  }
 
  //JClass template members
+ template<typename T>
+ JClass::operator T() const {
+  using component_t = typename CX::ComponentTypeResolver<T>::type;
+  constexpr const auto
+   downcast = __is_base_of(JClass, component_t),
+   upcast = __is_base_of(component_t, JClass),
+   jnicast = CX::MatchAny<component_t, _jobject, _jclass>::value;
+  static_assert(
+   downcast || upcast || jnicast,
+   "JClass can only be upcast, downcast, or converted to _jobject or _jclass!"
+  );
+  auto ptr = const_cast<JClass *>(this);
+  if constexpr(upcast || downcast) {
+   return (T&)*ptr;
+  } else if constexpr(jnicast) {
+   return CX::union_cast<T>(this)();
+  }
+ }
+
  template<typename T>
  JClass::JClass(uint32_t modifiers, _CX::JClassBreeder<T, true> breeder) noexcept :
   JObject(),
