@@ -1,7 +1,70 @@
 #include "jni.h"
+
 #include "fake-jni/jvm.h"
+#include "fake-jni/array.h"
+
+#include <cx/unsafe.h>
 
 #include <stdexcept>
+
+#define _NEW_ARRAY(array_type)\
+auto arr = new array_type(size);\
+vm.addInstance(arr);\
+return *arr;
+
+#define _GET_ARRAY_ELEMENTS(array_type)\
+auto arr = CX::union_cast<array_type *>(jarr)();\
+if (copy) {\
+ if (*copy) {\
+  const auto len = arr->getSize();\
+  auto data = new typename array_type::component[len];\
+  for (JInt i = 0; i < len; i++) {\
+   data[i] = (*arr)[i];\
+  }\
+  return data;\
+ }\
+}\
+return arr->getArray();
+
+//TODO ensure that a matching getArrayElements invocation occurred before freeing
+#define _FREE_ARRAY_ELEMENTS(array_type)\
+auto arr = CX::union_cast<array_type *>(jarr)();\
+const auto len = arr->getSize();\
+if (mode == 0) {\
+ for (JInt i = 0; i < len; i++) {\
+  (*arr)[i] = elems[i];\
+ }\
+} else if (mode == JNI_COMMIT) {\
+ for (JInt i = 0; i < len; i++) {\
+  (*arr)[i] = elems[i];\
+ }\
+ delete[] elems;\
+} else if (mode == JNI_ABORT) {\
+ delete[] elems;\
+} else {\
+ throw std::runtime_error("FATAL: Invalid mode specified for release array elements!");\
+}
+
+//TODO JNI exception compliance
+#define _GET_ARRAY_REGION(array_type)\
+auto arr = CX::union_cast<array_type *>(jarr)();\
+const auto size = arr->getSize();\
+if (0 > len || start + len > size) {\
+ throw std::runtime_error("FATAL: Invalid array region requested!");\
+}\
+for (JInt i = start; i < start + len; i++) {\
+ buf[i] = (*arr)[i];\
+}
+
+#define _SET_ARRAY_REGION(array_type)\
+auto arr = CX::union_cast<array_type *>(jarr)();\
+const auto size = arr->getSize();\
+if (0 > len || start + len > size) {\
+ throw std::runtime_error("FATAL: Invalid array region requested!");\
+}\
+for (JInt i = start; i < start + len; i++) {\
+ (*arr)[i] = buf[i];\
+}
 
 namespace FakeJni {
  //TODO implement
@@ -15,242 +78,185 @@ namespace FakeJni {
   throw std::runtime_error("FATAL: 'JVMNativeInterface_::releasePrimitiveArrayCritical' is unimplemented!");
  }
 
-//TODO implement
- jsize NativeInterface::getArrayLength(jarray) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::getArrayLength' is unimplemented!");
-  return 0;
+ jsize NativeInterface::getArrayLength(jarray jarr) const {
+  return CX::union_cast<JArrayBase *>(jarr)->getSize();
  }
 
-//TODO implement
- jobjectArray NativeInterface::newObjectArray(jsize, jclass, jobject) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::newObjectArray' is unimplemented!");
-  return nullptr;
+ jobjectArray NativeInterface::newObjectArray(jsize size, jclass element_t, jobject initialElement) const {
+  auto arr = new JObjectArray(size);
+  for (JInt i = 0; i < size; i++) {
+   arr[i] = *CX::union_cast<JObject *>(initialElement)();
+  }
+  vm.addInstance(arr);
+  return *arr;
  }
 
-//TODO implement
- jobject NativeInterface::getObjectArrayElement(jobjectArray, jsize) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::getObjectArrayElement' is unimplemented!");
-  return nullptr;
+ jobject NativeInterface::getObjectArrayElement(jobjectArray arr, jsize index) const {
+  return CX::union_cast<JObject *>(arr)()[index];
  }
 
-//TODO implement
- void NativeInterface::setObjectArrayElement(jobjectArray, jsize, jobject) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::setObjectArrayElement' is unimplemented!");
+ void NativeInterface::setObjectArrayElement(jobjectArray jarr, jsize index, jobject obj) const {
+  auto arr = CX::union_cast<JObjectArray *>(jarr)();
+  (*arr)[index] = *CX::union_cast<JObject *>(obj)();
  }
 
-//TODO implement
- jbooleanArray NativeInterface::newBooleanArray(jsize) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::newBooleanArray' is unimplemented!");
-  return nullptr;
+ jbooleanArray NativeInterface::newBooleanArray(jsize size) const {
+  _NEW_ARRAY(JBooleanArray)
  }
 
-//TODO implement
- jbyteArray NativeInterface::newByteArray(jsize) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::newByteArray' is unimplemented!");
-  return nullptr;
+ jbyteArray NativeInterface::newByteArray(jsize size) const {
+  _NEW_ARRAY(JByteArray)
  }
 
-//TODO implement
- jcharArray NativeInterface::newCharArray(jsize) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::newCharArray' is unimplemented!");
-  return nullptr;
+ jcharArray NativeInterface::newCharArray(jsize size) const {
+  _NEW_ARRAY(JCharArray)
  }
 
-//TODO implement
- jshortArray NativeInterface::newShortArray(jsize) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::newShortArray' is unimplemented!");
-  return nullptr;
+ jshortArray NativeInterface::newShortArray(jsize size) const {
+  _NEW_ARRAY(JShortArray)
  }
 
-//TODO implement
- jintArray NativeInterface::newIntArray(jsize) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::newIntArray' is unimplemented!");
-  return nullptr;
+ jintArray NativeInterface::newIntArray(jsize size) const {
+  _NEW_ARRAY(JIntArray)
  }
 
-//TODO implement
- jlongArray NativeInterface::newLongArray(jsize) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::newLongArray' is unimplemented!");
-  return nullptr;
+ jlongArray NativeInterface::newLongArray(jsize size) const {
+  _NEW_ARRAY(JLongArray)
  }
 
-//TODO implement
- jfloatArray NativeInterface::newFloatArray(jsize) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::newFloatArray' is unimplemented!");
-  return nullptr;
+ jfloatArray NativeInterface::newFloatArray(jsize size) const {
+  _NEW_ARRAY(JFloatArray)
  }
 
-//TODO implement
- jdoubleArray NativeInterface::newDoubleArray(jsize) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::newDoubleArray' is unimplemented!");
-  return nullptr;
+ jdoubleArray NativeInterface::newDoubleArray(jsize size) const {
+  _NEW_ARRAY(JDoubleArray)
  }
 
-//TODO implement
- jboolean* NativeInterface::getBooleanArrayElements(jbooleanArray, jboolean *) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::getBooleanArrayElements' is unimplemented!");
-  return nullptr;
+ jboolean * NativeInterface::getBooleanArrayElements(jbooleanArray jarr, jboolean * copy) const {
+  _GET_ARRAY_ELEMENTS(JBooleanArray)
  }
 
-//TODO implement
- jbyte* NativeInterface::getByteArrayElements(jbyteArray, jboolean *) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::getByteArrayElements' is unimplemented!");
-  return nullptr;
+ jbyte * NativeInterface::getByteArrayElements(jbyteArray jarr, jboolean * copy) const {
+  _GET_ARRAY_ELEMENTS(JByteArray)
  }
 
-//TODO implement
- jchar* NativeInterface::getCharArrayElements(jcharArray, jboolean *) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::getCharArrayElements' is unimplemented!");
-  return nullptr;
+ jchar * NativeInterface::getCharArrayElements(jcharArray jarr, jboolean * copy) const {
+  _GET_ARRAY_ELEMENTS(JCharArray)
  }
 
-//TODO implement
- jshort* NativeInterface::getShortArrayElements(jshortArray, jboolean *) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::getShortArrayElements' is unimplemented!");
-  return nullptr;
+ jshort * NativeInterface::getShortArrayElements(jshortArray jarr, jboolean * copy) const {
+  _GET_ARRAY_ELEMENTS(JShortArray)
  }
 
-//TODO implement
- jint* NativeInterface::getIntArrayElements(jintArray, jboolean *) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::getIntArrayElements' is unimplemented!");
-  return nullptr;
+ jint * NativeInterface::getIntArrayElements(jintArray jarr, jboolean * copy) const {
+  _GET_ARRAY_ELEMENTS(JIntArray)
  }
 
-//TODO implement
- jlong* NativeInterface::getLongArrayElements(jlongArray, jboolean *) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::getLongArrayElements' is unimplemented!");
-  return nullptr;
+ jlong * NativeInterface::getLongArrayElements(jlongArray jarr, jboolean * copy) const {
+  _GET_ARRAY_ELEMENTS(JLongArray)
  }
 
-//TODO implement
- jfloat* NativeInterface::getFloatArrayElements(jfloatArray, jboolean *) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::getFloatArrayElements' is unimplemented!");
-  return nullptr;
+ jfloat * NativeInterface::getFloatArrayElements(jfloatArray jarr, jboolean * copy) const {
+  _GET_ARRAY_ELEMENTS(JFloatArray)
  }
 
-//TODO implement
- jdouble* NativeInterface::getDoubleArrayElements(jdoubleArray, jboolean *) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::getDoubleArrayElements' is unimplemented!");
-  return nullptr;
+ jdouble * NativeInterface::getDoubleArrayElements(jdoubleArray jarr, jboolean * copy) const {
+  _GET_ARRAY_ELEMENTS(JDoubleArray)
  }
 
-//TODO implement
- void NativeInterface::releaseBooleanArrayElements(jbooleanArray, jboolean *, jint) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::releaseBooleanArrayElements' is unimplemented!");
+ void NativeInterface::releaseBooleanArrayElements(jbooleanArray jarr, jboolean * elems, jint mode) const {
+  _FREE_ARRAY_ELEMENTS(JBooleanArray)
  }
 
-//TODO implement
- void NativeInterface::releaseByteArrayElements(jbyteArray, jbyte *, jint) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::releaseByteArrayElements' is unimplemented!");
+ void NativeInterface::releaseByteArrayElements(jbyteArray jarr, jbyte * elems, jint mode) const {
+  _FREE_ARRAY_ELEMENTS(JByteArray)
  }
 
-//TODO implement
- void NativeInterface::releaseCharArrayElements(jcharArray, jchar *, jint) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::releaseCharArrayElements' is unimplemented!");
+ void NativeInterface::releaseCharArrayElements(jcharArray jarr, jchar * elems, jint mode) const {
+  _FREE_ARRAY_ELEMENTS(JCharArray)
  }
 
-//TODO implement
- void NativeInterface::releaseShortArrayElements(jshortArray, jshort *, jint) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::releaseShortArrayElements' is unimplemented!");
+ void NativeInterface::releaseShortArrayElements(jshortArray jarr, jshort * elems, jint mode) const {
+  _FREE_ARRAY_ELEMENTS(JShortArray)
  }
 
-//TODO implement
- void NativeInterface::releaseIntArrayElements(jintArray, jint *, jint) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::releaseIntArrayElements' is unimplemented!");
+ void NativeInterface::releaseIntArrayElements(jintArray jarr, jint * elems, jint mode) const {
+  _FREE_ARRAY_ELEMENTS(JIntArray)
  }
 
-//TODO implement
- void NativeInterface::releaseLongArrayElements(jlongArray, jlong *, jint) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::releaseLongArrayElements' is unimplemented!");
+ void NativeInterface::releaseLongArrayElements(jlongArray jarr, jlong * elems, jint mode) const {
+  _FREE_ARRAY_ELEMENTS(JLongArray)
  }
 
-//TODO implement
- void NativeInterface::releaseFloatArrayElements(jfloatArray, jfloat *, jint) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::releaseFloatArrayElements' is unimplemented!");
+ void NativeInterface::releaseFloatArrayElements(jfloatArray jarr, jfloat * elems, jint mode) const {
+  _FREE_ARRAY_ELEMENTS(JFloatArray)
  }
 
-//TODO implement
- void NativeInterface::releaseDoubleArrayElements(jdoubleArray, jdouble *, jint) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::releaseDoubleArrayElements' is unimplemented!");
+ void NativeInterface::releaseDoubleArrayElements(jdoubleArray jarr, jdouble * elems, jint mode) const {
+  _FREE_ARRAY_ELEMENTS(JDoubleArray)
  }
 
-//TODO implement
- void NativeInterface::getBooleanArrayRegion(jbooleanArray, jsize, jsize, jboolean *) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::getBooleanArrayRegion' is unimplemented!");
+ void NativeInterface::getBooleanArrayRegion(jbooleanArray jarr, jsize start, jsize len, jboolean * buf) const {
+  _GET_ARRAY_REGION(JBooleanArray)
  }
 
-//TODO implement
- void NativeInterface::getByteArrayRegion(jbyteArray, jsize, jsize, jbyte *) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::getByteArrayRegion' is unimplemented!");
+ void NativeInterface::getByteArrayRegion(jbyteArray jarr, jsize start, jsize len, jbyte * buf) const {
+  _GET_ARRAY_REGION(JByteArray)
  }
 
-//TODO implement
- void NativeInterface::getCharArrayRegion(jcharArray, jsize, jsize, jchar *) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::getCharArrayRegion' is unimplemented!");
+ void NativeInterface::getCharArrayRegion(jcharArray jarr, jsize start, jsize len, jchar * buf) const {
+  _GET_ARRAY_REGION(JCharArray)
  }
 
-//TODO implement
- void NativeInterface::getShortArrayRegion(jshortArray, jsize, jsize, jshort *) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::getShortArrayRegion' is unimplemented!");
+ void NativeInterface::getShortArrayRegion(jshortArray jarr, jsize start, jsize len, jshort * buf) const {
+  _GET_ARRAY_REGION(JShortArray)
  }
 
-//TODO implement
- void NativeInterface::getIntArrayRegion(jintArray, jsize, jsize, jint *) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::getIntArrayRegion' is unimplemented!");
+ void NativeInterface::getIntArrayRegion(jintArray jarr, jsize start, jsize len, jint * buf) const {
+  _GET_ARRAY_REGION(JIntArray)
  }
 
-//TODO implement
- void NativeInterface::getLongArrayRegion(jlongArray, jsize, jsize, jlong *) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::getLongArrayRegion' is unimplemented!");
+ void NativeInterface::getLongArrayRegion(jlongArray jarr, jsize start, jsize len, jlong * buf) const {
+  _GET_ARRAY_REGION(JLongArray)
  }
 
-//TODO implement
- void NativeInterface::getFloatArrayRegion(jfloatArray, jsize, jsize, jfloat *) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::getFloatArrayRegion' is unimplemented!");
+ void NativeInterface::getFloatArrayRegion(jfloatArray jarr, jsize start, jsize len, jfloat * buf) const {
+  _GET_ARRAY_REGION(JFloatArray)
  }
 
-//TODO implement
- void NativeInterface::getDoubleArrayRegion(jdoubleArray, jsize, jsize, jdouble *) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::getDoubleArrayRegion' is unimplemented!");
+ void NativeInterface::getDoubleArrayRegion(jdoubleArray jarr, jsize start, jsize len, jdouble * buf) const {
+  _GET_ARRAY_REGION(JDoubleArray)
  }
 
-//TODO implement
- void NativeInterface::setBooleanArrayRegion(jbooleanArray, jsize, jsize, const jboolean *) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::setBooleanArrayRegion' is unimplemented!");
+ void NativeInterface::setBooleanArrayRegion(jbooleanArray jarr, jsize start, jsize len, const jboolean * buf) const {
+  _SET_ARRAY_REGION(JBooleanArray)
  }
 
-//TODO implement
- void NativeInterface::setByteArrayRegion(jbyteArray, jsize, jsize, const jbyte *) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::setByteArrayRegion' is unimplemented!");
+ void NativeInterface::setByteArrayRegion(jbyteArray jarr, jsize start, jsize len, const jbyte * buf) const {
+  _SET_ARRAY_REGION(JByteArray)
  }
 
-//TODO implement
- void NativeInterface::setCharArrayRegion(jcharArray, jsize, jsize, const jchar *) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::setCharArrayRegion' is unimplemented!");
+ void NativeInterface::setCharArrayRegion(jcharArray jarr, jsize start, jsize len, const jchar * buf) const {
+  _SET_ARRAY_REGION(JCharArray)
  }
 
-//TODO implement
- void NativeInterface::setShortArrayRegion(jshortArray, jsize, jsize, const jshort *) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::setShortArrayRegion' is unimplemented!");
+ void NativeInterface::setShortArrayRegion(jshortArray jarr, jsize start, jsize len, const jshort * buf) const {
+  _SET_ARRAY_REGION(JShortArray)
  }
 
-//TODO implement
- void NativeInterface::setIntArrayRegion(jintArray, jsize, jsize, const jint *) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::setIntArrayRegion' is unimplemented!");
+ void NativeInterface::setIntArrayRegion(jintArray jarr, jsize start, jsize len, const jint * buf) const {
+  _SET_ARRAY_REGION(JIntArray)
  }
 
-//TODO implement
- void NativeInterface::setLongArrayRegion(jlongArray, jsize, jsize, const jlong *) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::setLongArrayRegion' is unimplemented!");
+ void NativeInterface::setLongArrayRegion(jlongArray jarr, jsize start, jsize len, const jlong * buf) const {
+  _SET_ARRAY_REGION(JLongArray)
  }
 
-//TODO implement
- void NativeInterface::setFloatArrayRegion(jfloatArray, jsize, jsize, const jfloat *) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::setFloatArrayRegion' is unimplemented!");
+ void NativeInterface::setFloatArrayRegion(jfloatArray jarr, jsize start, jsize len, const jfloat * buf) const {
+  _SET_ARRAY_REGION(JFloatArray)
  }
 
-//TODO implement
- void NativeInterface::setDoubleArrayRegion(jdoubleArray, jsize, jsize, const jdouble *) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::setDoubleArrayRegion' is unimplemented!");
+ void NativeInterface::setDoubleArrayRegion(jdoubleArray jarr, jsize start, jsize len, const jdouble * buf) const {
+  _SET_ARRAY_REGION(JDoubleArray)
  }
 }

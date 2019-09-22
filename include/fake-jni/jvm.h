@@ -1226,11 +1226,19 @@ namespace FakeJni {
  template<typename T>
  JObject::operator T() const {
   using component_t = typename CX::ComponentTypeResolver<T>::type;
-  constexpr const auto downcast = __is_base_of(JObject, T);
+  constexpr const auto
+   downcast = __is_base_of(JObject, T),
+   jnicast = CX::IsSame<_jobject, component_t>::value;
   static_assert(
-   downcast || CX::IsSame<_jobject, component_t>::value,
+   downcast || jnicast,
    "JObject can only be downcasted and converted to _jobject!"
   );
+  auto ptr = const_cast<JObject *>(this);
+  if constexpr(downcast) {
+   return (T&)*ptr;
+  } else if constexpr(jnicast) {
+   return CX::union_cast<jobject>(ptr)();
+  }
  }
 
  //JFieldID template members

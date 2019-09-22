@@ -24,6 +24,10 @@ namespace FakeJni {
   memcpy(getArray(), str, (size_t)length);
  }
 
+ JString::JString(const JChar * str, JInt size) : JString(size * 2) {
+  memcpy(getArray(), (char *)str, (size_t)size);
+ }
+
  bool JString::operator==(const JString & str) const {
   const auto sLen = str.getLength();
   if (length == sLen) {

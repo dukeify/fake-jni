@@ -26,6 +26,7 @@ namespace FakeJni {
   JString(const JString & str);
   explicit JString(JInt size);
   JString(const char * str);
+  JString(const JChar * str, JInt size);
   virtual ~JString() = default;
 
   bool operator==(const JString & str) const;

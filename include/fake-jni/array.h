@@ -66,7 +66,7 @@ namespace FakeJni {\
    if constexpr(downcast || upcast) {\
     return (T&)*ptr;\
    } else if constexpr(jnicast) {\
-    return CX::union_cast<T>(this)();\
+    return CX::union_cast<T>((JArrayBase *)this)();\
    }\
  }\
 }\
@@ -109,9 +109,17 @@ namespace FakeJni {
  template<typename T>
  class JArray;
 
+ class JArrayBase : public JObject {
+ public:
+  template<typename T>
+  operator T() const;
+
+  virtual JInt getSize() const = 0;
+ };
+
  //Immutable array base
  template<typename T>
- class JArray<const T> : public JObject {
+ class JArray<const T> : public JArrayBase {
   friend T;
   friend JArray<T>;
 
@@ -165,7 +173,7 @@ namespace FakeJni {
   JArray();
   virtual ~JArray();
 
-  inline JInt getLength() const {
+  inline JInt getSize() const final {
    return length;
   }
 
@@ -198,26 +206,31 @@ namespace FakeJni {
   component& operator[](JInt i);
  };
 
- //Immutable JArray template members
+ //ArrayBase template members
  template<typename T>
- template<typename C>
- JArray<const T>::operator C() const {
-  using array_t = JArray<const T>;
+ JArrayBase::operator T() const {
   using component_t = typename CX::ComponentTypeResolver<T>::type;
   constexpr const auto
-   downcast = __is_base_of(array_t, component_t),
-   upcast = __is_base_of(component_t, array_t),
+   downcast = __is_base_of(JArrayBase, component_t),
+   upcast = __is_base_of(component_t, JArrayBase),
    jnicast = CX::MatchAny<component_t, _jobject, _jarray>::value;
   static_assert(
    downcast || upcast || jnicast,
-   "JString can only be upcast, downcast, or converted to _jobject or _jstring!"
+   "JArray<T> can only be upcast, downcast, or converted to _jobject or _jarray!"
   );
-  auto ptr = const_cast<array_t *>(this);
+  auto ptr = const_cast<JArrayBase *>(this);
   if constexpr(upcast || downcast) {
    return (T&)*ptr;
   } else if constexpr (jnicast) {
    return CX::union_cast<T>(this)();
   }
+ }
+
+ //Immutable JArray template members
+ template<typename T>
+ template<typename C>
+ JArray<const T>::operator C() const {
+  return JArrayBase::operator C();
  }
 
  template<typename T>

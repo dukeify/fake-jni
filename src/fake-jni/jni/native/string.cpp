@@ -8,9 +8,10 @@
 #include <stdexcept>
 
 namespace FakeJni {
- //TODO implement
  jstring NativeInterface::newString(const jchar * chars, jsize size) const {
-  return nullptr;
+  auto str = new JString(chars, size);
+  vm.addInstance(str);
+  return *str;
  }
 
  jsize NativeInterface::getStringLength(jstring jstr) const {
@@ -18,39 +19,76 @@ namespace FakeJni {
  }
 
  jchar * NativeInterface::getStringChars(jstring jstr, jboolean * copy) const {
-  return CX::union_cast<JString *>(jstr)->getArray();
+  auto str = CX::union_cast<JString *>(jstr)();
+  if (copy) {
+   if (*copy) {
+    //TODO do JChar strings need to be null terminated?
+    auto c_str = new JChar[str->getSize()];
+    memcpy(c_str, str->getArray(), (size_t)str->getLength());
+    return c_str;
+   }
+  }
+  return str->getArray();
  }
 
- void NativeInterface::releaseStringChars(jstring jstr, const jchar * chars) const {}
-
- jstring NativeInterface::newStringUTF(const char *) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::newStringUTF' is unimplemented!");
-  return nullptr;
+ void NativeInterface::releaseStringChars(jstring, const jchar * chars) const {
+  //TODO check that a matching getStringChars invocation occured before deleting
+  delete[] chars;
  }
 
-//TODO implement
- jsize NativeInterface::getStringUTFLength(jstring) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::getStringUTFLength' is unimplemented!");
-  return 0;
+ jstring NativeInterface::newStringUTF(const char * c_str) const {
+  auto str = new JString(c_str);
+  vm.addInstance(str);
+  return *str;
+ }
+
+ jsize NativeInterface::getStringUTFLength(jstring jstr) const {
+  return CX::union_cast<JString *>(jstr)->getLength();
  }
 
  char * NativeInterface::getStringUTFChars(jstring jstr, jboolean * copy) const {
-  return (char *)CX::union_cast<JString *>(jstr)->getArray();
+  auto str = CX::union_cast<JString *>(jstr);
+  if (copy) {
+   if (*copy) {
+    const auto len = str->getLength();
+    auto c_str = new char[len + 1];
+    memcpy(c_str, (char *)str->getArray(), (size_t)len);
+    c_str[len] = '\0';
+    return c_str;
+   }
+  }
+  return (char *)str->getArray();
  }
 
-//TODO implement
- void NativeInterface::releaseStringUTFChars(jstring, const char *) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::releaseStringUTFChars' is unimplemented!");
+ void NativeInterface::releaseStringUTFChars(jstring, const char * c_str) const {
+  //TODO check that a matching getStringUTFChars invocation occurred before deleting
+  delete[] c_str;
  }
 
-//TODO implement
- void NativeInterface::getStringRegion(jstring, jsize, jsize, jchar *) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::getStringRegion' is unimplemented!");
+ void NativeInterface::getStringRegion(jstring jstr, jsize start, jsize len, jchar * buf) const {
+  auto str = CX::union_cast<JString *>(jstr)();
+  auto data = str->getArray();
+  const auto slen = str->getLength();
+  if (0 > len || start + len > slen) {
+   //TODO JNI exception compliance
+   throw std::runtime_error("FATAL: Invalid string region requested!");
+  }
+  for (JInt i = start; i < start + len; i++) {
+   buf[i] = data[i];
+  }
  }
 
-//TODO implement
- void NativeInterface::getStringUTFRegion(jstring, jsize, jsize, char *) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::getStringUTFRegion' is unimplemented!");
+ void NativeInterface::getStringUTFRegion(jstring jstr, jsize start, jsize len, char * buf) const {
+  auto str = CX::union_cast<JString *>(jstr)();
+  auto data = (char *)str->getArray();
+  const auto slen = str->getLength();
+  if (0 > len || start + len > slen) {
+   //TODO JNI exception compliance
+   throw std::runtime_error("FATAL: Invalid UTF string region requested!");
+  }
+  for (JInt i = start; i < start + len; i++) {
+   buf[i] = data[i];
+  }
  }
 
 //TODO implement
