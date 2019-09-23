@@ -14,6 +14,7 @@ if(${BUILD_FAKE_JNI_DEBUG})
         -fstandalone-debug\
         -O0\
         -fno-inline\
+        -fno-omit-frame-pointer\
         -DFAKE_JNI_DEBUG\
     ")
 else()
