@@ -40,7 +40,7 @@ namespace FakeJni {
   };
   ToReflectedMethod = [](JNIEnv *env, jclass clazz, jmethodID jmid, jboolean b) -> jobject {
    _FETCH_JNI_ENV
-   _NATIVE_DEBUG(ToReflectedField)
+   _NATIVE_DEBUG(ToReflectedMethod)
    return ni->toReflectedMethod(clazz, jmid, b);
   };
   GetSuperclass = [](JNIEnv *env, jclass clazz) -> jclass {
@@ -136,7 +136,7 @@ namespace FakeJni {
   NewObject = &NativeInterface::_NewObject;
   NewObjectV = [](JNIEnv *env, jclass clazz, jmethodID jmid, va_list l) -> jobject {
    _FETCH_JNI_ENV
-   _NATIVE_DEBUG(NewObject)
+   _NATIVE_DEBUG(NewObjectV)
    return ni->newObjectV(clazz, jmid, l);
   };
   NewObjectA = [](JNIEnv *env, jclass clazz, jmethodID jmid, const jvalue *value) -> jobject {
@@ -233,7 +233,7 @@ namespace FakeJni {
   };
   CallLongMethodA = [](JNIEnv *env, jobject obj, jmethodID jmid, const jvalue *val) -> jlong {
    _FETCH_JNI_ENV
-   _NATIVE_DEBUG(CallLongmethodA)
+   _NATIVE_DEBUG(CallLongMethodA)
    return ni->callLongMethodA(obj, jmid, val);
   };
   CallFloatMethod = &NativeInterface::_CallFloatMethod;
@@ -352,8 +352,7 @@ namespace FakeJni {
    _NATIVE_DEBUG(CallNonvirtualFloatMethodV)
    return ni->callNonvirtualFloatMethodV(obj, clazz, jmid, l);
   };
-  CallNonvirtualFloatMethodA = [](JNIEnv *env, jobject obj, jclass clazz, jmethodID jmid,
-                                  const jvalue *val) -> jfloat {
+  CallNonvirtualFloatMethodA = [](JNIEnv *env, jobject obj, jclass clazz, jmethodID jmid, const jvalue *val) -> jfloat {
    _FETCH_JNI_ENV
    _NATIVE_DEBUG(CallNonvirtualFloatMethodA)
    return ni->callNonvirtualFloatMethodA(obj, clazz, jmid, val);
@@ -364,8 +363,7 @@ namespace FakeJni {
    _NATIVE_DEBUG(CallNonvirtualDoubleMethodV)
    return ni->callNonvirtualDoubleMethodV(obj, clazz, jmid, l);
   };
-  CallNonvirtualDoubleMethodA = [](JNIEnv *env, jobject obj, jclass clazz, jmethodID jmid,
-                                   const jvalue *val) -> jdouble {
+  CallNonvirtualDoubleMethodA = [](JNIEnv *env, jobject obj, jclass clazz, jmethodID jmid, const jvalue *val) -> jdouble {
    _FETCH_JNI_ENV
    _NATIVE_DEBUG(CallNonvirtualDoubleMethodA)
    return ni->callNonvirtualDoubleMethodA(obj, clazz, jmid, val);

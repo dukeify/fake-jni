@@ -42,7 +42,7 @@ namespace FakeJni {
   };
   AttachCurrentThreadAsDaemon = [](JavaVM *vm, void **penv, void *args) -> jint {
    _FETCH_JVM
-   _INVOKE_DEBUG(DetachCurrentThread)
+   _INVOKE_DEBUG(AttachCurrentThreadAsDaemon)
    return jvm->getInvokeInterface().attachCurrentThread(jvm, penv, args);
   };
  }

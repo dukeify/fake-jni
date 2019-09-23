@@ -1351,9 +1351,11 @@ namespace FakeJni {
    return internalInvoke<R, A>(vm, clazzOrInst, args);
   } else {
    //Member method, virtual dispatch
-   while (clazz != JObject::getDescriptor()) {
+   const auto * jobjDescriptor = JObject::getDescriptor();
+   while (clazz != jobjDescriptor) {
     const auto& methods = clazz->getMethods();
-    for (unsigned int i = 0; i < methods.getSize(); i++) {
+    const auto size = methods.getSize();
+    for (unsigned int i = 0; i < size; i++) {
      const auto method = methods[i];
      if (strcmp(name, method->getName()) == 0) {
       if (strcmp(signature, method->getSignature()) == 0) {
@@ -1401,10 +1403,14 @@ namespace FakeJni {
  R JMethodID::internalInvoke(JavaVM * vm, void * clazzOrInst, A args) const {
   using arg_t = typename CX::ComponentTypeResolver<A>::type;
   switch (type) {
-   case MEMBER_FUNC:
-    return ((R (*)(void * const, member_func_t, A))getFunctionProxy<A>())(clazzOrInst, memberFunc, args);
-   case STATIC_FUNC:
-    return ((R (*)(static_func_t, A))getFunctionProxy<A>())(staticFunc, args);
+   case MEMBER_FUNC: {
+    const auto proxy = (R (*)(void *const, member_func_t, A))getFunctionProxy<A>();
+    return proxy(CX::union_cast<JObject *>(clazzOrInst)(), memberFunc, args);
+   }
+   case STATIC_FUNC: {
+    const auto proxy = (R (*)(static_func_t, A))getFunctionProxy<A>();
+    return proxy(staticFunc, args);
+   }
    case REGISTER_NATIVES_FUNC: {
     const auto argc = descriptor->nargs - 2;
     void * values[descriptor->nargs];

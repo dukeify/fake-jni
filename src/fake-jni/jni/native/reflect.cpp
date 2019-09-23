@@ -1,30 +1,21 @@
-#include "jni.h"
 #include "fake-jni/jvm.h"
 
-#include <stdexcept>
+#include <cx/unsafe.h>
 
 namespace FakeJni {
-//TODO implement
- jmethodID NativeInterface::fromReflectedMethod(jobject) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::fromReflectedMethod' is unimplemented!");
-  return 0;
+ jmethodID NativeInterface::fromReflectedMethod(jobject jobj) const {
+  return CX::union_cast<JMethodID *>(jobj)();
  }
 
-//TODO implement
- jfieldID NativeInterface::fromReflectedField(jobject) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::fromReflectedField' is unimplemented!");
-  return 0;
+ jobject NativeInterface::toReflectedMethod(jclass, jmethodID mid, jboolean) const {
+  return CX::union_cast<jobject>(mid)();
  }
 
-//TODO implement
- jobject NativeInterface::toReflectedMethod(jclass, jmethodID, jboolean) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::toReflectedMethod' is unimplemented!");
-  return nullptr;
+ jfieldID NativeInterface::fromReflectedField(jobject jobj) const {
+  return CX::union_cast<JFieldID *>(jobj)();
  }
 
-//TODO implement
- jobject NativeInterface::toReflectedField(jclass, jfieldID, jboolean) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::toReflectedField' is unimplemented!");
-  return nullptr;
+ jobject NativeInterface::toReflectedField(jclass, jfieldID fid, jboolean) const {
+  return CX::union_cast<jobject>(fid)();
  }
 }
