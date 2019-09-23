@@ -92,7 +92,7 @@ namespace FakeJni {
  }
 
  jobject NativeInterface::getObjectArrayElement(jobjectArray arr, jsize index) const {
-  return CX::union_cast<JObject *>(arr)()[index];
+  return (*CX::union_cast<JObjectArray *>(arr)())[index];
  }
 
  void NativeInterface::setObjectArrayElement(jobjectArray jarr, jsize index, jobject obj) const {

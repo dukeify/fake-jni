@@ -6,6 +6,7 @@
 #include <cx/unsafe.h>
 
 #include <stdexcept>
+#include <assert.h>
 
 namespace FakeJni {
  jstring NativeInterface::newString(const jchar * chars, jsize size) const {
@@ -21,14 +22,12 @@ namespace FakeJni {
  jchar * NativeInterface::getStringChars(jstring jstr, jboolean * copy) const {
   auto str = CX::union_cast<JString *>(jstr)();
   if (copy) {
-   if (*copy) {
-    //TODO do JChar strings need to be null terminated?
-    auto c_str = new JChar[str->getSize()];
-    memcpy(c_str, str->getArray(), (size_t)str->getLength());
-    return c_str;
-   }
+   *copy = JNI_TRUE;
   }
-  return str->getArray();
+  //TODO do JChar strings need to be null terminated?
+  auto c_str = new JChar[str->getSize()];
+  memcpy(c_str, str->getArray(), (size_t)str->getLength());
+  return c_str;
  }
 
  void NativeInterface::releaseStringChars(jstring, const jchar * chars) const {
@@ -49,19 +48,16 @@ namespace FakeJni {
  char * NativeInterface::getStringUTFChars(jstring jstr, jboolean * copy) const {
   auto str = CX::union_cast<JString *>(jstr);
   if (copy) {
-   if (*copy) {
-    const auto len = str->getLength();
-    auto c_str = new char[len + 1];
-    memcpy(c_str, (char *)str->getArray(), (size_t)len);
-    c_str[len] = '\0';
-    return c_str;
-   }
+   *copy = JNI_TRUE;
   }
-  return (char *)str->getArray();
+  const auto len = str->getLength();
+  auto c_str = new char[len + 1];
+  memcpy(c_str, (char *)str->getArray(), (size_t)len);
+  c_str[len] = '\0';
+  return c_str;
  }
 
  void NativeInterface::releaseStringUTFChars(jstring, const char * c_str) const {
-  //TODO check that a matching getStringUTFChars invocation occurred before deleting
   delete[] c_str;
  }
 
