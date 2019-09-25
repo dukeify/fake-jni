@@ -3,20 +3,20 @@
 #include "fake-jni/internal/meta/meta.h"
 
 ////Inclusion ordering guard
-//namespace FakeJni::_CX {
-// struct _InclusionOrderAssertion_ {
-//  template<bool Fail = false, typename... Args>
-//  constexpr _InclusionOrderAssertion_(Args...) noexcept {
-//   static_assert(Fail);
-//  }
-// };
-//};
-//
-//#ifdef FAKE_JNI_JVM_H
-//namespace FakeJni::_CX {
-// constexpr const _InclusionOrderAssertion_ _{"You must include <fake-jni/jvm.h> after <fake-jni/library/*.h>!"};
-//};
-//#endif
+namespace FakeJni::_CX {
+ struct _InclusionOrderAssertion_ {
+  template<bool Fail = false, typename... Args>
+  constexpr _InclusionOrderAssertion_(Args...) noexcept {
+   static_assert(Fail);
+  }
+ };
+};
+
+#if defined(_JAVASOFT_JNI_MD_H_) || defined(_JAVASOFT_JNI_H_) || defined(_JAVA_JVMTI_H_)
+namespace FakeJni::_CX {
+ constexpr const _InclusionOrderAssertion_ _{"Do not include JNI headers if you are using fake-jni!"};
+};
+#endif
 
 //Internal macros
 #define _DECLARE_JNI_CONVERSION_OPERATOR_(jni_ptr_type)\

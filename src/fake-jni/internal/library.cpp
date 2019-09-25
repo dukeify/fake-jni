@@ -125,7 +125,17 @@ namespace FakeJni {
  JInt Library::agentAttach(char * const options) const {
   auto vm_ptr = static_cast<JavaVM *>(const_cast<Jvm *>(&vm));
   if (agentBound()) {
-   return Agent_OnAttach_ ? Agent_OnAttach_(vm_ptr, options, nullptr) : JNI_OK;
+   if (Agent_OnAttach_) {
+#ifdef FAKE_JNI_DEBUG
+    fprintf(
+     vm.getLog(),
+     "DEBUG: [%s]::Agent_OnAttach\n",
+     path.c_str()
+    );
+#endif
+    return Agent_OnAttach_(vm_ptr, options, nullptr);
+   }
+   return JNI_OK;
   }
   UNBOUND_AGENT
  }
@@ -133,7 +143,17 @@ namespace FakeJni {
  JInt Library::agentLoad(char * const options) const {
   auto vm_ptr = static_cast<JavaVM *>(const_cast<Jvm *>(&vm));
   if (agentBound()) {
-   return Agent_OnLoad_ ? Agent_OnLoad_(vm_ptr, options, nullptr) : JNI_OK;
+   if (Agent_OnLoad_) {
+#ifdef FAKE_JNI_DEBUG
+    fprintf(
+     vm.getLog(),
+     "DEBUG: [%s]::Agent_OnLoad\n",
+     path.c_str()
+    );
+#endif
+    return Agent_OnLoad_(vm_ptr, options, nullptr);
+   }
+   return JNI_OK;
   }
   UNBOUND_AGENT
  }
@@ -142,6 +162,13 @@ namespace FakeJni {
   auto vm_ptr = static_cast<JavaVM *>(const_cast<Jvm *>(&vm));
   if (agentBound()) {
    if (Agent_OnUnload_) {
+#ifdef FAKE_JNI_DEBUG
+    fprintf(
+     vm.getLog(),
+     "DEBUG: [%s]::Agent_OnUnload\n",
+     path.c_str()
+    );
+#endif
     Agent_OnUnload_(vm_ptr, options, nullptr);
    }
    return;
@@ -152,6 +179,13 @@ namespace FakeJni {
  JInt Library::jniLoad() const {
   auto vm_ptr = static_cast<JavaVM *>(const_cast<Jvm *>(&vm));
   if (jniBound()) {
+#ifdef FAKE_JNI_DEBUG
+   fprintf(
+    vm.getLog(),
+    "DEBUG: [%s]::JNI_OnLoad\n",
+    path.c_str()
+   );
+#endif
    return JNI_OnLoad_(vm_ptr, nullptr);
   }
   UNBOUND_JNI
@@ -161,6 +195,13 @@ namespace FakeJni {
   auto vm_ptr = static_cast<JavaVM *>(const_cast<Jvm *>(&vm));
   if (jniBound()) {
    if (JNI_OnUnload_) {
+#ifdef FAKE_JNI_DEBUG
+    fprintf(
+     vm.getLog(),
+     "DEBUG: [%s]::JNI_OnUnload\n",
+     path.c_str()
+    );
+#endif
     JNI_OnUnload_(vm_ptr, nullptr);
    }
    return;
