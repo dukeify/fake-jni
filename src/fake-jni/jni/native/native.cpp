@@ -1,5 +1,3 @@
-#include "jni.h"
-
 #include "fake-jni/internal/jni/native.h"
 #include "fake-jni/jvm.h"
 

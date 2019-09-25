@@ -1,5 +1,3 @@
-#include "jni.h"
-
 #include "fake-jni/jvm.h"
 
 #include <vector>
@@ -10,10 +8,10 @@ throw std::runtime_error("FATAL: Cannot construct an arbitrary class with no nat
 namespace FakeJni {
  JClass::JClass(const char *name, uint32_t modifiers) noexcept :
   JObject(),
-  constructV([](JavaVM * const, const char * const, va_list) -> JObject * {
+  constructV([](const JavaVM * const, const char * const, va_list) -> JObject * {
    _ERROR_ARBITRARY_CLASS
   }),
-  constructA([](JavaVM * const, const char * const, const jvalue *) -> JObject * {
+  constructA([](const JavaVM * const, const char * const, const jvalue *) -> JObject * {
    _ERROR_ARBITRARY_CLASS
   }),
   isArbitrary(true),
@@ -146,11 +144,11 @@ namespace FakeJni {
   return className;
  }
 
- JObject * JClass::newInstance(JavaVM * const vm, const char * const signature, va_list list) const {
+ JObject * JClass::newInstance(const JavaVM * const vm, const char * const signature, va_list list) const {
   return constructV(vm, signature, list);
  }
 
- JObject * JClass::newInstance(JavaVM * const vm, const char * const signature, const jvalue * const values) const {
+ JObject * JClass::newInstance(const JavaVM * const vm, const char * const signature, const jvalue * const values) const {
   return constructA(vm, signature, values);
  }
 }

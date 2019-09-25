@@ -1,5 +1,3 @@
-#include "jni.h"
-
 #include "fake-jni/jvm.h"
 #include "fake-jni/string.h"
 

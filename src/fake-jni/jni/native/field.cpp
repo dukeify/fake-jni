@@ -1,8 +1,6 @@
-#include "jni.h"
-
 #include "fake-jni/jvm.h"
 
-#include "cx/unsafe.h"
+#include <cx/unsafe.h>
 
 #include <stdexcept>
 

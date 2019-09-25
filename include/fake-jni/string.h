@@ -3,8 +3,6 @@
 #include "fake-jni/jvm.h"
 #include "fake-jni/array.h"
 
-#include "cx/unsafe.h"
-
 //JNI java/lang/String implementation
 namespace FakeJni {
  class JString : public JCharArray {
@@ -62,6 +60,8 @@ namespace FakeJni {
   return !operator==(operand);
  }
 }
+
+_DEFINE_JNI_CONVERSION_OPERATOR_(FakeJni::JString, jstring)
 
 DEFINE_JNI_TYPE(_jstring, "java/lang/String")
 DECLARE_NATIVE_TYPE(FakeJni::JString)

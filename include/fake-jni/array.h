@@ -310,6 +310,22 @@ namespace FakeJni {
  }
 }
 
+//_jarray implicit conversion operator
+template<typename T>
+_jarray::operator T() const {
+ using namespace FakeJni;
+ using component_t = typename CX::ComponentTypeResolver<T>::type;
+ constexpr const auto
+  jni_upcast = __is_base_of(component_t, _jarray),
+  jni_downcast = __is_base_of(_jarray, component_t),
+  fake_downcast = __is_base_of(JArrayBase, component_t);
+ static_assert(
+  jni_upcast || jni_downcast || fake_downcast,
+  "jarray can only be converted to JNI array types derived from jarray or native array types!"
+ );
+ return CX::union_cast<T>(const_cast<jarray>(this))();
+}
+
 //Actual fake-jni array types
 //Provides array types for all default JNI defined arrays and their Java counterparts
 _DEFINE_NATIVE_ARRAY(JBooleanArray, _jbooleanArray, JBoolean)

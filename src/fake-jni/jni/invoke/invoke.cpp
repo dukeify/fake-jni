@@ -1,5 +1,3 @@
-#include "jni.h"
-
 #include "fake-jni/jvm.h"
 
 #define _FETCH_JVM Jvm * const jvm = (Jvm *)vm;

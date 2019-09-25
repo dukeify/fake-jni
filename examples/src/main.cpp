@@ -86,7 +86,15 @@ jint test(JNIEnv *env, jobject obj, JObject * a, JDouble b, JDouble c) {
  return 314;
 }
 
+DECLARE_NATIVE_ARRAY_DESCRIPTOR(JString)
+
+JString * test2(JNIEnv *env, jobject obj, JString *s1, JArray<JString> *astr, JString *s2, JBooleanArray *b) {
+ return JString::EMPTY;
+}
+
 JClass dummy{"bruh"};
+
+DEFINE_NATIVE_ARRAY_DESCRIPTOR(JString)
 
 //fake-jni in action
 int main(int argc, char **argv) {
@@ -94,6 +102,12 @@ int main(int argc, char **argv) {
   "test",
   "(L;DD)I",
   (void *)&test
+ };
+
+ JNINativeMethod nm2 {
+  "test2",
+  "([Ljava/lang/String;[Ljava/lang/String;Ljava/lang/String;[B)Ljava/lang/String;",
+  (void *)&test2
  };
 
  //Make a JString
@@ -104,9 +118,14 @@ int main(int argc, char **argv) {
 
  auto mid = new JMethodID{&nm};
  dummy.registerMethod(mid);
+ auto mid2 = new JMethodID{&nm2};
+ dummy.registerMethod(mid2);
 
- auto result = mid->invoke<jint>(vm, &dummy, &dummy, (JDouble)2, (JDouble)3);
+ auto result = mid->invoke<jint>(&vm, &dummy, &dummy, (JDouble)2, (JDouble)3);
  printf("FUNCTION RETURNED: %d(0x%x)\n", result, result);
+ printf("JString::EMPTY -> 0x%lx\n", (intptr_t)JString::EMPTY);
+ auto result2 = mid2->invoke<JString *>(&vm, &dummy, &dummy, nullptr, nullptr, nullptr, nullptr);
+ printf("TEST2 RETURNED: 0x%lx\n", (intptr_t)result2);
 
  //Register ExampleClass on the JVM instance
  vm.registerClass<ExampleClass>();

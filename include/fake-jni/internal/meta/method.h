@@ -1,7 +1,5 @@
 #pragma once
 
-#include "jni.h"
-
 #include "meta.h"
 
 #include <cx/strings.h>

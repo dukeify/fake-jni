@@ -1,19 +1,16 @@
 #pragma once
 
-#include "jni.h"
-#include "jvmti.h"
-
 #include "fake-jni/internal/util.h"
-#include "fake-jni/internal/meta/meta.h"
+#include "fake-jni/internal/meta/types.h"
 #include "fake-jni/internal/meta/field.h"
 #include "fake-jni/internal/meta/method.h"
 
-#include "cx/templates.h"
-#include "cx/indirection.h"
-#include "cx/classes.h"
-#include "cx/idioms.h"
-#include "cx/strings.h"
-#include "cx/unsafe.h"
+#include <cx/templates.h>
+#include <cx/indirection.h>
+#include <cx/classes.h>
+#include <cx/idioms.h>
+#include <cx/strings.h>
+#include <cx/unsafe.h>
 
 #include <ffi.h>
 
@@ -28,6 +25,7 @@
 #include <map>
 #include <mutex>
 #include <shared_mutex>
+#include <utility>
 
 //Internal JFieldID macros
 #define _ASSERT_FIELD_JNI_COMPLIANCE \
@@ -70,20 +68,6 @@ for (unsigned int i = 0; i < argc; i++) {\
 }
 
 //FAKE-JNI API MACROS
-#define DEFINE_JNI_TYPE(target, sig) \
-namespace FakeJni::_CX {\
- template<>\
- class JniTypeBase<typename ComponentTypeResolver<target>::type> {\
- private:\
-  using type = typename ComponentTypeResolver<target>::type;\
- public:\
-  static constexpr const bool isRegisteredType = true;\
-  static constexpr const bool isClass = __is_class(type);\
-  static constexpr const char signature[] = sig;\
-  static constexpr const bool hasComplexHierarchy = CastDefined<type>::value;\
- };\
-}
-
 #define DUAL_OVERLOAD_RESOLVER(_1, _2, OVERLOAD, ...) OVERLOAD
 
 #define TRI_OVERLOAD_RESOLVER(_1, _2, _3, OVERLOAD, ...) OVERLOAD
@@ -166,24 +150,8 @@ namespace FakeJni {
  class JObject;
 }
 
-//Create template metadata for all JNI types
-DEFINE_JNI_TYPE(FakeJni::JVoid, "V")
-DEFINE_JNI_TYPE(FakeJni::JBoolean, "Z")
-DEFINE_JNI_TYPE(FakeJni::JByte, "B")
-DEFINE_JNI_TYPE(FakeJni::JChar, "C")
-DEFINE_JNI_TYPE(FakeJni::JShort, "S")
-DEFINE_JNI_TYPE(FakeJni::JInt, "I")
-DEFINE_JNI_TYPE(FakeJni::JFloat, "F")
-DEFINE_JNI_TYPE(FakeJni::JLong, "J")
-DEFINE_JNI_TYPE(FakeJni::JDouble, "D")
 //Must be defined before metadata templates are instantiated
 DEFINE_JNI_TYPE(FakeJni::JObject, "Ljava/lang/Object;")
-
-//JNI base
-struct _jmethodID {};
-
-//JNI base
-struct _jfieldID {};
 
 //fake-jni API declarations
 namespace FakeJni {
@@ -852,6 +820,9 @@ namespace FakeJni {
   const Type type;
 
  private:
+  //Ref-counted map of signature hashes to ffi_cif descriptors
+  static std::map<size_t, std::pair<unsigned long, ffi_cif *>> descriptors;
+
   union {
    //Functions registered through fake-jni
    struct {
@@ -888,7 +859,7 @@ namespace FakeJni {
   static ffi_cif * getFfiPrototype(const char * signature, const char * name);
 
   template<typename R, typename A>
-  R internalInvoke(JavaVM * vm, void * clazzOrInst, A args) const;
+  R internalInvoke(const JavaVM * vm, void * clazzOrInst, A args) const;
 
  public:
   enum Modifiers : uint32_t {
@@ -937,11 +908,11 @@ namespace FakeJni {
   bool operator ==(const JMethodID& mid) const noexcept;
   bool operator ==(JNINativeMethod*& mid) const;
   template<typename R, typename A>
-  R invoke(JavaVM * vm, void * clazzOrInst, A args) const;
+  R invoke(const JavaVM * vm, void * clazzOrInst, A args) const;
   template<typename R, typename A>
-  R invoke(JavaVM * const vm, JClass * const clazz, void * const inst, A args) const;
+  R invoke(const JavaVM * vm, JClass * const clazz, void * const inst, A args) const;
   template<typename R>
-  R invoke(const Jvm& vm, const JObject * clazzOrInst, ...) const;
+  R invoke(const JavaVM * vm, const JObject * clazzOrInst, ...) const;
  };
 
  //Template glue code for native class registration
@@ -955,7 +926,7 @@ namespace FakeJni {
   template<typename T>
   struct JClassBreeder<T, nullptr> {
    template<typename A>
-   using constructor_func_t = JObject * (*)(JavaVM * vm, const char * signature, A args);
+   using constructor_func_t = JObject * (*)(const JavaVM * vm, const char * signature, A args);
 
    const std::initializer_list<ClassDescriptorElement> descriptorElements;
    const JClass& parent = []() constexpr noexcept -> const JClass& {
@@ -993,8 +964,8 @@ namespace FakeJni {
  class JClass : public JObject {
  private:
   JObject
-   * (* const constructV)(JavaVM *, const char *, va_list),
-   * (* const constructA)(JavaVM *, const char *, const jvalue *);
+   * (* const constructV)(const JavaVM *, const char *, va_list),
+   * (* const constructA)(const JavaVM *, const char *, const jvalue *);
 
   const bool isArbitrary;
   const char * const className;
@@ -1047,9 +1018,9 @@ namespace FakeJni {
   const AllocStack<const JFieldID *>& getFields() const noexcept;
   virtual const char * getName() const noexcept;
   //Object construction for c-varargs
-  JObject * newInstance(JavaVM * vm, const char * signature, va_list list) const;
+  JObject * newInstance(const JavaVM * vm, const char * signature, va_list list) const;
   //Object construction for jvalue arrays
-  JObject * newInstance(JavaVM * vm, const char * signature, const jvalue * values) const;
+  JObject * newInstance(const JavaVM * vm, const char * signature, const jvalue * values) const;
  };
 
  //FAKE-JNI USER API
@@ -1078,7 +1049,7 @@ namespace FakeJni {
   std::map<const JClass *, AllocStack<JObject *>> instances;
   mutable std::shared_mutex instances_mutex;
 
-  bool removeLibrary(const Library * library, const std::string& options);
+  bool removeLibrary(const Library * library, const std::string & options);
 
  protected:
   static AllocStack<Jvm *> vms;
@@ -1141,7 +1112,7 @@ namespace FakeJni {
    const std::string & options = "",
    LibraryOptions loptions = {&dlopen, &dlsym, &dlclose}
   );
-  virtual bool removeLibrary(const std::string & path, const std::string & options);
+  virtual bool removeLibrary(const std::string & path, const std::string & options = "");
   virtual const AllocStack<const Library *>& getLibraries() const;
   virtual void start();
   virtual void destroy();
@@ -1336,7 +1307,7 @@ namespace FakeJni {
 
  //Performs virtual dispatch
  template<typename R, typename A>
- R JMethodID::invoke(JavaVM * const vm, void * const clazzOrInst, A args) const {
+ R JMethodID::invoke(const JavaVM * const vm, void * const clazzOrInst, A args) const {
   auto * clazz = &((JObject *)clazzOrInst)->getClass();
   if (strcmp(clazz->getName(), "java/lang/Class") == 0) {
    //Static method, no virtual dispatch
@@ -1378,7 +1349,7 @@ namespace FakeJni {
 
  //Does not perform virtual dispatch
  template<typename R, typename A>
- R JMethodID::invoke(JavaVM * const vm, JClass * const clazz, void * const inst, A args) const {
+ R JMethodID::invoke(const JavaVM * const vm, JClass * const clazz, void * const inst, A args) const {
   const auto mid = clazz->getMethod(signature, name);
   if (!mid) {
    throw std::runtime_error(
@@ -1393,14 +1364,14 @@ namespace FakeJni {
  }
 
  template<typename R>
- R JMethodID::invoke(const Jvm& vm, const JObject * clazzOrInst, ...) const {
+ R JMethodID::invoke(const JavaVM * const vm, const JObject * clazzOrInst, ...) const {
   va_list list;
   va_start(list, clazzOrInst);
-  return internalInvoke<R>(const_cast<Jvm *>(&vm), (void *)clazzOrInst, list);
+  return internalInvoke<R>(vm, (void *)clazzOrInst, list);
  }
 
  template<typename R, typename A>
- R JMethodID::internalInvoke(JavaVM * vm, void * clazzOrInst, A args) const {
+ R JMethodID::internalInvoke(const JavaVM * vm, void * clazzOrInst, A args) const {
   using arg_t = typename CX::ComponentTypeResolver<A>::type;
   switch (type) {
    case MEMBER_FUNC: {
@@ -1416,7 +1387,7 @@ namespace FakeJni {
     void * values[descriptor->nargs];
     values[0] = new JNIEnv*;
     values[1] = new jobject*;
-    *((JNIEnv **)values[0]) = &((Jvm *)vm)->getJniEnv();
+    *((JNIEnv **)values[0]) = &((const Jvm *)vm)->getJniEnv();
     *((jobject *)values[1]) = (jobject)clazzOrInst;
     //set up arguments
     const auto resolverOffset = CX::IsSame<arg_t, jvalue>::value ? argc : 0;
@@ -1505,7 +1476,7 @@ namespace FakeJni {
  template<typename T>
  void Jvm::setJvmtiEnv() {
   static_assert(__is_base_of(JvmtiEnv, T), "You must register a subtype of JvmtiEnv!");
-  setJvmtiInterface(new T{*this});
+  setJvmtiEnv(new T{*this});
  }
 
  //_CX::JClassImpl template members
@@ -1522,9 +1493,9 @@ namespace FakeJni {
   template<typename T>
   template<typename A>
   constexpr typename JClassBreeder<T, nullptr>::template constructor_func_t<A> JClassBreeder<T, true>::constructorPredicate() noexcept {
-   return [](JavaVM * const vm, const char * const signature, A args) -> JObject * {
+   return [](const JavaVM * const vm, const char * const signature, A args) -> JObject * {
     JClass& descriptor = const_cast<JClass&>(T::descriptor);
-    Jvm * const jvm = (Jvm * const)vm;
+    Jvm * const jvm = (Jvm *)const_cast<JavaVM *>(vm);
     for (uint32_t i = 0; i < descriptor.functions.getSize(); i++) {
      const auto& method = (descriptor.functions)[i];
      if (strcmp(method->getSignature(), signature) == 0 && strcmp(method->getName(), "<init>") == 0) {
@@ -1557,7 +1528,7 @@ namespace FakeJni {
   template<typename T>
   template<typename A>
   constexpr typename JClassBreeder<T, nullptr>::template constructor_func_t<A> JClassBreeder<T, false>::constructorPredicate() noexcept {
-   return [](JavaVM * const vm, const char * const signature, A args) -> JObject * {
+   return [](const JavaVM * const vm, const char * const signature, A args) -> JObject * {
     throw std::runtime_error("FATAL: You cannot construct primitive types!");
    };
   }
@@ -1653,4 +1624,28 @@ namespace FakeJni {
   floatDescriptor,
   longDescriptor,
   doubleDescriptor;
+}
+
+//_jobject template members
+template<typename T>
+_jobject::operator T() const {
+ using component_t = typename CX::ComponentTypeResolver<T>::type;
+ constexpr const auto downcast = __is_base_of(_jobject, component_t);
+ static_assert(
+  CX::MatchAny<component_t, FakeJni::JObject>::value || downcast,
+  "jobject can only be converted to JObject and downcasted to derived JNI classes!"
+ );
+ return CX::union_cast<T>(const_cast<jobject>(this))();
+}
+
+//_jclass template members
+template<typename T>
+_jclass::operator T() const {
+ using component_t = typename CX::ComponentTypeResolver<T>::type;
+ constexpr const auto upcast = __is_base_of(component_t, _jclass);
+ static_assert(
+  CX::MatchAny<component_t, FakeJni::JClass>::value || upcast,
+  "jclass can only be converted to JClass upcast to jobject!"
+ );
+ return CX::union_cast<T>(const_cast<jclass>(this))();
 }

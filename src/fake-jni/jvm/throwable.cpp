@@ -1,13 +1,10 @@
-#include "jni.h"
-
 #include "fake-jni/throwable.h"
 
 namespace FakeJni {
-
+ JThrowable::JThrowable() {
+  throw std::runtime_error("JThrowable is unimplemented!");
+ }
 }
 
-//Create type metadata for JThrowable
-//DECLARE_NATIVE_TYPE(FakeJni::JThrowable)
-
 //Allocate JClass descriptor for JThrowable
-//DEFINE_NATIVE_DESCRIPTOR(FakeJni::JThrowable)END_NATIVE_DESCRIPTOR
+DEFINE_NATIVE_DESCRIPTOR(FakeJni::JThrowable)END_NATIVE_DESCRIPTOR

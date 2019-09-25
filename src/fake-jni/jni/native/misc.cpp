@@ -1,4 +1,3 @@
-#include "jni.h"
 #include "fake-jni/jvm.h"
 
 #include <stdexcept>
@@ -18,19 +17,19 @@ namespace FakeJni {
 
  //TODO throws NoSuchMethodError if a method is not native or cannot be found
  // once exceptions are implemented, add this functionality
- jint NativeInterface::registerNatives(jclass clazz, const JNINativeMethod * methods, const jint numMethods) const {
+ jint NativeInterface::registerNatives(jclass jclass, const JNINativeMethod * methods, const jint numMethods) const {
   bool success = true;
-  const auto jclass = (JClass *)clazz;
+  const JClass * clazz = *jclass;
   for (int i = 0; i < numMethods; i++) {
    methods += i;
-   success &= jclass->registerMethod(new JMethodID(methods));
+   success &= clazz->registerMethod(new JMethodID(methods));
   }
   return success ? JNI_OK : -1;
  }
 
  jint NativeInterface::unregisterNatives(jclass const jclass) const {
   bool success = true;
-  auto * const clazz = (JClass *)jclass;
+  JClass * const clazz = *jclass;
   const auto& methods = clazz->getMethods();
   std::vector<const JMethodID *> toRemove;
   for (unsigned int i = 0; i < methods.getSize(); i++) {
@@ -58,7 +57,7 @@ namespace FakeJni {
  }
 
  jint NativeInterface::getJavaVM(JavaVM **pVm) const {
-  *pVm = const_cast<Jvm *>(&vm);
+  *pVm = &vm;
   return 0;
  }
 }

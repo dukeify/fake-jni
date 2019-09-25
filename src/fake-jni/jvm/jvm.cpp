@@ -1,5 +1,3 @@
-#include "jni.h"
-
 #include "fake-jni/internal/util.h"
 #include "fake-jni/jvm.h"
 #include "fake-jni/array.h"

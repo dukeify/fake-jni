@@ -1,12 +1,12 @@
-#include "jni.h"
-
 #include "fake-jni/jvm.h"
 
-#include "cx/tuple.h"
+#include <cx/tuple.h>
 
 #include <ffi.h>
 
 #include <limits>
+#include <map>
+#include <functional>
 
 #define _SIG_PREAMBLE(case_char, ffi_type) \
 case #case_char[0]: {\
@@ -60,6 +60,8 @@ struct NativeInvocationManager {
 
 //Non-template members of JMethodID
 namespace FakeJni {
+ std::map<size_t, std::pair<unsigned long, ffi_cif *>> JMethodID::descriptors;
+
  template<>
  inline JMethodID::static_func_t JMethodID::getFunctionProxy<const jvalue *>() const {
   return proxyFuncA;
@@ -77,7 +79,9 @@ namespace FakeJni {
 
  ffi_cif * JMethodID::getFfiPrototype(const char * signature, const char * name) {
   using int_limit_t = std::numeric_limits<unsigned int>;
-  static ffi_cif * descriptor = nullptr;
+  auto& pair = descriptors[std::hash<std::string>{}(signature)];
+  pair.first += 1;
+  auto& descriptor = pair.second;
   //only parse shorty if the ffi prototype has not already been generated
   if (!descriptor) {
    descriptor = new ffi_cif;
@@ -139,8 +143,15 @@ namespace FakeJni {
    for (unsigned int i = 0; i < argc; i++) {
     types[i + 2] = ffiTypes[i];
    }
-   if (ffi_prep_cif(descriptor, FFI_DEFAULT_ABI, argc + 2, ffiTypes[argc], types) != FFI_OK) {
-    throw std::runtime_error("FATAL: ffi_prep_cif failed for function: '" + std::string(name) + "'!");
+   auto status = ffi_prep_cif(descriptor, FFI_DEFAULT_ABI, argc + 2, ffiTypes[argc], types);
+   if (status != FFI_OK) {
+    throw std::runtime_error(
+     "FATAL: ffi_prep_cif failed for function: '"
+      + std::string(name)
+      + signature
+      + "' with error: "
+      + std::to_string((uint32_t)status)
+      + "!");
    }
   }
   return descriptor;
@@ -206,9 +217,13 @@ namespace FakeJni {
   if (type == REGISTER_NATIVES_FUNC) {
    delete[] resolvers;
    delete[] deallocators;
-   const auto cif = getFfiPrototype(signature, name);
-   delete[] cif->arg_types;
-   delete cif;
+   auto& pair = descriptors[std::hash<std::string>{}(signature)];
+   pair.first -= 1;
+   if (pair.first == 0) {
+    auto& cif = pair.second;
+    delete[] cif->arg_types;
+    delete cif;
+   }
   }
  }
 }

@@ -1,11 +1,10 @@
 #include "fake-jni/weak.h"
 
 namespace FakeJni {
-
+ JWeak::JWeak() {
+  throw std::runtime_error("JWeak is unimplemented!");
+ }
 }
 
-//Create type metadata for JWeak
-//DECLARE_NATIVE_TYPE(FakeJni::JWeak)
-
 //Allocate JClass descriptor for JWeak
-//DEFINE_NATIVE_DESCRIPTOR(FakeJni::JWeak)END_NATIVE_DESCRIPTOR
+DEFINE_NATIVE_DESCRIPTOR(FakeJni::JWeak)END_NATIVE_DESCRIPTOR

@@ -8,7 +8,7 @@ add_subdirectory(CX)
 
 set(BUILD_FAKE_JNI_DEBUG OFF CACHE BOOL "Enables fake-jni debug building")
 if(${BUILD_FAKE_JNI_DEBUG})
-    set(CMAKE_BUILD_TYPE Release)
+    set(CMAKE_BUILD_TYPE Debug)
     set(compiler_flags "\
         -g\
         -fstandalone-debug\
@@ -18,7 +18,7 @@ if(${BUILD_FAKE_JNI_DEBUG})
         -DFAKE_JNI_DEBUG\
     ")
 else()
-    set(CMAKE_BUILD_TYPE Debug)
+    set(CMAKE_BUILD_TYPE Release)
     set(compiler_flags "-O3")
 endif()
 

@@ -1,4 +1,3 @@
-#include "jni.h"
 #include "fake-jni/jvm.h"
 
 //Non-template members of JFieldID

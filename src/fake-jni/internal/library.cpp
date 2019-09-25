@@ -1,5 +1,3 @@
-#include "jni.h"
-
 #include "fake-jni/jvm.h"
 
 #define UNBOUND_AGENT \
@@ -9,6 +7,7 @@ throw std::runtime_error("FATAL: Cannot invoke unbound agent hooks for library: 
 throw std::runtime_error("FATAL: Cannot invoke unbound JNI hooks for library: '" + path + "'!");
 
 namespace FakeJni {
+ //TODO handle errors from dlerror
  Library::Library(const Jvm& vm, const std::string path, const LibraryOptions options) :
   vm(vm),
   path(path),
@@ -30,8 +29,6 @@ namespace FakeJni {
     fprintf(vm.getLog(), "DEBUG: '%s' uses static JNI linkage\n", path.c_str());
 #endif
     (void *&)JNI_OnUnload_ = lsym("JNI_OnUnload_L");
-   } else {
-    fprintf(vm.getLog(), "WARNING: ");
    }
   } else if (((void *&)JNI_OnLoad_ = lsym("JNI_OnLoad"))) {
    error = dlerror();
@@ -80,6 +77,20 @@ namespace FakeJni {
   if (!(agentBound() || jniBound())) {
    fprintf(vm.getLog(), "WARNING: Neither JNI nor Agent hooks were found for library: '%s'!\n", path.c_str());
   }
+#ifdef FAKE_JNI_DEBUG
+  const auto debug = "DEBUG: [%s]::%s -> 0x%lx\n";
+  const auto libName = path.c_str();
+  auto log = vm.getLog();
+  if (agentBound()) {
+   fprintf(log, debug, libName, "Agent_OnLoad", (intptr_t)Agent_OnLoad_);
+   fprintf(log, debug, libName, "Agent_OnAttach", (intptr_t)Agent_OnAttach_);
+   fprintf(log, debug, libName, "Agent_OnUnload", (intptr_t)Agent_OnUnload_);
+  }
+  if (jniBound()) {
+   fprintf(log, debug, libName, "JNI_OnLoad", (intptr_t)JNI_OnLoad_);
+   fprintf(log, debug, libName, "JNI_OnUnload", (intptr_t)JNI_OnUnload_);
+  }
+#endif
  }
 
  Library::~Library() {
@@ -133,6 +144,7 @@ namespace FakeJni {
    if (Agent_OnUnload_) {
     Agent_OnUnload_(vm_ptr, options, nullptr);
    }
+   return;
   }
   UNBOUND_AGENT
  }
@@ -151,6 +163,7 @@ namespace FakeJni {
    if (JNI_OnUnload_) {
     JNI_OnUnload_(vm_ptr, nullptr);
    }
+   return;
   }
   UNBOUND_JNI
  }
