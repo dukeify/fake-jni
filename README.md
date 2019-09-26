@@ -1,7 +1,5 @@
 # fake-jni
 
-JNI and JVMTI without the JVM
-
 ## Cloning
 ```sh
 git clone --depth 1 --recursive https://github.com/meme/fake-jni.git
