@@ -1,23 +1,66 @@
 # fake-jni
 
-### `v0.1.0` work is in-progress on the `rewrite` branch, see https://github.com/meme/fake-jni/pull/5 for more details
+## Cloning
+```sh
+git clone --depth 1 --recursive https://github.com/meme/fake-jni.git
+```
 
-JNI without the JVM
+## Requirements
+fake-jni has no runtime dependencies :)
 
-##### Goals
+## Build Requirements
+ - `CMake` >= 3.8
+ - `libdl`
+ - `make` or `ninja`
 
-- Be binary compatible with version 1.8 of the JNI (latest)
-- Allow users to compile their JNI applications against `fake-jni` to remove the need for the JNI (memory constraints, etc.)
-- Allow users to easily define Java classes to be used through the JNI using C++ classes with minimal
-  definitions beyond the class definition
-- Be highly portable (architecture-wise) and tight with dependencies
+## Usage
+To include `fake-jni` in your CMake project, clone it into your project's root directory and add the following lines to your `CMakeLists.txt`:
+```cmake
+add_subdirectory(fake-jni)
+target_link_libraries(fake-jni)
+```
 
-##### Non-goals
-- Interceptors support
-- Threading support
-- GC utilities
-- Reflection support
+## Building
+### Build Flags
+| Flag | Usage | Default | Description |
+| :- | :- | :- | :- |
+| `BUILD_FAKE_JNI_TESTS` | `=[ON OFF]` | `ON` | Builds and runs the test suite |
+| `BUILD_FAKE_JNI_EXAMPLES` | `=[ON OFF]` | `ON` | Builds and runs the examples |
+| `BUILD_FAKE_JNI_DEBUG` | `=[ON OFF]` | `OFF` | Builds a debug release |
+| `BUILD_FAKE_JNI_ASAN` | `=[ON OFF]` | `OFF` | Builds with ASAN |
+| `FFI_CC` | `={DESIRED_C_COMPILER}` | `${CMAKE_C_COMPILER}` | Set the C compiler for `libffi` |
+| `FFI_CXX` | `={DESIRED_CXX_COMPILER}` | `${CMAKE_CXX_COMPILER}` | Set the C++ compiler for `libffi` | 
 
-##### Licensing
+Simply build as usual:
+```sh
+mkdir build
+cd build
+env CC=clang CXX=clang++ cmake ..
+make -j
+```
+or optionally build with ninja:
+```sh
+mkdir build
+cd build
+env CC=clang CXX=clang++ cmake -GNinja ..
+ninja -j0
+```
 
-The JNI headers are licensed under the GPL, with the "classpath" exception, this means that we are free to use the JNI headers in this project, and implement them, but any changes made to `include/jni.h` or `include/jni_md.h` must be made under the GPL, and the rest of the project (even the portions that use the `jni.h` header) are under the MIT license
+### Cross Compiling
+To compile for another host you must set the following environment variables:
+ - `CMAKE_CXX_COMPILER_TARGET` - The target architecture
+ - `CC` - The C cross-compiler
+ - `CXX` - The C++ cross-compiler
+ 
+Optionally, you may also set the following variables:
+ - `FFI_CC` - The C cross-compiler for `libffi`
+ - `FFI_CXX` - The C++ cross-compiler for `libffi`
+
+## Goals
+- Binary compatability with JNI 1.8
+- Drop-in replacement for an actual JVM, allowing users to compile against `fake-jni` while retaining full functionality
+- The definition and linking of C++ classes through `fake-jni` to act as proxies for Java classes, that would otherwise be running on an actual JVM
+- Portability to other platforms and architectures
+
+## Licensing
+The JNI headers are licensed under the GPL, with the "classpath" exception, meaning that we are free to use and implement the JNI headers in `fake-jni`, however, any changes made to `include/jni.h` or `include/jni_md.h` will be made under the GPL, in complete compliance with the licensing. The rest of `fake-jni`, including implementations of other GPL licensed headers, are licensed under the GPLv3 license.

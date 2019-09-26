@@ -153,3 +153,5 @@ hs_err_pid*
 
 ### VisualStudioCode ###
 .vscode
+
+TEMP/
