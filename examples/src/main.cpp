@@ -98,34 +98,11 @@ DEFINE_NATIVE_ARRAY_DESCRIPTOR(JString)
 
 //fake-jni in action
 int main(int argc, char **argv) {
- JNINativeMethod nm {
-  "test",
-  "(L;DD)I",
-  (void *)&test
- };
-
- JNINativeMethod nm2 {
-  "test2",
-  "([Ljava/lang/String;[Ljava/lang/String;Ljava/lang/String;[B)Ljava/lang/String;",
-  (void *)&test2
- };
-
  //Make a JString
  JString test{"Hello World!"};
 
  //Create a shiny new fake JVM instance
  Jvm vm;
-
- auto mid = new JMethodID{&nm};
- dummy.registerMethod(mid);
- auto mid2 = new JMethodID{&nm2};
- dummy.registerMethod(mid2);
-
- auto result = mid->invoke<jint>(&vm, &dummy, &dummy, (JDouble)2, (JDouble)3);
- printf("FUNCTION RETURNED: %d(0x%x)\n", result, result);
- printf("JString::EMPTY -> 0x%lx\n", (intptr_t)JString::EMPTY);
- auto result2 = mid2->invoke<JString *>(&vm, &dummy, &dummy, nullptr, nullptr, nullptr, nullptr);
- printf("TEST2 RETURNED: 0x%lx\n", (intptr_t)result2);
 
  //Register ExampleClass on the JVM instance
  vm.registerClass<ExampleClass>();
@@ -140,7 +117,7 @@ int main(int argc, char **argv) {
  //Not necessary
  vm.unregisterClass<ExampleClass>();
 
- //Clean up
+ //Clean up, also not necessary
  vm.destroy();
 
  return 0;

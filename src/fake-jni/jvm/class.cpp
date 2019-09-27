@@ -111,29 +111,43 @@ namespace FakeJni {
  }
 
  const JFieldID * JClass::getField(const char * name) const noexcept {
-  auto& fields_ref = const_cast<AllocStack<const JFieldID *>&>(fields);
-  const auto size = fields_ref.getSize();
-  for (unsigned int i = 0; i < size; i++) {
-   const auto& field = fields_ref[i];
-   if (strcmp(name, field->getName()) == 0) {
-    return field;
+  const auto * jobjDescriptor = &JObject::descriptor;
+  auto * clazz = this;
+  const JFieldID * fid = nullptr;
+  while (clazz != jobjDescriptor && !fid) {
+   auto& fields_ref = const_cast<AllocStack<const JFieldID *>&>(clazz->fields);
+   const auto size = fields_ref.getSize();
+   for (unsigned int i = 0; i < size; i++) {
+    const auto& field = fields_ref[i];
+    if (strcmp(name, field->getName()) == 0) {
+     fid = field;
+     break;
+    }
    }
+   clazz = &clazz->parent;
   }
-  return nullptr;
+  return fid;
  }
 
  const JFieldID * JClass::getField(const char * sig, const char * name) const noexcept {
-  auto& fields_ref = const_cast<AllocStack<const JFieldID *>&>(fields);
-  const auto size = fields_ref.getSize();
-  for (unsigned int i = 0; i < size; i++) {
-   const auto& field = fields_ref[i];
-   if (strcmp(sig, field->getSignature()) == 0) {
-    if (strcmp(name, field->getName()) == 0) {
-     return field;
+  const auto * jobjDescriptor = &JObject::descriptor;
+  auto * clazz = this;
+  const JFieldID * fid = nullptr;
+  while (clazz != jobjDescriptor && !fid) {
+   auto& fields_ref = const_cast<AllocStack<const JFieldID *>&>(clazz->fields);
+   const auto size = fields_ref.getSize();
+   for (unsigned int i = 0; i < size; i++) {
+    const auto& field = fields_ref[i];
+    if (strcmp(sig, field->getSignature()) == 0) {
+     if (strcmp(name, field->getName()) == 0) {
+      fid = field;
+      break;
+     }
     }
    }
+   clazz = &clazz->parent;
   }
-  return nullptr;
+  return fid;
  }
 
  const AllocStack<const JFieldID *>& JClass::getFields() const noexcept {

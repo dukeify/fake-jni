@@ -38,6 +38,13 @@ static_assert(\
  "Registered field types cannot be pointers or references to a JNI type!"\
 );
 
+#define _JFIELDID_GET \
+if (isStatic) {\
+ return ((T& (*)(void *))fid->proxyGetFunc)(staticProp);\
+} else {\
+ return ((T& (*)(void *, memberProp_t))fid->proxyGetFunc)(obj, memberProp);\
+}
+
 //Internal JMethodID macros
 #define _ASSERT_JNI_FUNCTION_COMPLIANCE \
 static_assert(\
@@ -764,6 +771,8 @@ namespace FakeJni {
    (* const proxyGetFunc)(),
    (* const proxySetFunc)();
 
+  const JFieldID * findVirtualMatch(const JClass * clazz) const noexcept;
+
  public:
   enum Modifiers: uint32_t {
    PUBLIC = 1,
@@ -796,10 +805,10 @@ namespace FakeJni {
    return modifiers;
   }
 
-  bool operator ==(JFieldID &fid) const noexcept;
+  bool operator ==(const JFieldID &fid) const noexcept;
   template<typename T>
-  T& get(JObject * obj);
-  void set(JObject * obj, void * value);
+  T& get(JObject * obj) const;
+  void set(JObject * obj, void * value) const;
  };
 
  //fake-jni implementation
@@ -1242,12 +1251,26 @@ namespace FakeJni {
  }
 
  template<typename T>
- T& JFieldID::get(JObject * const obj) {
-  if (isStatic) {
-   return ((T& (*)(void *))proxyGetFunc)(staticProp);
-  } else {
-   return ((T& (*)(void *, memberProp_t))proxyGetFunc)(obj, memberProp);
+ T& JFieldID::get(JObject * const obj) const {
+  const auto& clazz = obj->getClass();
+  auto * fid = findVirtualMatch(&clazz);
+  if (fid) {
+   if ((modifiers & STATIC) == STATIC) {
+    if (fid == this) {
+     _JFIELDID_GET
+    }
+   } else {
+    _JFIELDID_GET
+   }
   }
+  throw std::runtime_error(
+   "FATAL: Class '"
+   + std::string(clazz.getName())
+   + "' does not contain or inherit any fields matching '"
+   + name
+   + signature
+   + "'!"
+  );
  }
 
  //JMethodID template members
@@ -1649,3 +1672,9 @@ _jclass::operator T() const {
  );
  return CX::union_cast<T>(const_cast<jclass>(this))();
 }
+
+//Clean up internal macros
+#undef _ASSERT_FIELD_JNI_COMPLIANCE
+#undef _JFIELDID_GET
+#undef _INTERNAL_INVOKE_VA_ARG
+#undef _INTERNAL_INVOKE_CLEANUP
