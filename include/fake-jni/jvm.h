@@ -954,7 +954,7 @@ namespace FakeJni {
    using JClassBreeder<T, nullptr>::JClassBreeder;
 
    template<typename A>
-   static constexpr typename JClassBreeder<T, nullptr>::template constructor_func_t<A> constructorPredicate() noexcept;
+   static JObject * constructorPredicate(const JavaVM * vm, const char * signature, A args);
 
    static constexpr void assertCompliance() noexcept;
   };
@@ -964,7 +964,7 @@ namespace FakeJni {
    using JClassBreeder<T, nullptr>::JClassBreeder;
 
    template<typename A>
-   static constexpr typename JClassBreeder<T, nullptr>::template constructor_func_t<A> constructorPredicate() noexcept;
+   static JObject * constructorPredicate(const JavaVM * vm, const char * signature, A args);
 
    static constexpr void assertCompliance() noexcept;
   };
@@ -1512,28 +1512,25 @@ namespace FakeJni {
   }
 
   //Class members
-  //TODO convert to template function breeder rather than lambda predicate
   template<typename T>
   template<typename A>
-  constexpr typename JClassBreeder<T, nullptr>::template constructor_func_t<A> JClassBreeder<T, true>::constructorPredicate() noexcept {
-   return [](const JavaVM * const vm, const char * const signature, A args) -> JObject * {
-    JClass& descriptor = const_cast<JClass&>(T::descriptor);
-    Jvm * const jvm = (Jvm *)const_cast<JavaVM *>(vm);
-    for (uint32_t i = 0; i < descriptor.functions.getSize(); i++) {
-     const auto& method = (descriptor.functions)[i];
-     if (strcmp(method->getSignature(), signature) == 0 && strcmp(method->getName(), "<init>") == 0) {
-      const auto inst = method->invoke<T *>(vm, nullptr, args);
-      JObject * baseInst;
-      if constexpr(_CX::JniTypeBase<T>::hasComplexHierarchy) {
-       baseInst = (JObject *)T::cast::cast(inst);
-      } else {
-       baseInst = (JObject *)inst;
-      }
-      return (*jvm)[&descriptor].pushAlloc(&_CX::Deallocator<T>::deallocate, baseInst);
+  JObject * JClassBreeder<T, true>::constructorPredicate(const JavaVM * const vm, const char * const signature, A args) {
+   JClass& descriptor = const_cast<JClass&>(T::descriptor);
+   Jvm * const jvm = (Jvm *)const_cast<JavaVM *>(vm);
+   for (uint32_t i = 0; i < descriptor.functions.getSize(); i++) {
+    const auto& method = (descriptor.functions)[i];
+    if (strcmp(method->getSignature(), signature) == 0 && strcmp(method->getName(), "<init>") == 0) {
+     const auto inst = method->invoke<T *>(vm, nullptr, args);
+     JObject * baseInst;
+     if constexpr(_CX::JniTypeBase<T>::hasComplexHierarchy) {
+      baseInst = (JObject *)T::cast::cast(inst);
+     } else {
+      baseInst = (JObject *)inst;
      }
+     return (*jvm)[&descriptor].pushAlloc(&_CX::Deallocator<T>::deallocate, baseInst);
     }
-    return nullptr;
-   };
+   }
+   return nullptr;
   }
 
   template<typename T>
@@ -1550,10 +1547,9 @@ namespace FakeJni {
   //Non-class members
   template<typename T>
   template<typename A>
-  constexpr typename JClassBreeder<T, nullptr>::template constructor_func_t<A> JClassBreeder<T, false>::constructorPredicate() noexcept {
-   return [](const JavaVM * const vm, const char * const signature, A args) -> JObject * {
-    throw std::runtime_error("FATAL: You cannot construct primitive types!");
-   };
+  JObject * JClassBreeder<T, false>::constructorPredicate(const JavaVM * vm, const char * signature, A args) {
+   throw std::runtime_error("FATAL: You cannot construct primitive types!");
+   return nullptr;
   }
 
   template<typename T>
@@ -1606,8 +1602,8 @@ namespace FakeJni {
  template<typename T>
  JClass::JClass(uint32_t modifiers, _CX::JClassBreeder<T, true> breeder) noexcept :
   JObject(),
-  constructV(decltype(breeder)::template constructorPredicate<va_list>()),
-  constructA(decltype(breeder)::template constructorPredicate<const jvalue *>()),
+  constructV(&decltype(breeder)::template constructorPredicate<va_list>),
+  constructA(&decltype(breeder)::template constructorPredicate<const jvalue *>),
   isArbitrary(false),
   className(T::name),
   modifiers(modifiers),
@@ -1623,8 +1619,8 @@ namespace FakeJni {
  template<typename T>
  JClass::JClass(uint32_t modifiers, _CX::JClassBreeder<T, false> breeder) noexcept :
   JObject(),
-  constructV(decltype(breeder)::template constructorPredicate<va_list>()),
-  constructA(decltype(breeder)::template constructorPredicate<const jvalue *>()),
+  constructV(&decltype(breeder)::template constructorPredicate<va_list>),
+  constructA(&decltype(breeder)::template constructorPredicate<const jvalue *>),
   isArbitrary(false),
   className(_CX::JniTypeBase<T>::signature),
   modifiers(modifiers),
