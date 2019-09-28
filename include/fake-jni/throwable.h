@@ -13,7 +13,7 @@ namespace FakeJni {
  };
 }
 
-_DEFINE_JNI_CONVERSION_OPERATOR_(FakeJni::JThrowable, jthrowable)
+_DEFINE_JNI_CONVERSION_OPERATOR(FakeJni::JThrowable, jthrowable)
 
 DEFINE_JNI_TYPE(_jthrowable, "java/lang/Throwable")
 DECLARE_NATIVE_TYPE(FakeJni::JThrowable)

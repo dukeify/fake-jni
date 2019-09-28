@@ -60,7 +60,7 @@ namespace FakeJni {
  }
 }
 
-_DEFINE_JNI_CONVERSION_OPERATOR_(FakeJni::JString, jstring)
+_DEFINE_JNI_CONVERSION_OPERATOR(FakeJni::JString, jstring)
 
 DEFINE_JNI_TYPE(_jstring, "java/lang/String")
 DECLARE_NATIVE_TYPE(FakeJni::JString)

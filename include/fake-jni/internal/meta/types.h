@@ -2,7 +2,15 @@
 
 #include "fake-jni/internal/meta/meta.h"
 
-////Inclusion ordering guard
+#define _DEFINE_JNI_CLASS(name, base) \
+class name : public base {\
+public:\
+ constexpr name(const name&) = delete;\
+ constexpr name(const name&&) = delete;\
+ constexpr name() = delete;\
+};
+
+//Inclusion ordering guard
 namespace FakeJni::_CX {
  struct _InclusionOrderAssertion_ {
   template<bool Fail = false, typename... Args>
@@ -19,14 +27,18 @@ namespace FakeJni::_CX {
 #endif
 
 //Internal macros
-#define _DECLARE_JNI_CONVERSION_OPERATOR_(jni_ptr_type)\
+#define _DECLARE_JNI_CONVERSION_OPERATOR(jni_ptr_type)\
 class _##jni_ptr_type : public _jobject {\
 public:\
+ constexpr _##jni_ptr_type(const _##jni_ptr_type&) = delete;\
+ constexpr _##jni_ptr_type(const _##jni_ptr_type&&) = delete;\
+ constexpr _##jni_ptr_type() = delete;\
+ \
  template<typename T>\
  operator T() const;\
 };
 
-#define _DEFINE_JNI_CONVERSION_OPERATOR_(fake_type, jni_ptr_type)\
+#define _DEFINE_JNI_CONVERSION_OPERATOR(fake_type, jni_ptr_type)\
 template<typename T>\
 _##jni_ptr_type::operator T() const {\
  using namespace FakeJni;\
@@ -86,30 +98,29 @@ namespace FakeJni {
 
 class _jobject {
 public:
+ constexpr _jobject() = delete;
+ constexpr _jobject(const _jobject&) = delete;
+ constexpr _jobject(const _jobject&&) = delete;
+
  template<typename T>
  operator T() const;
 };
 
-class _jclass : public _jobject {
-public:
- template<typename T>
- operator T() const;
-};
+_DECLARE_JNI_CONVERSION_OPERATOR(jclass)
+_DECLARE_JNI_CONVERSION_OPERATOR(jthrowable)
+_DECLARE_JNI_CONVERSION_OPERATOR(jstring)
+_DECLARE_JNI_CONVERSION_OPERATOR(jweak)
+_DECLARE_JNI_CONVERSION_OPERATOR(jarray)
 
-_DECLARE_JNI_CONVERSION_OPERATOR_(jthrowable)
-_DECLARE_JNI_CONVERSION_OPERATOR_(jstring)
-_DECLARE_JNI_CONVERSION_OPERATOR_(jweak)
-_DECLARE_JNI_CONVERSION_OPERATOR_(jarray)
-
-class _jbooleanArray : public _jarray {};
-class _jbyteArray : public _jarray {};
-class _jcharArray : public _jarray {};
-class _jshortArray : public _jarray {};
-class _jintArray : public _jarray {};
-class _jlongArray : public _jarray {};
-class _jfloatArray : public _jarray {};
-class _jdoubleArray : public _jarray {};
-class _jobjectArray : public _jarray {};
+_DEFINE_JNI_CLASS(_jbooleanArray, _jarray)
+_DEFINE_JNI_CLASS(_jbyteArray, _jarray)
+_DEFINE_JNI_CLASS(_jcharArray, _jarray)
+_DEFINE_JNI_CLASS(_jshortArray, _jarray)
+_DEFINE_JNI_CLASS(_jintArray, _jarray)
+_DEFINE_JNI_CLASS(_jlongArray, _jarray)
+_DEFINE_JNI_CLASS(_jfloatArray, _jarray)
+_DEFINE_JNI_CLASS(_jdoubleArray, _jarray)
+_DEFINE_JNI_CLASS(_jobjectArray, _jarray)
 
 using jobject = _jobject *;
 using jclass = _jclass *;

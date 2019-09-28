@@ -13,7 +13,7 @@ namespace FakeJni {
  };
 }
 
-_DEFINE_JNI_CONVERSION_OPERATOR_(FakeJni::JWeak, jweak)
+_DEFINE_JNI_CONVERSION_OPERATOR(FakeJni::JWeak, jweak)
 
 DEFINE_JNI_TYPE(_jweak, "java/lang/ref/WeakReference")
 DECLARE_NATIVE_TYPE(FakeJni::JWeak)
