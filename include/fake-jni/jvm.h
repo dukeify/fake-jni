@@ -983,8 +983,6 @@ namespace FakeJni {
   //Internal fake-jni native class metadata
   DEFINE_CLASS_NAME("java/lang/Class")
 
-//  using cast = CX::ExplicitCastGenerator<JClass, JObject, _jobject>;
-
   template<typename T>
   operator T() const;
 

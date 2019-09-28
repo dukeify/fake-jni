@@ -10,7 +10,7 @@ class ExampleClass : public JObject {
 public:
  DEFINE_CLASS_NAME("com/example/ExampleClass")
 
- using cast = CX::ExplicitCastGenerator<ExampleClass, JClass, JObject>;
+// using cast = CX::ExplicitCastGenerator<ExampleClass, JClass, JObject>;
 
  JInt exampleField1;
  JString exampleField2;

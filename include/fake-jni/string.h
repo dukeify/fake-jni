@@ -13,7 +13,6 @@ namespace FakeJni {
 
  public:
   DEFINE_CLASS_NAME("java/lang/String")
-//  using cast = typename CX::ExplicitCastGenerator<JString, JCharArray, JClass, JObject>;
 
   template<typename T>
   operator T() const;
