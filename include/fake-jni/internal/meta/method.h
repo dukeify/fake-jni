@@ -17,6 +17,13 @@ public:\
  }\
 };
 
+#define _ASSERT_NON_VIRTUAL \
+static_assert(\
+ !CX::IsVirtualFunction<F>::value,\
+ "Virtual functions cannot be registered with fake-jni! If you intend to register an overload for a native base "\
+ "type, you must register a function with the exact same name and signature as the target function in the base."\
+);\
+
 //Template glue code for method registration and access
 namespace FakeJni {
  namespace _CX {
@@ -129,7 +136,7 @@ namespace FakeJni {
     //always throw an error, even if the template is not instantiated
     static_assert(
      !__is_class(T),
-     "Consuming an object type off of a va_list is undefined behaviour!\n"
+     "Consuming an object type off of a va_list is undefined behaviour! "
      "Did you intend to consume a pointer-to-object type?"
     );
    }
@@ -308,11 +315,14 @@ namespace FakeJni {
  template<auto F, typename T, typename R, typename... Args>
  struct Function<F, R (T::*)(Args...), true> : Function<F, decltype(F), nullptr> {
   constexpr Function() noexcept {
-   static_assert(
-    !CX::IsVirtualFunction<F>::value,
-    "Virtual functions cannot be registered with fake-jni! If you intend to register an overload for a native base "
-    "type, you must register a function with the exact same name and signature as the target function in the base."
-   );
+   _ASSERT_NON_VIRTUAL
+  }
+ };
+
+ template<auto F, typename T, typename R, typename... Args>
+ struct Function<F, R (T::*)(Args...) const, true> : Function<F, decltype(F), nullptr> {
+  constexpr Function() noexcept {
+   _ASSERT_NON_VIRTUAL
   }
  };
 
@@ -345,3 +355,6 @@ namespace FakeJni {
   }
  };
 }
+
+#undef _GET_AARG_MAP
+#undef _ASSERT_NON_VIRTUAL

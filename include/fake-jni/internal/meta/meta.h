@@ -35,6 +35,12 @@ namespace FakeJni {
    static constexpr const auto isRegisteredType = false;
   };
 
+  template<typename T>
+  class JniArrayTypeBase<T*> : public JniArrayTypeBase<typename ComponentTypeResolver<T*>::type> {};
+
+  template<typename T>
+  class JniArrayTypeBase<T&> : public JniArrayTypeBase<typename ComponentTypeResolver<T&>::type> {};
+
   //Strip pointers off of JniTypeBase specializations and instantiations
   template<typename T>
   class JniTypeBase<T*> : public JniTypeBase<typename ComponentTypeResolver<T*>::type> {};

@@ -1,45 +1,67 @@
 #include "fake-jni/jvm.h"
+#include "fake-jni/throwable.h"
 
 #include <stdexcept>
 
 namespace FakeJni {
-//TODO implement
- jint NativeInterface::throw_(jthrowable) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::throw_' is unimplemented!");
+ jint NativeInterface::throw_(jthrowable jthrow) const {
+  JThrowable * throwable = *jthrow;
+  jthrowable current = exceptionOccurred();
+  if (current) {
+   throwable->addSuppressed(*current);
+   vm.clearException();
+  }
+  vm.throwException(*throwable);
+  return JNI_OK;
+ }
+
+ jint NativeInterface::throwNew(jclass jclazz, const char * message) const {
+  const auto clazz = ((JClass *)*jclazz);
+  if (!isAssignableFrom(jclazz, *&JThrowable::descriptor)) {
+   throw std::runtime_error(
+    "FATAL: Requested exception class '"
+     + std::string(clazz->getName())
+     + "' does not extend 'java/lang/Throwable'!"
+   );
+  }
+  auto constructor = clazz->getMethod("Ljava/lang/String;", "<init>");
+  if (!constructor) {
+   throw std::runtime_error(
+    "FATAL: Requested exception class '"
+     + std::string(clazz->getName())
+     + "' does not expose a constructor matching the prototype: '<init>(Ljava/lang/String;)'!"
+   );
+  }
+  //clean up string eventually
+  auto jstrMessage = new JString(message);
+  vm.addInstance(jstrMessage);
+  vm.throwException(*constructor->invoke<JThrowable *>(&vm, clazz, jstrMessage));
   return 0;
  }
 
-//TODO implement
- jint NativeInterface::throwNew(jclass, const char *) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::throwNew' is unimplemented!");
-  return 0;
- }
-
-//TODO implement
  jthrowable NativeInterface::exceptionOccurred() const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::exceptionOccurred' is unimplemented!");
-  return nullptr;
+  return vm.getException();
  }
 
-//TODO implement
  void NativeInterface::exceptionDescribe() const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::exceptionDescribe' is unimplemented!");
+  auto exception = vm.getException();
+  if (exception) {
+   ((JThrowable *)*exception)->printStackTrace();
+  }
  }
 
-//TODO implement
  void NativeInterface::exceptionClear() const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::exceptionClear' is unimplemented!");
+  JThrowable * exception = *vm.getException();
+  vm.clearException();
+  delete exception;
  }
 
-//TODO implement
  jboolean NativeInterface::exceptionCheck() const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::exceptionCheck' is unimplemented!");
-  return 0;
+  return (jboolean)(vm.getException() ? JNI_TRUE : JNI_FALSE);
  }
 
-//TODO implement
- void NativeInterface::fatalError(const char *) const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::fatalError' is unimplemented!");
+ void NativeInterface::fatalError(const char * message) const {
+  vm.fatalError(message);
  }
 
 //TODO implement

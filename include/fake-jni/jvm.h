@@ -888,13 +888,16 @@ namespace FakeJni {
 
   //Constructor for delegate constructors
   template<typename R, typename... Args>
-  JMethodID(R (* const func)(Args...), uint32_t modifiers) noexcept;
+  JMethodID(R (* func)(Args...), uint32_t modifiers) noexcept;
   //constructor for static functions
   template<typename R, typename... Args>
-  JMethodID(R (* const func)(Args...), const char * name, uint32_t modifiers) noexcept;
+  JMethodID(R (* func)(Args...), const char * name, uint32_t modifiers) noexcept;
   //Constructor for member methods
   template<typename T, typename R, typename... Args>
-  JMethodID(R (T::* const func)(Args...), const char * name, uint32_t modifiers) noexcept;
+  JMethodID(R (T::* func)(Args...), const char * name, uint32_t modifiers) noexcept;
+  //Constructor for const member methods
+  template<typename T, typename R, typename... Args>
+  JMethodID(R (T::* func)(Args...) const, const char * name, uint32_t modifiers) noexcept;
   //Constructor for RegisterNatives
   JMethodID(const JNINativeMethod * method);
   ~JMethodID();
@@ -917,9 +920,9 @@ namespace FakeJni {
   bool operator ==(const JMethodID& mid) const noexcept;
   bool operator ==(JNINativeMethod*& mid) const;
   template<typename R, typename A>
-  R invoke(const JavaVM * vm, void * clazzOrInst, A args) const;
+  R virtualInvoke(const JavaVM *vm, void *clazzOrInst, A args) const;
   template<typename R, typename A>
-  R invoke(const JavaVM * vm, JClass * const clazz, void * const inst, A args) const;
+  R nonVirtualInvoke(const JavaVM *vm, JClass *const clazz, void *const inst, A args) const;
   template<typename R>
   R invoke(const JavaVM * vm, const JObject * clazzOrInst, ...) const;
  };
@@ -1037,6 +1040,7 @@ namespace FakeJni {
   const char * const uuid;
 
  private:
+  jthrowable exception = nullptr;
   FILE * const log;
   InvokeInterface * invoke;
   NativeInterface * native;
@@ -1047,12 +1051,9 @@ namespace FakeJni {
   //TODO on the first invocation of any JNI, JNIEnv or JVMTI functions, set this flag to true
   bool running;
 
-//  std::vector<Library *> libraries;
-//  std::vector<JClass *> classes;
   AllocStack<const Library *> libraries;
   AllocStack<const JClass *> classes;
   //TODO if classloaders are ever implemented, this property will be handled by the ClassLoader model
-//  AllocStack<JObject *> instances{true};
   std::map<const JClass *, AllocStack<JObject *>> instances;
   mutable std::shared_mutex instances_mutex;
 
@@ -1123,6 +1124,10 @@ namespace FakeJni {
   virtual const AllocStack<const Library *>& getLibraries() const;
   virtual void start();
   virtual void destroy();
+  virtual void throwException(jthrowable throwable);
+  virtual jthrowable getException() const;
+  virtual void clearException();
+  virtual void fatalError(const char * message);
  };
 
  //Template glue code for native class registration
@@ -1289,6 +1294,11 @@ namespace FakeJni {
   _ASSERT_JNI_FUNCTION_COMPLIANCE
  }
 
+ template<typename T, typename R, typename... Args>
+ JMethodID::JMethodID(R (T::* func)(Args...) const, const char * name, uint32_t modifiers) noexcept :
+  JMethodID((R (T::*)(Args...))func, name, modifiers)
+ {}
+
  template<typename R, typename... Args>
  JMethodID::JMethodID(R (* const func)(Args...), const char * const name, const uint32_t modifiers) noexcept :
   _jmethodID(),
@@ -1328,7 +1338,7 @@ namespace FakeJni {
 
  //Performs virtual dispatch
  template<typename R, typename A>
- R JMethodID::invoke(const JavaVM * const vm, void * const clazzOrInst, A args) const {
+ R JMethodID::virtualInvoke(const JavaVM *vm, void *clazzOrInst, A args) const {
   auto * clazz = &((JObject *)clazzOrInst)->getClass();
   if (strcmp(clazz->getName(), "java/lang/Class") == 0) {
    //Static method, no virtual dispatch
@@ -1370,7 +1380,7 @@ namespace FakeJni {
 
  //Does not perform virtual dispatch
  template<typename R, typename A>
- R JMethodID::invoke(const JavaVM * const vm, JClass * const clazz, void * const inst, A args) const {
+ R JMethodID::nonVirtualInvoke(const JavaVM *vm, JClass *const clazz, void *const inst, A args) const {
   const auto mid = clazz->getMethod(signature, name);
   if (!mid) {
    throw std::runtime_error(
@@ -1518,7 +1528,7 @@ namespace FakeJni {
    for (uint32_t i = 0; i < descriptor.functions.getSize(); i++) {
     const auto& method = (descriptor.functions)[i];
     if (strcmp(method->getSignature(), signature) == 0 && strcmp(method->getName(), "<init>") == 0) {
-     const auto inst = method->invoke<T *>(vm, nullptr, args);
+     const auto inst = method->nonVirtualInvoke<T *>(vm, &descriptor, &descriptor, args);
      JObject * baseInst;
      if constexpr(_CX::JniTypeBase<T>::hasComplexHierarchy) {
       baseInst = (JObject *)T::cast::cast(inst);

@@ -99,7 +99,7 @@ const FakeJni::JClass FakeJni::JArray<fake_object>::descriptor;
 template<>\
 const FakeJni::JClass FakeJni::JArray<fake_object>::descriptor {\
  FakeJni::JClass::PUBLIC,\
- FakeJni::_CX::JClassBreeder<fake_object> {\
+ FakeJni::_CX::JClassBreeder<FakeJni::JArray<fake_object>> {\
   {FakeJni::Field<&JArray<fake_object>::length> {}, "length"}\
  }\
 };
@@ -187,12 +187,15 @@ namespace FakeJni {
  //Mutable array implementation
  template<typename T>
  class JArray : public JArray<const T> {
+ private:
+  using base_t = typename CX::ComponentTypeResolver<T>::type;
+
  public:
   using JArray<const T>::JArray;
   using component = typename JArray<const T>::component;
 
   //fake-jni metadata
-  static constexpr const auto name = _CX::JniTypeBase<JArray<T>>::signature;
+  static constexpr const auto name = _CX::JniTypeBase<JArray<base_t>>::signature;
   static const JClass descriptor;
   inline static const JClass * getDescriptor() noexcept {
    return &descriptor;

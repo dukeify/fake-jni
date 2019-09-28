@@ -3,6 +3,7 @@
 #include "fake-jni/jvm.h"
 #include "fake-jni/array.h"
 #include "fake-jni/string.h"
+#include "fake-jni/throwable.h"
 
 using namespace FakeJni;
 

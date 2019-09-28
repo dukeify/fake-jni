@@ -2,6 +2,7 @@
 #include "fake-jni/jvm.h"
 #include "fake-jni/array.h"
 #include "fake-jni/string.h"
+#include "fake-jni/throwable.h"
 
 #include <algorithm>
 #include <mutex>
@@ -46,7 +47,8 @@ namespace FakeJni {
   registerClass<JObject>();
   registerClass<JClass>();
   registerClass<JString>();
-//  registerClass<JThrowable>();
+  registerClass<JThrowable>();
+  registerClass<JArray<JThrowable *>>();
 //  registerClass<JWeak>();
   registerClass<JBooleanArray>();
   registerClass<JByteArray>();
@@ -343,5 +345,22 @@ namespace FakeJni {
 
  void Jvm::destroy() {
   running = false;
+ }
+
+ void Jvm::throwException(jthrowable throwable) {
+  clearException();
+  exception = throwable;
+ }
+
+ jthrowable Jvm::getException() const {
+  return exception;
+ }
+
+ void Jvm::clearException() {
+  exception = nullptr;
+ }
+
+ void Jvm::fatalError(const char * message) {
+  throw std::runtime_error("FATAL: Fatal error thrown with message: \n\t" + std::string(message));
  }
 }
