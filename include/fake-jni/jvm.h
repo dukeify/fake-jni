@@ -774,6 +774,13 @@ namespace FakeJni {
   const JFieldID * findVirtualMatch(const JClass * clazz) const noexcept;
 
  public:
+  template<typename T>
+  using get_func_t = T& (*)(void * inst);
+  template<typename T>
+  using set_func_t = void (*)(void * inst, T * value);
+  using v_get_func_t = void * (*)(void * inst);
+  using v_set_func_t = void (*)(void * inst, void * value);
+
   enum Modifiers: uint32_t {
    PUBLIC = 1,
    PRIVATE = 2,
@@ -786,12 +793,19 @@ namespace FakeJni {
    ENUM = 16384
   };
 
+  const bool isArbitrary;
+
   //Constructor for member fields
   template<typename T, typename M>
   JFieldID(T M::* member, const char * name, uint32_t modifiers) noexcept;
   //Constructor for non-member fields
   template<typename T>
   JFieldID(T * staticMember, const char * name, uint32_t modifiers) noexcept;
+  //Constructor for arbitrary fields with user-defined access callbacks
+  template<typename T>
+  JFieldID(get_func_t<T> get, set_func_t<T> set, const char * name, uint32_t modifiers) noexcept;
+  //Constructor for arbitrary fields with type-erased user-defined access callbacks
+  JFieldID(v_get_func_t get, v_set_func_t set, const char * name, const char * signature, uint32_t modifiers) noexcept;
 
   inline const char * getName() const noexcept {
    return name;
@@ -865,12 +879,16 @@ namespace FakeJni {
 
   static /*const*/ char * verifyName(const char * name);
   static /*const*/ char * verifySignature(const char * sig);
-  static ffi_cif * getFfiPrototype(const char * signature, const char * name);
+  static std::vector<ffi_type *> getFfiPrototype(const char * signature, const char * name);
 
   template<typename R, typename A>
   R internalInvoke(const JavaVM * vm, void * clazzOrInst, A args) const;
 
  public:
+  using arbitrary_func_t = void * (*)(JNIEnv * env, jobject objOrInst, ...);
+
+  const bool isArbitrary;
+
   enum Modifiers : uint32_t {
    PUBLIC = 1,
    PRIVATE = 2,
@@ -900,6 +918,8 @@ namespace FakeJni {
   JMethodID(R (T::* func)(Args...) const, const char * name, uint32_t modifiers) noexcept;
   //Constructor for RegisterNatives
   JMethodID(const JNINativeMethod * method);
+  //Constructor for arbitrary functions
+  JMethodID(arbitrary_func_t func, const char * signature, const char * name, uint32_t modifiers);
   ~JMethodID();
 
   inline const char * getName() const noexcept {
@@ -979,12 +999,13 @@ namespace FakeJni {
    * (* const constructV)(const JavaVM *, const char *, va_list),
    * (* const constructA)(const JavaVM *, const char *, const jvalue *);
 
-  const bool isArbitrary;
   const char * const className;
 
  public:
-  //Internal fake-jni native class metadata
   DEFINE_CLASS_NAME("java/lang/Class")
+  //Internal fake-jni native class metadata
+
+  const bool isArbitrary;
 
   template<typename T>
   operator T() const;
@@ -1234,7 +1255,8 @@ namespace FakeJni {
   name(name),
   signature(_CX::JniTypeBase<T>::signature),
   proxyGetFunc((void (*)())&_CX::FieldAccessor<T (M::*)>::get),
-  proxySetFunc((void (*)())&_CX::FieldAccessor<T (M::*)>::set)
+  proxySetFunc((void (*)())&_CX::FieldAccessor<T (M::*)>::set),
+  isArbitrary(false)
  {
   _ASSERT_FIELD_JNI_COMPLIANCE
  }
@@ -1248,7 +1270,22 @@ namespace FakeJni {
   name(name),
   signature(_CX::JniTypeBase<T>::signature),
   proxyGetFunc((void (*)())&_CX::FieldAccessor<T*>::get),
-  proxySetFunc((void (*)())&_CX::FieldAccessor<T*>::set)
+  proxySetFunc((void (*)())&_CX::FieldAccessor<T*>::set),
+  isArbitrary(false)
+ {
+  _ASSERT_FIELD_JNI_COMPLIANCE
+ }
+
+ template<typename T>
+ JFieldID::JFieldID(get_func_t<T> get, set_func_t<T> set, const char * name, uint32_t modifiers) noexcept :
+  _jfieldID(),
+  isStatic(false),
+  modifiers(modifiers),
+  name(name),
+  signature(_CX::JniTypeBase<T>::signature),
+  proxyGetFunc((void (*)())get),
+  proxySetFunc((void (*)())set),
+  isArbitrary(true)
  {
   _ASSERT_FIELD_JNI_COMPLIANCE
  }
@@ -1258,12 +1295,16 @@ namespace FakeJni {
   const auto& clazz = obj->getClass();
   auto * fid = findVirtualMatch(&clazz);
   if (fid) {
-   if ((modifiers & STATIC) == STATIC) {
-    if (fid == this) {
+   if (isArbitrary) {
+    return ((T& (*)(void *))proxyGetFunc)(obj);
+   } else {
+    if ((modifiers & STATIC) == STATIC) {
+     if (fid == this) {
+      _JFIELDID_GET
+     }
+    } else {
      _JFIELDID_GET
     }
-   } else {
-    _JFIELDID_GET
    }
   }
   throw std::runtime_error(
@@ -1289,7 +1330,8 @@ namespace FakeJni {
   modifiers(modifiers),
   staticFunc((static_func_t)func),
   proxyFuncV((void (*)())&_CX::FunctionAccessor<sizeof...(Args), decltype(func)>::template invokeV<>),
-  proxyFuncA((void (*)())&_CX::FunctionAccessor<sizeof...(Args), decltype(func)>::template invokeA<>)
+  proxyFuncA((void (*)())&_CX::FunctionAccessor<sizeof...(Args), decltype(func)>::template invokeA<>),
+  isArbitrary(false)
  {
   _ASSERT_JNI_FUNCTION_COMPLIANCE
  }
@@ -1311,7 +1353,8 @@ namespace FakeJni {
   modifiers(modifiers),
   staticFunc((static_func_t)func),
   proxyFuncV((void (*)())&_CX::FunctionAccessor<sizeof...(Args), decltype(func)>::template invokeV<>),
-  proxyFuncA((void (*)())&_CX::FunctionAccessor<sizeof...(Args), decltype(func)>::template invokeA<>)
+  proxyFuncA((void (*)())&_CX::FunctionAccessor<sizeof...(Args), decltype(func)>::template invokeA<>),
+  isArbitrary(false)
  {
   _ASSERT_JNI_FUNCTION_COMPLIANCE
  }
@@ -1331,7 +1374,8 @@ namespace FakeJni {
   modifiers(modifiers),
   memberFunc((member_func_t)func),
   proxyFuncV((void (*)())&_CX::FunctionAccessor<sizeof...(Args), decltype(func)>::template invokeV<>),
-  proxyFuncA((void (*)())&_CX::FunctionAccessor<sizeof...(Args), decltype(func)>::template invokeA<>)
+  proxyFuncA((void (*)())&_CX::FunctionAccessor<sizeof...(Args), decltype(func)>::template invokeA<>),
+  isArbitrary(false)
  {
   _ASSERT_JNI_FUNCTION_COMPLIANCE
  }
@@ -1609,8 +1653,8 @@ namespace FakeJni {
   JObject(),
   constructV(&decltype(breeder)::template constructorPredicate<va_list>),
   constructA(&decltype(breeder)::template constructorPredicate<const jvalue *>),
-  isArbitrary(false),
   className(T::name),
+  isArbitrary(false),
   modifiers(modifiers),
   parent(breeder.parent),
   functions{true},
@@ -1626,8 +1670,8 @@ namespace FakeJni {
   JObject(),
   constructV(&decltype(breeder)::template constructorPredicate<va_list>),
   constructA(&decltype(breeder)::template constructorPredicate<const jvalue *>),
-  isArbitrary(false),
   className(_CX::JniTypeBase<T>::signature),
+  isArbitrary(false),
   modifiers(modifiers),
   parent(breeder.parent),
   functions{true},

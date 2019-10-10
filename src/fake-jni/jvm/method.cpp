@@ -8,7 +8,7 @@
 #include <map>
 #include <functional>
 
-#define _SIG_PREAMBLE(case_char, ffi_type) \
+#define SIG_PREAMBLE(case_char, ffi_type) \
 case #case_char[0]: {\
  if (inside_obj_stmt) continue;\
  if (inside_array) {\
@@ -22,7 +22,7 @@ argc += 1;\
 ffiTypes.push_back(&ffi_type);\
 break;
 
-#define _SIG_PARSE_FAILURE \
+#define SIG_PARSE_FAILURE \
 throw std::runtime_error("FATAL: Could not parse signature for native method: '" + std::string(name) + "'!");
 
 #define RESOLVER_CASE(a_type, ffi_type) \
@@ -32,6 +32,16 @@ if (type == &ffi_type) {\
   (void (*)())&NativeInvocationManager<a_type>::allocate<jvalue *>,\
   (void (*)())&NativeInvocationManager<a_type>::deallocate\
  };\
+}
+
+#define JMETHODID_INVOCATION_PREP \
+const auto argc = descriptor->nargs - 2;\
+for (unsigned int i = 0; i < argc; i++) {\
+ const auto type = descriptor->arg_types[i + 2];\
+ const auto typeResolvers = typeResolverGenerator(type);\
+ resolvers[i] = typeResolvers.get<0>();\
+ resolvers[i + argc] = typeResolvers.get<1>();\
+ deallocators[i] = typeResolvers.get<2>();\
 }
 
 //TODO find a better name for this glue template
@@ -58,6 +68,21 @@ struct NativeInvocationManager {
  }
 };
 
+//Generates the type resolvers, allocators and deallocators for the respective JNI argument list
+static auto typeResolverGenerator(ffi_type * const type) {
+ RESOLVER_CASE(FakeJni::JBoolean, ffi_type_uint8)
+ RESOLVER_CASE(FakeJni::JByte, ffi_type_sint8)
+ RESOLVER_CASE(FakeJni::JChar, ffi_type_uint16)
+ RESOLVER_CASE(FakeJni::JShort, ffi_type_sint16)
+ RESOLVER_CASE(FakeJni::JInt, ffi_type_sint32)
+ RESOLVER_CASE(FakeJni::JFloat, ffi_type_float)
+ RESOLVER_CASE(FakeJni::JLong, ffi_type_sint64)
+ RESOLVER_CASE(FakeJni::JDouble, ffi_type_double)
+ RESOLVER_CASE(FakeJni::JObject *, ffi_type_pointer)
+ //This should never happen, if it does there's probably memory corruption
+ throw std::runtime_error("FATAL: Could not resolve valid FFI type after parsing!");
+};
+
 //Non-template members of JMethodID
 namespace FakeJni {
  std::map<size_t, std::pair<unsigned long, ffi_cif *>> JMethodID::descriptors;
@@ -77,84 +102,58 @@ namespace FakeJni {
   return const_cast<char *>(sig);
  }
 
- ffi_cif * JMethodID::getFfiPrototype(const char * signature, const char * name) {
+ std::vector<ffi_type *> JMethodID::getFfiPrototype(const char * signature, const char * name) {
   using int_limit_t = std::numeric_limits<unsigned int>;
-  auto& pair = descriptors[std::hash<std::string>{}(signature)];
-  pair.first += 1;
-  auto& descriptor = pair.second;
-  //only parse shorty if the ffi prototype has not already been generated
-  if (!descriptor) {
-   descriptor = new ffi_cif;
-   bool
-    inside_array = false,
-    inside_obj_stmt = false;
-   auto argc = int_limit_t::max();
-   std::vector<ffi_type *> ffiTypes;
-   for (char s : std::string(signature)) {
-    switch (s) {
-     case '(': continue;
-     case 'L': {
-      inside_obj_stmt = true;
-      break;
+  bool
+   inside_array = false,
+   inside_obj_stmt = false;
+  auto argc = int_limit_t::max();
+  std::vector<ffi_type *> ffiTypes;
+  for (char s : std::string(signature)) {
+   switch (s) {
+    case '(': continue;
+    case 'L': {
+     inside_obj_stmt = true;
+     break;
+    }
+    case ';': {
+     if (!inside_obj_stmt) {
+      SIG_PARSE_FAILURE
      }
-     case ';': {
-      if (!inside_obj_stmt) {
-       _SIG_PARSE_FAILURE
-      }
-      inside_obj_stmt = false;
-      if (inside_array) {
-       inside_array = false;
-      }
-      argc += 1;
-      ffiTypes.push_back(&ffi_type_pointer);
-      break;
+     inside_obj_stmt = false;
+     if (inside_array) {
+      inside_array = false;
      }
-     case '[': {
-      inside_array = true;
-      break;
-     }
-     _SIG_PREAMBLE(V, ffi_type_void)
-     _SIG_PREAMBLE(Z, ffi_type_uint8)
-     _SIG_PREAMBLE(B, ffi_type_sint8)
-     _SIG_PREAMBLE(C, ffi_type_uint16)
-     _SIG_PREAMBLE(S, ffi_type_sint16)
-     _SIG_PREAMBLE(I, ffi_type_sint32)
-     _SIG_PREAMBLE(F, ffi_type_float)
-     _SIG_PREAMBLE(J, ffi_type_sint64)
-     _SIG_PREAMBLE(D, ffi_type_double)
-     case ')': continue;
-     default: {
-      if (!(inside_array || inside_obj_stmt)) {
-       _SIG_PARSE_FAILURE
-      }
+     argc += 1;
+     ffiTypes.push_back(&ffi_type_pointer);
+     break;
+    }
+    case '[': {
+     inside_array = true;
+     break;
+    }
+    SIG_PREAMBLE(V, ffi_type_void)
+    SIG_PREAMBLE(Z, ffi_type_uint8)
+    SIG_PREAMBLE(B, ffi_type_sint8)
+    SIG_PREAMBLE(C, ffi_type_uint16)
+    SIG_PREAMBLE(S, ffi_type_sint16)
+    SIG_PREAMBLE(I, ffi_type_sint32)
+    SIG_PREAMBLE(F, ffi_type_float)
+    SIG_PREAMBLE(J, ffi_type_sint64)
+    SIG_PREAMBLE(D, ffi_type_double)
+    case ')': continue;
+    default: {
+     if (!(inside_array || inside_obj_stmt)) {
+      SIG_PARSE_FAILURE
      }
     }
    }
-   //No arguments were parsed, not even the return type
-   if (argc == int_limit_t::max()) {
-    _SIG_PARSE_FAILURE
-   }
-   auto types = new ffi_type*[argc + 2];
-   //env type
-   types[0] = &ffi_type_pointer;
-   //class or obj
-   types[1] = &ffi_type_pointer;
-   //the actual function arguments (skip env and obj)
-   for (unsigned int i = 0; i < argc; i++) {
-    types[i + 2] = ffiTypes[i];
-   }
-   auto status = ffi_prep_cif(descriptor, FFI_DEFAULT_ABI, argc + 2, ffiTypes[argc], types);
-   if (status != FFI_OK) {
-    throw std::runtime_error(
-     "FATAL: ffi_prep_cif failed for function: '"
-      + std::string(name)
-      + signature
-      + "' with error: "
-      + std::to_string((uint32_t)status)
-      + "!");
-   }
   }
-  return descriptor;
+  //No arguments were parsed, not even the return type
+  if (argc == int_limit_t::max()) {
+   SIG_PARSE_FAILURE
+  }
+  return ffiTypes;
  }
 
  JMethodID::JMethodID(const JNINativeMethod * method) :
@@ -166,32 +165,83 @@ namespace FakeJni {
   },
   //ReturnType (*fnPtr)(JNIEnv *env, jobject objectOrClass, ...)
   type(REGISTER_NATIVES_FUNC),
-  descriptor(getFfiPrototype(signature, name)),
+  descriptor([&]() -> ffi_cif * {
+   auto& pair = descriptors[std::hash<std::string>{}(signature)];
+   pair.first += 1;
+   auto& descriptor = pair.second;
+   if (!descriptor) {
+    auto&& args = getFfiPrototype(signature, name);
+    const auto argc = (unsigned int)args.size() - 2;
+    descriptor = new ffi_cif;
+    auto types = new ffi_type*[argc + 2];
+    //env type
+    types[0] = &ffi_type_pointer;
+    //class or obj
+    types[1] = &ffi_type_pointer;
+    //the actual function arguments (skip env and obj)
+    for (unsigned int i = 0; i < argc; i++) {
+     types[i + 2] = args[i];
+    }
+    auto status = ffi_prep_cif(descriptor, FFI_DEFAULT_ABI, argc + 2, args[argc + 1], types);
+    if (status != FFI_OK) {
+     throw std::runtime_error(
+      "FATAL: ffi_prep_cif failed for function: '"
+      + std::string(name)
+      + signature
+      + "' with error: "
+      + std::to_string((uint32_t)status)
+      + "!"
+     );
+    }
+   }
+   return descriptor;
+  }()),
   resolvers(new void_func_t[2 * (descriptor->nargs - 2)]),
-  deallocators(new void_func_t[descriptor->nargs - 2])
+  deallocators(new void_func_t[descriptor->nargs - 2]),
+  isArbitrary(false)
  {
-  const auto argc = descriptor->nargs - 2;
-  //Generates the type resolvers, allocators and deallocators for the respective JNI argument list
-  const auto typeResolverGenerator = [](ffi_type * const type) -> auto {
-   RESOLVER_CASE(JBoolean, ffi_type_uint8)
-   RESOLVER_CASE(JByte, ffi_type_sint8)
-   RESOLVER_CASE(JChar, ffi_type_uint16)
-   RESOLVER_CASE(JShort, ffi_type_sint16)
-   RESOLVER_CASE(JInt, ffi_type_sint32)
-   RESOLVER_CASE(JFloat, ffi_type_float)
-   RESOLVER_CASE(JLong, ffi_type_sint64)
-   RESOLVER_CASE(JDouble, ffi_type_double)
-   RESOLVER_CASE(JObject *, ffi_type_pointer)
-   //This should never happen, if it does there's probably memory corruption
-   throw std::runtime_error("FATAL: Could not resolve valid FFI type after parsing!");
-  };
-  for (unsigned int i = 0; i < argc; i++) {
-   const auto type = descriptor->arg_types[i + 2];
-   const auto typeResolvers = typeResolverGenerator(type);
-   resolvers[i] = typeResolvers.get<0>(); //va_list resolver
-   resolvers[i + argc] = typeResolvers.get<1>(); //jvalue * resolver
-   deallocators[i] = typeResolvers.get<2>(); //deallocator
-  }
+  JMETHODID_INVOCATION_PREP
+ }
+
+ JMethodID::JMethodID(arbitrary_func_t func, const char * signature, const char * name, uint32_t modifiers) :
+  _jmethodID(),
+  JNINativeMethod {
+   verifyName(name),
+   verifySignature(signature),
+   (void *)func
+  },
+  //ReturnType (*fnPtr)(JNIEnv *env, jobject objectOrClass, ...)
+  type(REGISTER_NATIVES_FUNC),
+  descriptor([&]() -> ffi_cif * {
+   auto& pair = descriptors[std::hash<std::string>{}(signature)];
+   pair.first += 1;
+   auto& descriptor = pair.second;
+   if (!descriptor) {
+    auto&& args = getFfiPrototype(signature, name);
+    const auto argc = (unsigned int)args.size() - 2;
+    descriptor = new ffi_cif;
+    auto types = new ffi_type*[2];
+    types[0] = &ffi_type_pointer;
+    types[1] = &ffi_type_pointer;
+    auto status = ffi_prep_cif_var(descriptor, FFI_DEFAULT_ABI, 2, argc + 2, args[argc + 1], types);
+    if (status != FFI_OK) {
+     throw std::runtime_error(
+      "FATAL: ffi_prep_cif_var failed for function: '"
+       + std::string(name)
+       + signature
+       + "' with error: "
+       + std::to_string((uint32_t)status)
+       + "!"
+     );
+    }
+   }
+   return descriptor;
+  }()),
+  resolvers(new void_func_t[2 * (descriptor->nargs - 2)]),
+  deallocators(new void_func_t[descriptor->nargs - 2]),
+  isArbitrary(true)
+ {
+  JMETHODID_INVOCATION_PREP
  }
 
  bool JMethodID::operator ==(const JMethodID & mid) const noexcept {

@@ -14,20 +14,20 @@ namespace FakeJni {
   constructA([](const JavaVM * const, const char * const, const jvalue *) -> JObject * {
    _ERROR_ARBITRARY_CLASS
   }),
-  isArbitrary(true),
   className(name),
+  isArbitrary(true),
   modifiers(modifiers),
   parent(JObject::descriptor),
   functions{true},
   fields{true}
  {}
 
- JClass::JClass(const JClass& clazz) noexcept :
+ JClass::JClass(const JClass & clazz) noexcept :
   JObject(),
   constructV(clazz.constructV),
   constructA(clazz.constructA),
-  isArbitrary(clazz.isArbitrary),
   className(clazz.className),
+  isArbitrary(clazz.isArbitrary),
   modifiers(clazz.modifiers),
   parent(clazz.parent),
   functions{false},
