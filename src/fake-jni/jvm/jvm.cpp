@@ -20,7 +20,7 @@ namespace FakeJni {
  BEGIN_NATIVE_PRIMITIVE_DESCRIPTOR(JFloat, longDescriptor) END_NATIVE_DESCRIPTOR
  BEGIN_NATIVE_PRIMITIVE_DESCRIPTOR(JLong, doubleDescriptor) END_NATIVE_DESCRIPTOR
 
- AllocStack<Jvm *> Jvm::vms;
+ PointerList<Jvm *> Jvm::vms;
 
  Jvm::Jvm(FILE *log) :
   JavaVM(),
@@ -35,7 +35,7 @@ namespace FakeJni {
   classes{true}
  {
   functions = invoke;
-  vms.pushAlloc(this);
+  vms.insert(this);
   registerDefaultClasses();
  }
 
@@ -79,8 +79,9 @@ namespace FakeJni {
   }
   //Ensure that the uuid is unique
   bool changed = true;
-  uint32_t i = 0;
-  while (changed && i < vms.getSize()) {
+  auto size = vms.size();
+  decltype(size) i = 0;
+  while (changed && i < size) {
    changed = false;
    while(vms[i]->uuid == std::string(str)) {
     str[rand() % 31] = randCharFunc();
@@ -144,16 +145,16 @@ namespace FakeJni {
   return *jvmtiEnv;
  }
 
- const AllocStack<const JClass *>& Jvm::getClasses() const {
+ const PointerList<const JClass *>& Jvm::getClasses() const {
   return classes;
  }
 
- AllocStack<JObject *>& Jvm::operator[](const JClass * clazz) {
+ PointerList<JObject *>& Jvm::operator[](const JClass * clazz) {
   std::unique_lock lock(instances_mutex);
   return instances[clazz];
  }
 
- const AllocStack<JObject *>& Jvm::operator[](const JClass * clazz) const {
+ const PointerList<JObject *>& Jvm::operator[](const JClass * clazz) const {
   std::shared_lock lock(instances_mutex);
   return (const_cast<Jvm&>(*this).instances)[clazz];
  }
@@ -165,14 +166,15 @@ namespace FakeJni {
  bool Jvm::addInstance(JObject *inst) {
   auto& instances = (*this)[&inst->getClass()];
   if (!instances.contains(inst)) {
-   instances.pushAlloc(inst);
+   instances.insert(inst, nullptr);
    return true;
   }
   return false;
  }
 
- bool Jvm::removeInstance(FakeJni::JObject *inst) {
-  return (*this)[&inst->getClass()].removeAlloc(inst);
+ bool Jvm::removeInstance(JObject * inst) {
+  auto & instances = (*this)[&inst->getClass()];
+  return instances.end() != instances.erase(inst);
  }
 
  bool Jvm::isRunning() const {
@@ -180,11 +182,9 @@ namespace FakeJni {
  }
 
  Jvm::~Jvm() {
-  vms.removeAlloc(this);
-//  for (const auto &l : libraries) {
-  const auto size = libraries.getSize();
-  for (unsigned int i = 0; i < size; i++) {
-   removeLibrary(libraries[i], "");
+  vms.erase(this);
+  for (auto library : libraries) {
+   removeLibrary(library, "");
   }
   instances.clear();
   delete jvmtiEnv;
@@ -195,14 +195,10 @@ namespace FakeJni {
   delete[] uuid;
  }
 
- bool Jvm::registerClass(const JClass * clazz) {
-//  bool registered = std::find(classes.begin(), classes.end(), clazz) != classes.end();
+ bool Jvm::registerClass(const JClass * clazz, bool deallocate) {
   bool registered = classes.contains(clazz);
   if (!registered) {
-//   for (const auto c : classes) {
-   const auto size = classes.getSize();
-   for (unsigned int i = 0; i < size; i++) {
-    const auto& c = classes[i];
+   for (auto c : classes) {
     if (strcmp(c->getName(), clazz->getName()) == 0) {
      registered |= true;
      break;
@@ -222,7 +218,11 @@ namespace FakeJni {
   } else {
    std::unique_lock lock(instances_mutex);
    instances[clazz].setDeallocate(true);
-   classes.pushAlloc(clazz);
+   if (deallocate) {
+    classes.insert(clazz);
+   } else {
+    classes.insert(clazz, nullptr);
+   }
   }
   return true;
  }
@@ -245,10 +245,7 @@ namespace FakeJni {
  }
 
  const JClass * Jvm::findClass(const char * name) const {
-//  for (const auto clazz : classes) {
-  const auto size = classes.getSize();
-  for (unsigned int i = 0; i < size; i++) {
-   const auto& clazz = classes[i];
+  for (auto clazz : classes) {
    if (strcmp(name, clazz->getName()) == 0) {
     return clazz;
    }
@@ -262,10 +259,9 @@ namespace FakeJni {
   LibraryOptions loptions
  ) {
   std::string path = rpath.empty() ? "(embedded)" : rpath;
-  const auto size = libraries.getSize();
   bool libraryExists = false;
-  for (unsigned int i = 0; i < size; i++) {
-   if (libraries[i]->path == path) {
+  for (auto lib : libraries) {
+   if (lib->path == path) {
     libraryExists = true;
     break;
    }
@@ -287,7 +283,7 @@ namespace FakeJni {
      throw std::runtime_error("FATAL: Error initializing agent library: '" + path + "'");
     }
    }
-   libraries.pushAlloc([](void *lib) { delete (Library *)lib; }, library);
+   libraries.insert(library);
 #ifdef FAKE_JNI_DEBUG
    fprintf(log, "DEBUG: Registered library: '%s'\n", path.c_str());
 #endif
@@ -303,9 +299,7 @@ namespace FakeJni {
  //Implicitly unloads the agent within the library, if there was one
  //Implicitly unloads the jni component within the library, if there was one
  bool Jvm::removeLibrary(const std::string & path, const std::string & options) {
-  const auto size = libraries.getSize();
-  for (unsigned int i = 0; i < size; i++) {
-   const auto library = libraries[i];
+  for (auto library : libraries) {
    if (library->path == path) {
     return removeLibrary(library, options);
    }
@@ -315,7 +309,6 @@ namespace FakeJni {
  }
 
  bool Jvm::removeLibrary(const Library * library, const std::string & options) {
-//   (void)std::remove(libs.begin(), libs.end(), library);
 #ifdef FAKE_JNI_DEBUG
   fprintf(log, "DEBUG: Removing library: '%s'\n", library->path.c_str());
 #endif
@@ -325,12 +318,12 @@ namespace FakeJni {
   if (library->agentBound()) {
    library->agentUnload(const_cast<char *>(options.c_str()));
   }
-  libraries.removeAlloc(library);
+  libraries.erase(library);
 //  delete library;
   return true;
  }
 
- const AllocStack<const Library *>& Jvm::getLibraries() const {
+ const PointerList<const Library *>& Jvm::getLibraries() const {
   return libraries;
  }
 

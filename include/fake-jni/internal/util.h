@@ -1,16 +1,12 @@
 #pragma once
 
 #include <mutex>
-#include <map>
+#include <algorithm>
+#include <set>
+
+#include <cx/idioms.h>
 
 namespace FakeJni {
- template<typename T>
- class List {
- public:
-  T entry;
-  List<T> *next;
- };
-
  //Default deallocator generator
  namespace _CX {
   template<typename T>
@@ -23,165 +19,272 @@ namespace FakeJni {
   };
  }
 
- //TODO should AllocStack support custom allocators (for List<T>)?
- //TODO add range-based-for support, both blocking and non-blocking.
- // - Block on all removal invocations while something is iterating over the stack
+//Thread safe
+// - parallel reads
+// - blocking writes (blocks other writes and only blocks reads when the modification is a removal)
  template<typename T>
- class AllocStack final {
- private:
-  class Entry {
-  public:
-   using deallocator_t = void (* const)(void *);
-   deallocator_t dealloc;
-   T t;
+ class PointerList {
+ public:
+  constexpr PointerList(bool = false) noexcept {
+   static_assert(
+    CX::IsPointer<T>::value,
+    "PointerList may only encapsulate pointer types!"
+   );
+  }
+ };
 
-   Entry(deallocator_t dealloc, T t):
-    dealloc(dealloc),
-    t(t)
-   {}
+ template<typename T>
+ class PointerList<T *> {
+ private:
+  using element_t = T *;
+
+  struct Entry final {
+   using deallocator_t = void (*)(void *);
+   element_t t;
+   const deallocator_t dealloc;
+   Entry * next = nullptr;
   };
 
-  List<Entry>
-   *head = nullptr,
-   *tail = nullptr,
-   **next = nullptr;
-  uint32_t size = 0;
-  std::mutex m;
+  //stl iterator support
+  //forward access only, maintains iterator validity
+  struct Iterator final {
+   friend PointerList<element_t>;
+
+   Iterator(const PointerList<element_t> & list, Entry * entry) :
+    list(const_cast<PointerList<element_t> &>(list)),
+    entry(entry)
+   {
+    std::scoped_lock iteratorsLock{this->list.iteratorsMutex};
+    this->list.iterators.insert(this);
+   }
+
+   ~Iterator() {
+    std::scoped_lock iteratorsLock{list.iteratorsMutex};
+    list.iterators.erase(this);
+   }
+
+   Iterator & operator++() {
+    if (entry) {
+     std::scoped_lock modLock{modMutex};
+     entry = entry->next;
+    }
+    return *this;
+   }
+
+   bool operator==(const Iterator & itr) const noexcept {
+    return entry == itr.entry;
+   }
+
+   bool operator!=(const Iterator & itr) const noexcept {
+    return !operator==(itr);
+   }
+
+   const element_t & operator*() const {
+    if (entry) {
+     auto& non_const_ref = const_cast<Iterator &>(*this);
+     std::scoped_lock modLock{non_const_ref.modMutex};
+     return entry->t;
+    }
+    throw std::runtime_error("Tried to seek past end of list!");
+   }
+
+  private:
+   PointerList<element_t> & list;
+   Entry * entry;
+   std::mutex modMutex;
+  };
+
+  friend Iterator;
+
+  inline static const typename Entry::deallocator_t default_deallocator = _CX::Deallocator<T>::deallocate;
+
   bool dealloc;
+  Entry
+   *head = nullptr,
+   *tail = nullptr;
+  std::set<Iterator *> iterators;
+  std::mutex
+   accessMutex,
+   iteratorsMutex;
+  uint32_t _size = 0;
+
+  void lockIterators() const {
+   auto & non_const_ref = const_cast<PointerList<element_t> &>(*this);
+   non_const_ref.iteratorsMutex.lock();
+   for (auto & iterator : iterators) {
+    iterator->modMutex.lock();
+   }
+  }
+
+  void unlockIterators() const {
+   auto & non_const_ref = const_cast<PointerList<element_t> &>(*this);
+   non_const_ref.iteratorsMutex.unlock();
+   for (auto & iterator : iterators) {
+    iterator->modMutex.unlock();
+   }
+  }
+
+  void deallocate(Entry * entry) {
+   if (dealloc) {
+    const auto deallocator = entry->dealloc;
+    if (deallocator) {
+     deallocator((void *)entry->t);
+    }
+//    else {
+//     delete entry->t;
+//    }
+   }
+  }
 
  public:
-  AllocStack(bool dealloc = false) noexcept : dealloc(dealloc) {}
+  PointerList(bool dealloc = false) noexcept : dealloc(dealloc) {}
 
-  ~AllocStack() {
-   List<Entry> *elem = head;
-   while (elem != nullptr) {
+  ~PointerList() {
+   Entry *entry = head;
+   while (entry) {
     if (dealloc) {
-     const auto deallocator = elem->entry.dealloc;
+     const auto deallocator = entry->dealloc;
      if (deallocator) {
-      deallocator((void *)elem->entry.t);
+      deallocator((void *)entry->t);
      }
-//     else {
-//      delete elem->entry.t;
-//     }
     }
-    List<Entry> *copy = elem;
-    elem = copy->next;
+    Entry *prev = entry;
+    entry = entry->next;
+    delete prev;
+   }
+  }
+
+  //stl iterator support
+  Iterator begin() const {
+   return {*this, head};
+  }
+
+  Iterator end() const {
+   return {*this, nullptr};
+  }
+
+  void insert(element_t t) {
+   insert(t, (dealloc ? default_deallocator : nullptr));
+  }
+
+  void insert(element_t t, typename Entry::deallocator_t deallocator) {
+   std::scoped_lock accessLock{accessMutex};
+   _size += 1;
+   auto entry = new Entry{t, deallocator, nullptr};
+   if (!head) {
+    head = entry;
+    tail = head;
+   } else {
+    tail->next = entry;
+    tail = entry;
+   }
+  }
+
+  Iterator erase(element_t t) {
+   std::scoped_lock accessLock{accessMutex};
+   Entry
+    *entry = head,
+    *last = nullptr;
+   while (entry && entry->t != t) {
+    last = entry;
+    entry = entry->next;
+   }
+   if (entry) {
+    //lock all active iterators
+    lockIterators();
+    //replace any iterators pointing to the deleted element with the next element
+    for (auto & iterator : iterators) {
+     auto & entryPtr = iterator->entry;
+     if (entryPtr == entry) {
+      entryPtr = entry->next;
+     }
+    }
+    //deallocate element
+    _size -= 1;
+    deallocate(entry);
+    //update entries
+    if (_size == 0) {
+     head = tail = nullptr;
+    } else {
+     if (last) {
+      last->next = entry->next;
+      //if the entry was the tail, set the new tail to the previous entry
+      if (!entry->next) {
+       tail = last;
+      }
+     } else {
+      //if there was no previous entry, then the entry is head
+      //update head to be the next entry
+      head = entry->next;
+     }
+    }
+    auto copy = entry;
+    //set entry to the next element for the returned iterator
+    entry = entry->next;
+    delete copy;
+    //release all iterator locks
+    unlockIterators();
+   }
+   return {*this, entry};
+  }
+
+  void clear() noexcept {
+   std::scoped_lock accessLock{accessMutex};
+   _size = 0;
+   lockIterators();
+   //delete all entries and elements
+   Entry *entry = head;
+   while (entry) {
+    deallocate(entry);
+    auto copy = entry;
+    entry = entry->next;
     delete copy;
    }
+   //update entries
+   head = tail = nullptr;
+   //stop all iterators since the list is now empty
+   for (auto & iterator : iterators) {
+    iterator->entry = nullptr;
+   }
+   unlockIterators();
   }
 
-  T pushAlloc(T t) {
-   return pushAlloc(nullptr, t);
-  }
-
-  //Pushes a new allocation to the end of the list, with a custom deallocator
-  //TODO default the deallocator lambda
-  T pushAlloc(void (* const deallocator)(void *), T t) {
-   std::scoped_lock<std::mutex> mLock(m);
-   size += 1;
-   auto list = new List<Entry>{{deallocator, t}, nullptr};
-   if (!head) {
-    head = list;
-   } else {
-    *next = list;
-   }
-   tail = list;
-   next = &(list->next);
-   return t;
-  }
-
-  T popAlloc() {
-   std::scoped_lock<std::mutex> mLock(m);
-   if (!head) {
-    throw std::out_of_range("Allocation table is empty!");
-   }
-   List<Entry> *elem = head;
-   while (elem && elem != tail) {
-    elem = elem->next;
-   }
-   size -= 1;
-   T const t = tail->entry.t;
-   tail = elem;
-   next = &(tail->next);
-   delete tail;
-   return t;
-  }
-
-  bool removeAlloc(T t) {
-   std::scoped_lock<std::mutex> mLock(m);
-   List<Entry> *elem = head, *last = nullptr;
-   while (elem && elem->entry.t != t) {
-    last = elem;
-    elem = elem->next;
-   }
-   if (!elem) {
-    return false;
-   }
-   size -= 1;
-   if (elem->next && last) {
-    last->next = elem->next;
-   } else if (size == 0) {
-    head = nullptr;
-   }
-   if (dealloc) {
-    const auto deallocator = elem->entry.dealloc;
-    if (deallocator) {
-     deallocator((void *)elem->entry.t);
-    } else {
-     delete elem->entry.t;
-    }
-   }
-   delete elem;
-   return true;
-  }
-
-// bool removeAlloc(uint32_t index) {
-//  return removeAlloc((*this)[index]);
-// }
-
-  void clear() {
-   for (uint32_t i = size; i > 0; i--) {
-    removeAlloc((*this)[0]);
-   }
-  }
-
-  T& operator[](uint32_t index) {
-   std::scoped_lock<std::mutex> mLock(m);
-   List<Entry> *elem = head;
-   while (elem && index > 0) {
-    elem = elem->next;
+  element_t & operator[](uint32_t index) {
+   std::scoped_lock accessLock{accessMutex};
+   Entry *entry = head;
+   while (entry && index > 0) {
+    entry = entry->next;
     index -= 1;
    }
    if (index != 0) {
     throw std::out_of_range("Index out of range!");
    }
-   return elem->entry.t;
+   return entry->t;
   }
 
-  const T& operator[](uint32_t index) const {
-   auto non_const_ptr = const_cast<AllocStack<T> *>(this);
-   return (*non_const_ptr)[index];
+  const element_t & operator[](uint32_t index) const {
+   return const_cast<PointerList<T> &>(*this)[index];
   }
 
-  uint32_t getSize() const noexcept {
-   return size;
+  uint32_t size() const noexcept {
+   return _size;
   }
 
-  bool contains(const T& t) const noexcept {
-   for (unsigned int i = 0; i < getSize(); i++) {
-    if ((*this)[i] == t) {
+  inline bool contains(const element_t & t) const noexcept {
+   for (auto & e : *this) {
+    if (e == t) {
      return true;
     }
    }
    return false;
   }
 
-  bool deallocates() {
+  bool deallocates() const noexcept {
    return dealloc;
   }
 
-  void setDeallocate(bool dealloc) {
-   this->dealloc = dealloc;
+  void setDeallocate(bool dealloc) const noexcept {
+   const_cast<PointerList<T *> &>(*this).dealloc = dealloc;
   }
  };
 }

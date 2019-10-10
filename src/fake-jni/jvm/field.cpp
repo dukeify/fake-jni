@@ -15,10 +15,7 @@ namespace FakeJni {
   if (!fieldDescriptor) {
    clazz = &clazz->parent;
    while (clazz != jobjDescriptor) {
-    const auto& fields = clazz->getFields();
-    auto size = fields.getSize();
-    for (size_t i = 0; i < size; i++) {
-     auto fid = fields[i];
+    for (auto& fid : clazz->getFields()) {
      if (strcmp(fid->getName(), name) == 0) {
       if (strcmp(fid->getSignature(), signature) == 0) {
        fieldDescriptor = fid;

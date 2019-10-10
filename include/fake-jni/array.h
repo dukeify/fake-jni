@@ -73,34 +73,36 @@ namespace FakeJni {\
 template<>\
 const FakeJni::JClass FakeJni::JArray<FakeJni::fake_object>::descriptor;
 
+#define _COMPONENT_T(obj) typename CX::ComponentTypeResolver<obj>::type
+
 //User macros
 #define DECLARE_NATIVE_ARRAY_DESCRIPTOR(fake_object) \
 namespace FakeJni::_CX {\
  template<>\
- class JniArrayTypeBase<fake_object> {\
+ class JniArrayTypeBase<_COMPONENT_T(fake_object)> {\
  public:\
-  using component_t = fake_object;\
+  using component_t = _COMPONENT_T(fake_object);\
   static constexpr const auto isRegisteredType = true;\
  };\
  template<>\
- class JniTypeBase<JArray<fake_object>> {\
+ class JniTypeBase<JArray<_COMPONENT_T(fake_object)>> {\
   static constexpr const char arrayPrefix[] = "[";\
  public:\
   static constexpr const bool isRegisteredType = true;\
-  static constexpr const bool isClass = __is_class(JArray<fake_object>);\
-  static constexpr const auto signature = CX::Concat<arrayPrefix, JniTypeBase<fake_object>::signature>::result;\
-  static constexpr const bool hasComplexHierarchy = CastDefined<JArray<fake_object>>::value;\
+  static constexpr const bool isClass = __is_class(JArray<_COMPONENT_T(fake_object)>);\
+  static constexpr const auto signature = CX::Concat<arrayPrefix, JniTypeBase<_COMPONENT_T(fake_object)>::signature>::result;\
+  static constexpr const bool hasComplexHierarchy = CastDefined<JArray<_COMPONENT_T(fake_object)>>::value;\
  };\
 }\
 template<>\
-const FakeJni::JClass FakeJni::JArray<fake_object>::descriptor;
+const FakeJni::JClass FakeJni::JArray<_COMPONENT_T(fake_object)>::descriptor;
 
 #define DEFINE_NATIVE_ARRAY_DESCRIPTOR(fake_object) \
 template<>\
-const FakeJni::JClass FakeJni::JArray<fake_object>::descriptor {\
+const FakeJni::JClass FakeJni::JArray<_COMPONENT_T(fake_object)>::descriptor {\
  FakeJni::JClass::PUBLIC,\
- FakeJni::_CX::JClassBreeder<FakeJni::JArray<fake_object>> {\
-  {FakeJni::Field<&JArray<fake_object>::length> {}, "length"}\
+ FakeJni::_CX::JClassBreeder<FakeJni::JArray<_COMPONENT_T(fake_object)>> {\
+  {FakeJni::Field<&JArray<_COMPONENT_T(fake_object)>::length> {}, "length"}\
  }\
 };
 
@@ -207,6 +209,42 @@ namespace FakeJni {
   JArray<T>& operator=(const JArray<T> & arr) const;
   const component& operator[](JInt i) const;
   component& operator[](JInt i);
+ };
+
+ template<typename T>
+ class JArray<T *> : public JArray<T> {
+ private:
+  using base_t = JArray<T>;
+
+ public:
+  using JArray<T>::JArray;
+
+  static constexpr const auto & name = base_t::name;
+  inline static const JClass & descriptor = base_t::descriptor;
+  inline static const JClass * getDescriptor() noexcept {
+   return &descriptor;
+  }
+  virtual const JClass & getClass() const noexcept override {
+   return descriptor;
+  }
+ };
+
+ template<typename T>
+ class JArray<T &> : public JArray<T> {
+ private:
+  using base_t = JArray<T>;
+
+ public:
+  using JArray<T>::JArray;
+
+  static constexpr const auto & name = base_t::name;
+  inline static const JClass & descriptor = base_t::descriptor;
+  inline static const JClass * getDescriptor() noexcept {
+   return &descriptor;
+  }
+  virtual const JClass & getClass() const noexcept override {
+   return descriptor;
+  }
  };
 
  //ArrayBase template members
@@ -340,3 +378,6 @@ _DEFINE_NATIVE_ARRAY(JFloatArray, _jfloatArray, JFloat)
 _DEFINE_NATIVE_ARRAY(JLongArray, _jlongArray, JLong)
 _DEFINE_NATIVE_ARRAY(JDoubleArray, _jdoubleArray, JDouble)
 _DEFINE_NATIVE_ARRAY(JObjectArray, _jobjectArray, JObject)
+
+//Clean up internal macros
+#undef _DEFINE_NATIVE_ARRAY

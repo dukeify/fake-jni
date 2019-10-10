@@ -33,13 +33,11 @@ namespace FakeJni {
   functions{false},
   fields{false}
  {
-  auto size = clazz.functions.getSize();
-  for (unsigned int i = 0; i < size; i++) {
-   functions.pushAlloc(clazz.functions[i]);
+  for (auto func : clazz.functions) {
+   functions.insert(func);
   }
-  size = clazz.fields.getSize();
-  for (unsigned int i = 0; i < size; i++) {
-   fields.pushAlloc(clazz.fields[i]);
+  for (auto field : clazz.fields) {
+   fields.insert(field);
   }
  }
 
@@ -51,10 +49,8 @@ namespace FakeJni {
     );
    }
   }
-  auto& functions_ref = const_cast<AllocStack<const JMethodID *>&>(functions);
-  const auto size = functions_ref.getSize();
-  for (uint32_t i = 0; i < size; i++) {
-   const auto reg_mid = functions_ref[i];
+  auto& functions_ref = const_cast<PointerList<const JMethodID *>&>(functions);
+  for (auto reg_mid : functions_ref) {
    if (*reg_mid == *mid) {
     if (strcmp(reg_mid->getName(), mid->getName()) == 0) {
      if (strcmp(reg_mid->getSignature(), mid->getSignature()) == 0) {
@@ -63,19 +59,18 @@ namespace FakeJni {
     }
    }
   }
-  functions_ref.pushAlloc([](void *mid) { delete (JMethodID *)mid; }, mid);
+  functions_ref.insert(mid);
   return true;
  }
 
  bool JClass::unregisterMethod(const JMethodID * const mid) const noexcept {
-  return const_cast<AllocStack<const JMethodID *>&>(functions).removeAlloc(mid);
+  auto & functions_ref = const_cast<PointerList<const JMethodID *>&>(functions);
+  return functions_ref.end() != functions_ref.erase(mid);
  }
 
  const JMethodID * JClass::getMethod(const char * sig, const char * name) const noexcept {
-  auto& functions_ref = const_cast<AllocStack<const JMethodID *>&>(functions);
-  const auto size = functions_ref.getSize();
-  for (unsigned int i = 0; i < size; i++) {
-   const auto& func = functions_ref[i];
+  auto& functions_ref = const_cast<PointerList<const JMethodID *>&>(functions);
+  for (auto func : functions_ref) {
    if (strcmp(name, func->getName()) == 0) {
     if (strcmp(sig, func->getSignature()) == 0) {
      return func;
@@ -85,15 +80,13 @@ namespace FakeJni {
   return nullptr;
  }
 
- const AllocStack<const JMethodID *>& JClass::getMethods() const noexcept {
+ const PointerList<const JMethodID *>& JClass::getMethods() const noexcept {
   return functions;
  }
 
  bool JClass::registerField(JFieldID * const fid) const noexcept {
-  auto& fields_ref = const_cast<AllocStack<const JFieldID *>&>(fields);
-  const auto size = fields_ref.getSize();
-  for (uint32_t i = 0; i < size; i++) {
-   const auto reg_fid = fields_ref[i];
+  auto& fields_ref = const_cast<PointerList<const JFieldID *>&>(fields);
+  for (auto reg_fid : fields_ref) {
    if (*reg_fid == *fid) {
     return false;
    } else if (strcmp(reg_fid->getName(), fid->getName()) == 0) {
@@ -102,12 +95,13 @@ namespace FakeJni {
     }
    }
   }
-  fields_ref.pushAlloc([](void *fid) { delete (JFieldID *)fid; }, fid);
+  fields_ref.insert(fid);
   return true;
  }
 
  bool JClass::unregisterField(JFieldID * const fid) const noexcept {
-  return const_cast<AllocStack<const JFieldID *>&>(fields).removeAlloc(fid);
+  auto & fields_ref = const_cast<PointerList<const JFieldID *>&>(fields);
+  return fields_ref.end() != fields_ref.erase(fid);
  }
 
  const JFieldID * JClass::getField(const char * name) const noexcept {
@@ -115,10 +109,8 @@ namespace FakeJni {
   auto * clazz = this;
   const JFieldID * fid = nullptr;
   while (clazz != jobjDescriptor && !fid) {
-   auto& fields_ref = const_cast<AllocStack<const JFieldID *>&>(clazz->fields);
-   const auto size = fields_ref.getSize();
-   for (unsigned int i = 0; i < size; i++) {
-    const auto& field = fields_ref[i];
+   auto& fields_ref = const_cast<PointerList<const JFieldID *>&>(clazz->fields);
+   for (auto field : fields_ref) {
     if (strcmp(name, field->getName()) == 0) {
      fid = field;
      break;
@@ -134,10 +126,8 @@ namespace FakeJni {
   auto * clazz = this;
   const JFieldID * fid = nullptr;
   while (clazz != jobjDescriptor && !fid) {
-   auto& fields_ref = const_cast<AllocStack<const JFieldID *>&>(clazz->fields);
-   const auto size = fields_ref.getSize();
-   for (unsigned int i = 0; i < size; i++) {
-    const auto& field = fields_ref[i];
+   auto& fields_ref = const_cast<PointerList<const JFieldID *>&>(clazz->fields);
+   for (auto field : fields_ref) {
     if (strcmp(sig, field->getSignature()) == 0) {
      if (strcmp(name, field->getName()) == 0) {
       fid = field;
@@ -150,7 +140,7 @@ namespace FakeJni {
   return fid;
  }
 
- const AllocStack<const JFieldID *>& JClass::getFields() const noexcept {
+ const PointerList<const JFieldID *>& JClass::getFields() const noexcept {
   return fields;
  }
 

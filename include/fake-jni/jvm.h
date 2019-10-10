@@ -993,8 +993,8 @@ namespace FakeJni {
   const JClass& parent;
 
   //Property associations
-  AllocStack<const JMethodID *> functions;
-  AllocStack<const JFieldID *> fields;
+  PointerList<const JMethodID *> functions;
+  PointerList<const JFieldID *> fields;
 
   enum Modifiers : uint32_t {
    PUBLIC = 1,
@@ -1020,12 +1020,12 @@ namespace FakeJni {
   bool registerMethod(const JMethodID * mid) const;
   bool unregisterMethod(const JMethodID * mid) const noexcept;
   const JMethodID * getMethod(const char * sig, const char * name) const noexcept;
-  const AllocStack<const JMethodID *>& getMethods() const noexcept;
+  const PointerList<const JMethodID *>& getMethods() const noexcept;
   bool registerField(JFieldID * fid) const noexcept;
   bool unregisterField(JFieldID * fid) const noexcept;
   const JFieldID * getField(const char * name) const noexcept;
   const JFieldID * getField(const char * sig, const char * name) const noexcept;
-  const AllocStack<const JFieldID *>& getFields() const noexcept;
+  const PointerList<const JFieldID *>& getFields() const noexcept;
   virtual const char * getName() const noexcept;
   //Object construction for c-varargs
   JObject * newInstance(const JavaVM * vm, const char * signature, va_list list) const;
@@ -1051,16 +1051,16 @@ namespace FakeJni {
   //TODO on the first invocation of any JNI, JNIEnv or JVMTI functions, set this flag to true
   bool running;
 
-  AllocStack<const Library *> libraries;
-  AllocStack<const JClass *> classes;
+  PointerList<const Library *> libraries;
+  PointerList<const JClass *> classes;
   //TODO if classloaders are ever implemented, this property will be handled by the ClassLoader model
-  std::map<const JClass *, AllocStack<JObject *>> instances;
+  std::map<const JClass *, PointerList<JObject *>> instances;
   mutable std::shared_mutex instances_mutex;
 
   bool removeLibrary(const Library * library, const std::string & options);
 
  protected:
-  static AllocStack<Jvm *> vms;
+  static PointerList<Jvm *> vms;
 
  public:
   explicit Jvm(FILE * log = stdout);
@@ -1098,10 +1098,10 @@ namespace FakeJni {
   void setJvmtiEnv();
   virtual void setJvmtiEnv(JvmtiEnv * env);
   virtual JvmtiEnv& getJvmtiEnv() const;
-  
-  virtual const AllocStack<const JClass *>& getClasses() const;
-  virtual const AllocStack<JObject *>& operator[](const JClass * clazz) const;
-  virtual AllocStack<JObject *>& operator[](const JClass * clazz);
+
+  virtual const PointerList<const JClass *>& getClasses() const;
+  virtual const PointerList<JObject *>& operator[](const JClass * clazz) const;
+  virtual PointerList<JObject *>& operator[](const JClass * clazz);
   virtual const decltype(instances)& getAllInstances() const;
   virtual bool addInstance(JObject * inst);
   virtual bool removeInstance(JObject * inst);
@@ -1111,7 +1111,7 @@ namespace FakeJni {
   bool registerClass();
   template<typename T>
   bool unregisterClass();
-  virtual bool registerClass(const JClass * clazz);
+  virtual bool registerClass(const JClass * clazz, bool deallocate = false);
   virtual bool unregisterClass(const JClass * clazz);
   virtual const JClass * findClass(const char * name) const;
   //Needs to be const to allow attaching agents / JNI modules at runtime
@@ -1121,7 +1121,7 @@ namespace FakeJni {
    LibraryOptions loptions = {&dlopen, &dlsym, &dlclose}
   );
   virtual bool removeLibrary(const std::string & path, const std::string & options = "");
-  virtual const AllocStack<const Library *>& getLibraries() const;
+  virtual const PointerList<const Library *>& getLibraries() const;
   virtual void start();
   virtual void destroy();
   virtual void throwException(jthrowable throwable);
@@ -1355,10 +1355,7 @@ namespace FakeJni {
    //Member method, virtual dispatch
    const auto * jobjDescriptor = JObject::getDescriptor();
    while (clazz != jobjDescriptor) {
-    const auto& methods = clazz->getMethods();
-    const auto size = methods.getSize();
-    for (unsigned int i = 0; i < size; i++) {
-     const auto method = methods[i];
+    for (auto& method : clazz->getMethods()) {
      if (strcmp(name, method->getName()) == 0) {
       if (strcmp(signature, method->getSignature()) == 0) {
        return method->internalInvoke<R, A>(vm, clazzOrInst, args);
@@ -1525,8 +1522,7 @@ namespace FakeJni {
   JObject * JClassBreeder<T, true>::constructorPredicate(const JavaVM * const vm, const char * const signature, A args) {
    JClass& descriptor = const_cast<JClass&>(T::descriptor);
    Jvm * const jvm = (Jvm *)const_cast<JavaVM *>(vm);
-   for (uint32_t i = 0; i < descriptor.functions.getSize(); i++) {
-    const auto& method = (descriptor.functions)[i];
+   for (auto& method : descriptor.functions) {
     if (strcmp(method->getSignature(), signature) == 0 && strcmp(method->getName(), "<init>") == 0) {
      const auto inst = method->nonVirtualInvoke<T *>(vm, &descriptor, &descriptor, args);
      JObject * baseInst;
@@ -1535,7 +1531,8 @@ namespace FakeJni {
      } else {
       baseInst = (JObject *)inst;
      }
-     return (*jvm)[&descriptor].pushAlloc(&_CX::Deallocator<T>::deallocate, baseInst);
+     (*jvm)[&descriptor].insert(baseInst);
+     return baseInst;
     }
    }
    return nullptr;
