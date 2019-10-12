@@ -843,6 +843,10 @@ namespace FakeJni {
   const Type type;
 
  private:
+  struct member_pointer_allign_t {
+   void * low, * high;
+  } __attribute__((packed));
+
   //Ref-counted map of signature hashes to ffi_cif descriptors
   static std::map<size_t, std::pair<unsigned long, ffi_cif *>> descriptors;
 
@@ -851,10 +855,8 @@ namespace FakeJni {
    struct {
     //Functions registered through registerNatives do not have modifiers
     const uint32_t modifiers;
-    union {
-     static_func_t staticFunc;
-     member_func_t memberFunc;
-    };
+    //high bytes of member pointer for vtable offset in `this`
+    void * adj;
     static_func_t
      proxyFuncV,
      proxyFuncA;
@@ -1241,7 +1243,7 @@ namespace FakeJni {
   if constexpr(downcast) {
    return (T&)*ptr;
   } else if constexpr(jnicast) {
-   return CX::union_cast<jobject>(ptr)();
+   return CX::union_cast<jobject>(ptr);
   }
  }
 
@@ -1324,11 +1326,10 @@ namespace FakeJni {
   JNINativeMethod {
    const_cast<char *>("<init>"),
    verifySignature(_CX::SignatureGenerator<true, R, Args...>::signature),
-   nullptr
+   (void *)func
   },
   type(STATIC_FUNC),
   modifiers(modifiers),
-  staticFunc((static_func_t)func),
   proxyFuncV((void (*)())&_CX::FunctionAccessor<sizeof...(Args), decltype(func)>::template invokeV<>),
   proxyFuncA((void (*)())&_CX::FunctionAccessor<sizeof...(Args), decltype(func)>::template invokeA<>),
   isArbitrary(false)
@@ -1347,11 +1348,10 @@ namespace FakeJni {
   JNINativeMethod {
    verifyName(name),
    verifySignature(_CX::SignatureGenerator<false, R, Args...>::signature),
-   nullptr
+   (void *)func
   },
   type(STATIC_FUNC),
   modifiers(modifiers),
-  staticFunc((static_func_t)func),
   proxyFuncV((void (*)())&_CX::FunctionAccessor<sizeof...(Args), decltype(func)>::template invokeV<>),
   proxyFuncA((void (*)())&_CX::FunctionAccessor<sizeof...(Args), decltype(func)>::template invokeA<>),
   isArbitrary(false)
@@ -1368,11 +1368,13 @@ namespace FakeJni {
   JNINativeMethod {
    verifyName(name),
    verifySignature(_CX::SignatureGenerator<false, R, Args...>::signature),
-   nullptr
+   //low bytes of member pointer
+   CX::union_cast<member_pointer_allign_t>(func).low
   },
   type(MEMBER_FUNC),
   modifiers(modifiers),
-  memberFunc((member_func_t)func),
+  //high bytes of member pointer
+  adj(CX::union_cast<member_pointer_allign_t>(func).high),
   proxyFuncV((void (*)())&_CX::FunctionAccessor<sizeof...(Args), decltype(func)>::template invokeV<>),
   proxyFuncA((void (*)())&_CX::FunctionAccessor<sizeof...(Args), decltype(func)>::template invokeA<>),
   isArbitrary(false)
@@ -1448,11 +1450,15 @@ namespace FakeJni {
   switch (type) {
    case MEMBER_FUNC: {
     const auto proxy = (R (*)(void *const, member_func_t, A))getFunctionProxy<A>();
-    return proxy(CX::union_cast<JObject *>(clazzOrInst)(), memberFunc, args);
+    return proxy(
+     CX::union_cast<JObject *>(clazzOrInst),
+     CX::union_cast<member_func_t>(member_pointer_allign_t{fnPtr, adj}),
+     args
+    );
    }
    case STATIC_FUNC: {
     const auto proxy = (R (*)(static_func_t, A))getFunctionProxy<A>();
-    return proxy(staticFunc, args);
+    return proxy(CX::union_cast<static_func_t>(fnPtr), args);
    }
    case REGISTER_NATIVES_FUNC: {
     const auto argc = descriptor->nargs - 2;
@@ -1644,7 +1650,7 @@ namespace FakeJni {
   if constexpr(upcast || downcast) {
    return (T&)*ptr;
   } else if constexpr(jnicast) {
-   return CX::union_cast<T>(this)();
+   return CX::union_cast<T>(this);
   }
  }
 
@@ -1703,7 +1709,7 @@ _jobject::operator T() const {
   CX::MatchAny<component_t, FakeJni::JObject>::value || downcast,
   "jobject can only be converted to JObject and downcasted to derived JNI classes!"
  );
- return CX::union_cast<T>(const_cast<jobject>(this))();
+ return CX::union_cast<T>(const_cast<jobject>(this));
 }
 
 //_jclass template members
@@ -1715,7 +1721,7 @@ _jclass::operator T() const {
   CX::MatchAny<component_t, FakeJni::JClass>::value || upcast,
   "jclass can only be converted to JClass upcast to jobject!"
  );
- return CX::union_cast<T>(const_cast<jclass>(this))();
+ return CX::union_cast<T>(const_cast<jclass>(this));
 }
 
 //Clean up internal macros

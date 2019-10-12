@@ -48,7 +48,7 @@ _##jni_ptr_type::operator T() const {\
   CX::MatchAny<component_t, fake_type>::value || upcast,\
   #jni_ptr_type " can only be converted to " #fake_type "!"\
  );\
- return CX::union_cast<T>(const_cast<jni_ptr_type>(this))();\
+ return CX::union_cast<T>(const_cast<jni_ptr_type>(this));\
  \
 }
 

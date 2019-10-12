@@ -66,6 +66,6 @@ FakeJni::JThrowable::operator T() const {
  if constexpr(upcast || downcast) {
   return (T&)*ptr;
  } else {
-  return CX::union_cast<T>(ptr)();
+  return CX::union_cast<T>(ptr);
  }
 }

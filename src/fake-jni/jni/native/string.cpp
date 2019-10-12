@@ -18,7 +18,7 @@ namespace FakeJni {
  }
 
  jchar * NativeInterface::getStringChars(jstring jstr, jboolean * copy) const {
-  auto str = CX::union_cast<JString *>(jstr)();
+  auto str = CX::union_cast<JString *>(jstr);
   if (copy) {
    *copy = JNI_TRUE;
   }
@@ -60,7 +60,7 @@ namespace FakeJni {
  }
 
  void NativeInterface::getStringRegion(jstring jstr, jsize start, jsize len, jchar * buf) const {
-  auto str = CX::union_cast<JString *>(jstr)();
+  auto str = CX::union_cast<JString *>(jstr);
   auto data = str->getArray();
   const auto slen = str->getLength();
   if (0 > len || start + len > slen) {
@@ -73,7 +73,7 @@ namespace FakeJni {
  }
 
  void NativeInterface::getStringUTFRegion(jstring jstr, jsize start, jsize len, char * buf) const {
-  auto str = CX::union_cast<JString *>(jstr)();
+  auto str = CX::union_cast<JString *>(jstr);
   auto data = (char *)str->getArray();
   const auto slen = str->getLength();
   if (0 > len || start + len > slen) {

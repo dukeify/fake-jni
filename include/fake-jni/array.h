@@ -66,7 +66,7 @@ namespace FakeJni {\
    if constexpr(downcast || upcast) {\
     return (T&)*ptr;\
    } else if constexpr(jnicast) {\
-    return CX::union_cast<T>((JArrayBase *)this)();\
+    return CX::union_cast<T>((JArrayBase *)this);\
    }\
  }\
 }\
@@ -263,7 +263,7 @@ namespace FakeJni {
   if constexpr(upcast || downcast) {
    return (T&)*ptr;
   } else if constexpr (jnicast) {
-   return CX::union_cast<T>(this)();
+   return CX::union_cast<T>(this);
   }
  }
 
@@ -364,7 +364,7 @@ _jarray::operator T() const {
   jni_upcast || jni_downcast || fake_downcast,
   "jarray can only be converted to JNI array types derived from jarray or native array types!"
  );
- return CX::union_cast<T>(const_cast<jarray>(this))();
+ return CX::union_cast<T>(const_cast<jarray>(this));
 }
 
 //Actual fake-jni array types

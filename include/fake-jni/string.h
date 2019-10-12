@@ -50,7 +50,7 @@ namespace FakeJni {
   if constexpr(upcast || downcast) {
    return (T&)*ptr;
   } else if constexpr (jnicast) {
-   return CX::union_cast<T>(this)();
+   return CX::union_cast<T>(this);
   }
  }
 

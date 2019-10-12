@@ -11,7 +11,7 @@ vm.addInstance(arr);\
 return *arr;
 
 #define _GET_ARRAY_ELEMENTS(array_type)\
-auto arr = CX::union_cast<array_type *>(jarr)();\
+auto arr = CX::union_cast<array_type *>(jarr);\
 if (copy) {\
  if (*copy) {\
   const auto len = arr->getSize();\
@@ -26,7 +26,7 @@ return arr->getArray();
 
 //TODO ensure that a matching getArrayElements invocation occurred before freeing
 #define _FREE_ARRAY_ELEMENTS(array_type)\
-auto arr = CX::union_cast<array_type *>(jarr)();\
+auto arr = CX::union_cast<array_type *>(jarr);\
 const auto len = arr->getSize();\
 if (mode == 0) {\
  for (JInt i = 0; i < len; i++) {\
@@ -45,7 +45,7 @@ if (mode == 0) {\
 
 //TODO JNI exception compliance
 #define _GET_ARRAY_REGION(array_type)\
-auto arr = CX::union_cast<array_type *>(jarr)();\
+auto arr = CX::union_cast<array_type *>(jarr);\
 const auto size = arr->getSize();\
 if (0 > len || start + len > size) {\
  throw std::runtime_error("FATAL: Invalid array region requested!");\
@@ -55,7 +55,7 @@ for (JInt i = start; i < start + len; i++) {\
 }
 
 #define _SET_ARRAY_REGION(array_type)\
-auto arr = CX::union_cast<array_type *>(jarr)();\
+auto arr = CX::union_cast<array_type *>(jarr);\
 const auto size = arr->getSize();\
 if (0 > len || start + len > size) {\
  throw std::runtime_error("FATAL: Invalid array region requested!");\
@@ -83,19 +83,18 @@ namespace FakeJni {
  jobjectArray NativeInterface::newObjectArray(jsize size, jclass element_t, jobject initialElement) const {
   auto arr = new JObjectArray(size);
   for (JInt i = 0; i < size; i++) {
-   arr[i] = *CX::union_cast<JObject *>(initialElement)();
+   arr[i] = *CX::union_cast<JObject *>(initialElement);
   }
   vm.addInstance(arr);
   return *arr;
  }
 
  jobject NativeInterface::getObjectArrayElement(jobjectArray arr, jsize index) const {
-  return (*CX::union_cast<JObjectArray *>(arr)())[index];
+  return (*CX::union_cast<JObjectArray *>(arr))[index];
  }
 
  void NativeInterface::setObjectArrayElement(jobjectArray jarr, jsize index, jobject obj) const {
-  auto arr = CX::union_cast<JObjectArray *>(jarr)();
-  (*arr)[index] = *CX::union_cast<JObject *>(obj)();
+  (*CX::union_cast<JObjectArray *>(jarr))[index] = *CX::union_cast<JObject *>(obj);
  }
 
  jbooleanArray NativeInterface::newBooleanArray(jsize size) const {

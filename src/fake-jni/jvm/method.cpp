@@ -249,7 +249,8 @@ namespace FakeJni {
    && (strcmp(signature, mid.signature) == 0)
    && (type == mid.type)
    && (modifiers == mid.modifiers)
-   && (type ? (memberFunc == mid.memberFunc) : (staticFunc == mid.staticFunc))
+//   && (type ? (memberFunc == mid.memberFunc) : (staticFunc == mid.staticFunc))
+   && (fnPtr == mid.fnPtr)
    && (proxyFuncV == mid.proxyFuncV)
    && (proxyFuncA == mid.proxyFuncA);
  }

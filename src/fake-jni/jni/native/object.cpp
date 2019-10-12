@@ -19,7 +19,7 @@ namespace FakeJni {
 
  jobject NativeInterface::newObjectA(jclass const clazz, jmethodID const mid, const jvalue * const args) const {
   auto inst = ((JClass *)*clazz)->newInstance(&vm, ((JMethodID *)mid)->getSignature(), args);
-  return CX::union_cast<jobject>(inst)();
+  return CX::union_cast<jobject>(inst);
  }
 
  jclass NativeInterface::getObjectClass(jobject const obj) const {
