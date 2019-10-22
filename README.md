@@ -29,7 +29,9 @@ target_link_libraries(fake-jni)
 | `BUILD_FAKE_JNI_DEBUG` | `=[ON OFF]` | `OFF` | Builds a debug release |
 | `BUILD_FAKE_JNI_ASAN` | `=[ON OFF]` | `OFF` | Builds with ASAN |
 | `FFI_CC` | `={DESIRED_C_COMPILER}` | `${CMAKE_C_COMPILER}` | Set the C compiler for `libffi` |
-| `FFI_CXX` | `={DESIRED_CXX_COMPILER}` | `${CMAKE_CXX_COMPILER}` | Set the C++ compiler for `libffi` | 
+| `FFI_CXX` | `={DESIRED_CXX_COMPILER}` | `${CMAKE_CXX_COMPILER}` | Set the C++ compiler for `libffi` |
+| `UNWIND_CC` | `={DESIRED_C_COMPILER}` | `${CMAKE_C_COMPILER}` | Set the C compiler for `libunwind` |
+| `UNWIND_CXX` | `={DESIRED_CXX_COMPILER}` | `${CMAKE_CXX_COMPILER}` | Set the C++ compiler for `libunwind` | 
 
 Simply build as usual:
 ```sh
@@ -55,6 +57,8 @@ To compile for another host you must set the following environment variables:
 Optionally, you may also set the following variables:
  - `FFI_CC` - The C cross-compiler for `libffi`
  - `FFI_CXX` - The C++ cross-compiler for `libffi`
+ - `UNWIND_CC` - The C cross-compiler for `libunwind`
+ - `UNWIND_CXX` - The C++ cross-compiler for `libunwind`
 
 ## Goals
 - Binary compatability with JNI 1.8

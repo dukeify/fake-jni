@@ -29,6 +29,7 @@ endif()
 set(CMAKE_CXX_FLAGS ${compiler_flags})
 set(CMAKE_C_FLAGS ${compiler_flags})
 
+#libffi
 if(NOT DEFINED FFI_CC)
     set(FFI_CC ${CMAKE_C_COMPILER})
 endif()
@@ -40,7 +41,7 @@ endif()
 ExternalProject_Add(ffi
     SOURCE_DIR ${PROJECT_SOURCE_DIR}/libffi
     UPDATE_COMMAND ""
-    CONFIGURE_COMMAND <SOURCE_DIR>/autogen.sh && <SOURCE_DIR>/configure --disable-shared --disable-builddir --prefix=<INSTALL_DIR> --host=${CMAKE_CXX_COMPILER_TARGET} CC=${FFI_CC} CXX=${FFI_CXX}
+    CONFIGURE_COMMAND <SOURCE_DIR>/autogen.sh && <SOURCE_DIR>/configure --disable-shared --disable-builddir --prefix=<INSTALL_DIR> --host=${CMAKE_CXX_COMPILER_TARGET} CC=${FFI_CC} CFLAGS=${CMAKE_C_FLAGS} CXX=${FFI_CXX} CXXFLAGS=${CMAKE_CXX_FLAGS}
     BUILD_IN_SOURCE 1
     BUILD_BYPRODUCTS <INSTALL_DIR>/lib/libffi.a
 )
@@ -57,15 +58,84 @@ set_target_properties(libffi PROPERTIES
     INTERFACE_INCLUDE_DIRECTORIES ${LIBFFI_INSTALL_DIR}/include
 )
 
+#clean up libffi's non-compliant build artifacts
+ExternalProject_Get_Property(ffi SOURCE_DIR)
+add_custom_command(
+    TARGET ffi POST_BUILD
+    COMMAND git clean -f
+    COMMAND git reset --hard
+    WORKING_DIRECTORY ${SOURCE_DIR}
+    COMMENT "Cleaning libffi directory..."
+)
+
+#liblzma (for libunwind)
+if(NOT DEFINED LZMA_CC)
+    set(LZMA_CC ${CMAKE_C_COMPILER})
+endif()
+
+if(NOT DEFINED LZMA_CXX)
+    set(LZMA_CXX ${CMAKE_CXX_COMPILER})
+endif()
+
+ExternalProject_Add(lzma
+    SOURCE_DIR ${PROJECT_SOURCE_DIR}/xz
+    UPDATE_COMMAND ""
+    CONFIGURE_COMMAND <SOURCE_DIR>/autogen.sh && <SOURCE_DIR>/configure --disable-shared --prefix=<INSTALL_DIR> --host=${CMAKE_CXX_COMPILER_TARGET} CC=${LZMA_CC} CFLAGS=${CMAKE_C_FLAGS} CXX=${LZMA_CXX} CXXFLAGS=${CMAKE_CXX_FLAGS}
+    BUILD_IN_SOURCE 1
+    BUILD_BYPRODUCTS <INSTALL_DIR>/lib/liblzma.a
+)
+ExternalProject_Get_Property(lzma INSTALL_DIR)
+set(LIBLZMA_INSTALL_DIR ${INSTALL_DIR}/lib/)
+ExternalProject_Get_Property(lzma SOURCE_DIR)
+set(lzma_SOURCE_DIR ${SOURCE_DIR})
+
+add_library(liblzma STATIC IMPORTED GLOBAL)
+file(MAKE_DIRECTORY ${LIBUNWIND_INSTALL_DIR}/include)
+set_target_properties(liblzma PROPERTIES
+    IMPORTED_LOCATION ${INSTALL_DIR}/lib/liblzma.a
+    INTERFACE_INCLUDE_DIRECTORIES ${LIBUNWIND_INSTALL_DIR}/include
+)
+
+#libunwind
+if(NOT DEFINED UNWIND_CC)
+    set(UNWIND_CC ${CMAKE_C_COMPILER})
+endif()
+
+if(NOT DEFINED UNWIND_CXX)
+    set(UNWIND_CXX ${CMAKE_CXX_COMPILER})
+endif()
+
+ExternalProject_Add(unwind
+    SOURCE_DIR ${PROJECT_SOURCE_DIR}/libunwind
+    UPDATE_COMMAND ""
+    CONFIGURE_COMMAND <SOURCE_DIR>/autogen.sh && <SOURCE_DIR>/configure --disable-shared --prefix=<INSTALL_DIR> --host=${CMAKE_CXX_COMPILER_TARGET} CC=${UNWIND_CC} CFLAGS=${CMAKE_C_FLAGS} CXX=${UNWIND_CXX} CXXFLAGS=${CMAKE_CXX_FLAGS}
+    BUILD_IN_SOURCE 1
+    BUILD_BYPRODUCTS <INSTALL_DIR>/lib/libunwind.a
+)
+ExternalProject_Get_Property(unwind INSTALL_DIR)
+set(LIBUNWIND_INSTALL_DIR ${INSTALL_DIR}/lib/)
+ExternalProject_Get_Property(unwind SOURCE_DIR)
+set(unwind_SOURCE_DIR ${SOURCE_DIR})
+
+add_library(libunwind STATIC IMPORTED GLOBAL)
+file(MAKE_DIRECTORY ${LIBUNWIND_INSTALL_DIR}/include)
+set_target_properties(libunwind PROPERTIES
+    IMPORTED_LOCATION ${INSTALL_DIR}/lib/libunwind.a
+    INTERFACE_INCLUDE_DIRECTORIES ${LIBUNWIND_INSTALL_DIR}/include
+)
+
+#fake-jni
 file(GLOB_RECURSE FAKE_JNI_SRC "src/**.cpp")
 add_library(fake-jni SHARED ${FAKE_JNI_SRC})
 
-target_link_libraries(fake-jni dl libffi)
-add_dependencies(fake-jni ffi)
+target_link_libraries(fake-jni dl libffi liblzma libunwind)
+add_dependencies(fake-jni ffi lzma unwind)
 target_include_directories(fake-jni PUBLIC
     include
     ${cx_SOURCE_DIR}
     ${ffi_SOURCE_DIR}/include
+    ${unwind_SOURCE_DIR}/include
+    ${lzma_SOURCE_DIR}/include
 )
 target_compile_options(fake-jni PUBLIC
     -Wall

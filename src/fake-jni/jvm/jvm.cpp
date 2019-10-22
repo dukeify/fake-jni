@@ -7,6 +7,11 @@
 #include <algorithm>
 #include <mutex>
 #include <shared_mutex>
+#include <csignal>
+#include <cxxabi.h>
+
+#define UNW_LOCAL_ONLY
+#include <libunwind.h>
 
 //Non-template members of Jvm
 namespace FakeJni {
@@ -67,6 +72,18 @@ namespace FakeJni {
   registerClass(&floatDescriptor);
   registerClass(&longDescriptor);
   registerClass(&doubleDescriptor);
+ }
+
+ void Jvm::registerDefaultSignalHandler() {
+  signal(SIGABRT, [](int signal) -> void {
+//   if (signal == SIGABRT || signal == SIGSEGV || signal == SIGINT) {
+//   }
+   //TODO stop all JVM threads and force them to throw a fatal error
+   for (auto& vm : Jvm::vms) {
+    vm->fatalError("Received fatal signal!");
+   }
+   exit(signal);
+  });
  }
 
  const char * Jvm::generateJvmUuid() noexcept {
@@ -330,10 +347,11 @@ namespace FakeJni {
  //TODO search through all registered native classes for one containing a main method, and invoke it
  void Jvm::start() {
   if (running) {
-   throw std::runtime_error("Tried to start JVM instance twice!");
+   throw std::runtime_error("FATAL: Tried to start JVM instance twice!");
   }
   running = true;
   throw std::runtime_error("unimplemented");
+//  running = false;
  }
 
  void Jvm::destroy() {
@@ -354,6 +372,62 @@ namespace FakeJni {
  }
 
  void Jvm::fatalError(const char * message) {
-  throw std::runtime_error("FATAL: Fatal error thrown with message: \n\t" + std::string(message));
+  printf("FATAL: Fatal error thrown on Jvm instance '%s' with message: \n%s\n\n", uuid, message);
+  printf("Backtrace: #STACK_FRAME STACK_POINTER[INSTRUCTION_POINTER]: (SYMBOL_NAME+OFFSET) SYMBOL_SOURCE\n");
+  unw_cursor_t cursor, return_frame;
+  unw_context_t uc;
+  unw_word_t ip, sp, offset;
+  //initialize frame to the current frame for local unwinding
+  unw_getcontext(&uc);
+  unw_init_local(&cursor, &uc);
+
+  char sym[256];
+
+  //unwind each frame up the stack
+  bool startFound = false;
+  int
+   step,
+   status = -1,
+   frame = 0;
+  while ((step = unw_step(&cursor)) > 0) {
+   unw_get_reg(&cursor, UNW_REG_IP, &ip);
+   unw_get_reg(&cursor, UNW_REG_SP, &sp);
+   char * sym_name = sym;
+   if (unw_get_proc_name(&cursor, sym, sizeof(sym), &offset) != 0) {
+    sym_name = const_cast<char *>("[stripped]");
+   } else {
+    char * demangled = abi::__cxa_demangle(sym, nullptr, nullptr, &status);
+    if (status == 0) {
+     sym_name = demangled;
+    }
+   }
+   if (strcmp(sym_name, "FakeJni::Jvm::start()") == 0) {
+    if (!startFound) {
+     return_frame = cursor;
+     startFound = true;
+    }
+   }
+   printf("#%d 0x%lx: (%s+0x%lx) [0x%lx]\n", frame, (intptr_t)sp, sym_name, (intptr_t)offset, (intptr_t)ip);
+   //free demangled name
+   if (status == 0) {
+    free(sym_name);
+   }
+   frame += 1;
+  }
+  if (step != 0) {
+   printf("FATAL: Encountered error unwinding stack!\n");
+  }
+  //return to enter
+  //reuse `step` as a status indicator
+  if (!startFound) {
+   printf("FATAL: FakeJni::Jvm::start() entry point was not found on the stack!\n");
+   exit(-1);
+  }
+  status = unw_resume(&return_frame);
+  //if resume is successful this code will never be reached
+  if (status != 0) {
+   printf("FATAL: Resume failed with code: %d\n", status);
+   exit(status);
+  }
  }
 }

@@ -95,6 +95,8 @@ JClass dummy{"bruh"};
 
 DEFINE_NATIVE_ARRAY_DESCRIPTOR(JString)
 
+#include <cxxabi.h>
+
 //fake-jni in action
 int main(int argc, char **argv) {
  //Make a JString
@@ -102,6 +104,8 @@ int main(int argc, char **argv) {
 
  //Create a shiny new fake JVM instance
  Jvm vm;
+ vm.registerDefaultSignalHandler();
+ vm.start();
 
  //Register ExampleClass on the JVM instance
  vm.registerClass<ExampleClass>();

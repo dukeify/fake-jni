@@ -843,7 +843,7 @@ namespace FakeJni {
   const Type type;
 
  private:
-  struct member_pointer_allign_t {
+  struct member_ptr_align_t {
    void * low, * high;
   } __attribute__((packed));
 
@@ -1094,6 +1094,7 @@ namespace FakeJni {
   //Other properties
   virtual FILE * getLog() const;
   virtual void registerDefaultClasses();
+  virtual void registerDefaultSignalHandler();
   virtual const char * generateJvmUuid() noexcept;
 
   //Interface and Env api
@@ -1150,6 +1151,7 @@ namespace FakeJni {
   virtual void throwException(jthrowable throwable);
   virtual jthrowable getException() const;
   virtual void clearException();
+  //Does not return
   virtual void fatalError(const char * message);
  };
 
@@ -1369,12 +1371,12 @@ namespace FakeJni {
    verifyName(name),
    verifySignature(_CX::SignatureGenerator<false, R, Args...>::signature),
    //low bytes of member pointer
-   CX::union_cast<member_pointer_allign_t>(func).low
+   CX::union_cast<member_ptr_align_t>(func).low
   },
   type(MEMBER_FUNC),
   modifiers(modifiers),
   //high bytes of member pointer
-  adj(CX::union_cast<member_pointer_allign_t>(func).high),
+  adj(CX::union_cast<member_ptr_align_t>(func).high),
   proxyFuncV((void (*)())&_CX::FunctionAccessor<sizeof...(Args), decltype(func)>::template invokeV<>),
   proxyFuncA((void (*)())&_CX::FunctionAccessor<sizeof...(Args), decltype(func)>::template invokeA<>),
   isArbitrary(false)
@@ -1452,7 +1454,7 @@ namespace FakeJni {
     const auto proxy = (R (*)(void *const, member_func_t, A))getFunctionProxy<A>();
     return proxy(
      CX::union_cast<JObject *>(clazzOrInst),
-     CX::union_cast<member_func_t>(member_pointer_allign_t{fnPtr, adj}),
+     CX::union_cast<member_func_t>(member_ptr_align_t{fnPtr, adj}),
      args
     );
    }
