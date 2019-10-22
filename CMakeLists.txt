@@ -96,6 +96,16 @@ set_target_properties(liblzma PROPERTIES
     INTERFACE_INCLUDE_DIRECTORIES ${LIBUNWIND_INSTALL_DIR}/include
 )
 
+#clean up liblzma's non-compliant build artifacts
+ExternalProject_Get_Property(lzma SOURCE_DIR)
+add_custom_command(
+    TARGET lzma POST_BUILD
+    COMMAND git clean -f
+    COMMAND git reset --hard
+    WORKING_DIRECTORY ${SOURCE_DIR}
+    COMMENT "Cleaning libffi directory..."
+)
+
 #libunwind
 if(NOT DEFINED UNWIND_CC)
     set(UNWIND_CC ${CMAKE_C_COMPILER})

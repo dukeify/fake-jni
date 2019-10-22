@@ -1084,8 +1084,13 @@ namespace FakeJni {
 
  protected:
   static PointerList<Jvm *> vms;
+  static thread_local const Jvm * currentVm;
 
  public:
+  struct UnwindException final : std::runtime_error {
+   using std::runtime_error::runtime_error;
+  };
+
   explicit Jvm(FILE * log = stdout);
   virtual ~Jvm();
 
@@ -1096,6 +1101,7 @@ namespace FakeJni {
   virtual void registerDefaultClasses();
   virtual void registerDefaultSignalHandler();
   virtual const char * generateJvmUuid() noexcept;
+  static const Jvm * getCurrentVm() noexcept;
 
   //Interface and Env api
   template<typename T>
@@ -1147,12 +1153,14 @@ namespace FakeJni {
   virtual bool removeLibrary(const std::string & path, const std::string & options = "");
   virtual const PointerList<const Library *>& getLibraries() const;
   virtual void start();
-  virtual void destroy();
+  virtual JInt destroy();
   virtual void throwException(jthrowable throwable);
   virtual jthrowable getException() const;
   virtual void clearException();
   //Does not return
-  virtual void fatalError(const char * message);
+  [[noreturn]]
+  virtual void fatalError(const char * message) const;
+  virtual void printBacktrace() const;
  };
 
  //Template glue code for native class registration
