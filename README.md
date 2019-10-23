@@ -16,8 +16,12 @@ fake-jni has no runtime dependencies :)
 ## Usage
 To include `fake-jni` in your CMake project, clone it into your project's root directory and add the following lines to your `CMakeLists.txt`:
 ```cmake
+project(my_project)
+
+#define any desired fake-jni build variables BEFORE including fake-jni
 add_subdirectory(fake-jni)
-target_link_libraries(fake-jni)
+
+target_link_libraries(my_project fake-jni)
 ```
 
 ## Building
@@ -30,6 +34,8 @@ target_link_libraries(fake-jni)
 | `BUILD_FAKE_JNI_ASAN` | `=[ON OFF]` | `OFF` | Builds with ASAN |
 | `FFI_CC` | `={DESIRED_C_COMPILER}` | `${CMAKE_C_COMPILER}` | Set the C compiler for `libffi` |
 | `FFI_CXX` | `={DESIRED_CXX_COMPILER}` | `${CMAKE_CXX_COMPILER}` | Set the C++ compiler for `libffi` |
+| `LZMA_CC` | `={DESIRED_C_COMPILER}` | `${CMAKE_C_COMPILER}` | Set the C compiler for `liblzma` |
+| `LZMA_CXX` | `={DESIRED_CXX_COMPILER}` | `${CMAKE_CXX_COMPILER}` | Set the C++ compiler for `liblzma` |
 | `UNWIND_CC` | `={DESIRED_C_COMPILER}` | `${CMAKE_C_COMPILER}` | Set the C compiler for `libunwind` |
 | `UNWIND_CXX` | `={DESIRED_CXX_COMPILER}` | `${CMAKE_CXX_COMPILER}` | Set the C++ compiler for `libunwind` | 
 
@@ -55,11 +61,37 @@ To compile for another host you must set the following environment variables:
  - `CXX` - The C++ cross-compiler
  
 Optionally, you may also set the following variables:
- - `FFI_CC` - The C cross-compiler for `libffi`
- - `FFI_CXX` - The C++ cross-compiler for `libffi`
- - `UNWIND_CC` - The C cross-compiler for `libunwind`
- - `UNWIND_CXX` - The C++ cross-compiler for `libunwind`
+ - `FFI_CC`
+ - `FFI_CXX`
+ - `LZMA_CC` 
+ - `LZMA_CXX`
+ - `UNWIND_CC`
+ - `UNWIND_CXX`
 
+**Note:** When compiling for Android you must set both `FFI_CC` and `FFI_CXX` to their respective toolchains, otherwise `libffi` will fail to compile.
+The compilers will be located inside of your distribution's NDK installation, under `$ANDROID_NDK/toolchains/llvm/prebuilt/linux-x86_64/bin`.
+
+For example, to compile `fake-jni` for Android API level 21 and the AArch64 architecture, your `CMakeLists.txt` would look like the following:
+```cmake
+project(my_project)
+
+#these build variables must be set BEFORE including fake-jni
+set(FFI_CC aarch64-linux-android21-clang)
+set(FFI_CXX aarch64-linux-android21-clang++)
+
+add_subdirectory(fake-jni)
+
+target_link_libraries(my_project fake-jni)
+```
+
+Then to build, run the following:
+```sh
+export PATH=$ANDROID_NDK/toolchains/llvm/prebuilt/linux-x86_64/bin:$PATH
+mkdir build
+cd build
+cmake -GNinja -DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK/build/cmake/android.toolchain.cmake -DANDROID_ABI=arm64-v8a -DANDROID_PLATFORM=android-21 ..
+ninja -j0
+```
 ## Goals
 - Binary compatability with JNI 1.8
 - Drop-in replacement for an actual JVM, allowing users to compile against `fake-jni` while retaining full functionality
