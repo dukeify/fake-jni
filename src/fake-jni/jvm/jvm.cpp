@@ -7,6 +7,24 @@
 #include <algorithm>
 #include <mutex>
 #include <shared_mutex>
+#include <csignal>
+#include <cxxabi.h>
+
+#define UNW_LOCAL_ONLY
+#include <libunwind.h>
+
+#define DEFAULT_MANGLED_SYMBOL_NAME_CACHE 4096
+
+#define _UNW_SUCCEED_OR_THROW(name, ...)\
+if ((unw_status = name(__VA_ARGS__))) {\
+ throw UnwindException("FATAL: " + std::string(#name) + "() failed with error code: " + std::to_string(unw_status));\
+}
+
+#define _UNW_SUCCEED_OR_EXIT(name, ...)\
+if ((unw_status = name(__VA_ARGS__))) {\
+ fprintf(log, "FATAL: %s() failed with error code: %d\n", #name, unw_status);\
+ exit(-1);\
+}
 
 //Non-template members of Jvm
 namespace FakeJni {
@@ -21,6 +39,7 @@ namespace FakeJni {
  BEGIN_NATIVE_PRIMITIVE_DESCRIPTOR(JLong, doubleDescriptor) END_NATIVE_DESCRIPTOR
 
  PointerList<Jvm *> Jvm::vms;
+ thread_local const Jvm *Jvm::currentVm;
 
  Jvm::Jvm(FILE *log) :
   JavaVM(),
@@ -69,6 +88,26 @@ namespace FakeJni {
   registerClass(&doubleDescriptor);
  }
 
+ void Jvm::registerDefaultSignalHandler() {
+  static struct sigaction new_sa, old_sa;
+  new_sa.sa_handler = [](int sig) -> void {
+   //vm is a thread_local variable that is only set when Jvm::start() is invoked, and is unset when it returns
+   //if vm is not set, then no vm is currently running and the previous signal handler should be used
+   const auto vm = Jvm::getCurrentVm();
+   if (vm) {
+    vm->fatalError("Received fatal signal!");
+   } else {
+    if (old_sa.sa_handler) {
+     (*old_sa.sa_handler)(sig);
+    }
+   }
+  };
+  sigemptyset(&new_sa.sa_mask);
+  if (sigaction(SIGABRT, &new_sa, &old_sa) == -1) {
+   throw std::runtime_error("FATAL: Could not set the default Jvm signal handler!");
+  }
+ }
+
  const char * Jvm::generateJvmUuid() noexcept {
   static auto randCharFunc = []() -> char {
    return (char)((rand() % 2 ? 65 : 97) + (rand() % 25));
@@ -83,7 +122,7 @@ namespace FakeJni {
   decltype(size) i = 0;
   while (changed && i < size) {
    changed = false;
-   while(vms[i]->uuid == std::string(str)) {
+   while (vms[i]->uuid == std::string(str)) {
     str[rand() % 31] = randCharFunc();
     changed = true;
    }
@@ -91,6 +130,10 @@ namespace FakeJni {
   }
   str[32] = '\0';
   return str;
+ }
+
+ const Jvm * Jvm::getCurrentVm() noexcept {
+  return currentVm;
  }
 
  inline void Jvm::setInvokeInterface(InvokeInterface * const ii) {
@@ -163,7 +206,7 @@ namespace FakeJni {
   return instances;
  }
 
- bool Jvm::addInstance(JObject *inst) {
+ bool Jvm::addInstance(JObject * inst) {
   auto& instances = (*this)[&inst->getClass()];
   if (!instances.contains(inst)) {
    instances.insert(inst, nullptr);
@@ -327,17 +370,49 @@ namespace FakeJni {
   return libraries;
  }
 
- //TODO search through all registered native classes for one containing a main method, and invoke it
  void Jvm::start() {
   if (running) {
-   throw std::runtime_error("Tried to start JVM instance twice!");
+   throw std::runtime_error("FATAL: Tried to start JVM instance twice!");
   }
+  currentVm = this;
   running = true;
+  //TODO REMOVE
   throw std::runtime_error("unimplemented");
+  try {
+   const JClass * encapsulatingClass = nullptr;
+   const JMethodID * main = nullptr;
+   for (auto& clazz : classes) {
+    for (auto& mid : clazz->getMethods()) {
+     if (strcmp(mid->getName(), "main") == 0) {
+      if (strcmp(mid->getSignature(), "([java/lang/String;)V") == 0) {
+       encapsulatingClass = clazz;
+       main = mid;
+      }
+     }
+     break;
+    }
+   }
+   if (!main) {
+    throw std::runtime_error("FATAL: No classes define the default Java entry point: 'main([Ljava/lang/String;)V'!");
+   }
+   main->invoke<void>(this, encapsulatingClass);
+  } catch(const std::exception &ex) {
+   //TODO
+   fprintf(log, "FATAL: VM encountered an uncaught exception with message:\n%s\n", ex.what());
+//   throw;
+  } catch(...) {
+   //TODO
+   fprintf(log, "FATAL: VM encountered an unknown fatal error!\n");
+//   throw;
+  }
+  running = false;
+  currentVm = nullptr;
  }
 
- void Jvm::destroy() {
-  running = false;
+ //TODO
+ JInt Jvm::destroy() {
+//  running = false;
+  return JNI_OK;
  }
 
  void Jvm::throwException(jthrowable throwable) {
@@ -353,7 +428,148 @@ namespace FakeJni {
   exception = nullptr;
  }
 
- void Jvm::fatalError(const char * message) {
-  throw std::runtime_error("FATAL: Fatal error thrown with message: \n\t" + std::string(message));
+ void Jvm::fatalError(const char * message) const {
+  printf("FATAL: Fatal error thrown on Jvm instance '%s' with message: \n%s\n\n", uuid, message);
+  try {
+   printBacktrace();
+  } catch (UnwindException &e) {
+   fprintf(log, "FATAL: Encountered exception unwinding stack:\n%s\n", e.what());
+   exit(-1);
+  } catch (...) {
+   fprintf(log, "FATAL: Encountered unexpected exception unwinding stack!\n");
+   exit(-1);
+  }
+  unw_cursor_t cursor;
+  unw_context_t uc;
+  unw_word_t off;
+  int
+   unw_status,
+   demangle_status = -1,
+   symbol_size = DEFAULT_MANGLED_SYMBOL_NAME_CACHE - 1024;
+  bool startFound = false;
+
+  //TODO put the Jvm into an errored state so that the user can handle the error
+  //find FakeJni::Jvm::start() and continue execution at that frame
+  //initialize frame to the current frame for local unwinding
+  _UNW_SUCCEED_OR_EXIT(unw_getcontext, &uc)
+  _UNW_SUCCEED_OR_EXIT(unw_init_local, &cursor, &uc)
+  //unwind each frame up the stack
+  while ((unw_status = unw_step(&cursor)) > 0) {
+   //resolve mangled symbol name
+   //will continue until the buffer is large enough to contain it
+   do {
+    char mangled[(symbol_size += 1024)];
+    unw_status = unw_get_proc_name(&cursor, mangled, sizeof(mangled), &off);
+   } while (unw_status == UNW_ENOMEM);
+   if (unw_status) {
+    fprintf(log, "FATAL: unw_get_proc_name() failed with error code: %d\n", unw_status);
+    exit(-1);
+   }
+   char mangled[symbol_size];
+   _UNW_SUCCEED_OR_EXIT(unw_get_proc_name, &cursor, mangled, sizeof(mangled), &off)
+   char *sym = abi::__cxa_demangle(mangled, nullptr, nullptr, &demangle_status);
+   if (demangle_status == -2) {
+    sym = mangled;
+   } else if (demangle_status) {
+#ifdef FAKE_JNI_DEBUG
+    fprintf(log, "WARNING: Could not demangle symbol: %s\n", mangled);
+#endif
+    continue;
+   }
+   if (strcmp(sym, "FakeJni::Jvm::start()") == 0) {
+    startFound = true;
+   }
+   if (!demangle_status) {
+    free(sym);
+   }
+   if (startFound) {
+    break;
+   }
+  }
+  if (unw_status < 0) {
+   fprintf(log, "FATAL: unw_step() failed with error code: %d\n", unw_status);
+   exit(-1);
+  }
+  if (!startFound) {
+   fprintf(log, "FATAL: FakeJni::Jvm::start() entry point was not found on the stack!\n");
+   exit(-1);
+  }
+  //if resume is successful this code will never be reached
+  unw_status = unw_resume(&cursor);
+  fprintf(log, "FATAL: unw_resume() failed with error code: %d\n", unw_status);
+  exit(-1);
+ }
+
+ void Jvm::printBacktrace() const {
+  printf("Backtrace: #STACK_FRAME STACK_POINTER: (SYMBOL_NAME+OFFSET) [INSTRUCTION_POINTER] in SYMBOL_SOURCE\n");
+  unw_cursor_t cursor;
+  unw_context_t uc;
+  unw_word_t ip, sp, off;
+  unw_proc_info_t pip;
+  int
+   unw_status,
+   demangle_status = -1,
+   frame_number = 0,
+   symbol_size = DEFAULT_MANGLED_SYMBOL_NAME_CACHE - 1024;
+  Dl_info dlinfo;
+  const char *sym, *obj_file;
+
+  _UNW_SUCCEED_OR_THROW(unw_getcontext, &uc)
+  _UNW_SUCCEED_OR_THROW(unw_init_local, &cursor, &uc)
+  while ((unw_status = unw_step(&cursor)) > 0) {
+   pip.unwind_info = nullptr;
+   //get process info
+   _UNW_SUCCEED_OR_THROW(unw_get_proc_info, &cursor, &pip)
+   //TODO maybe we should log this?
+//  printf();
+   //get instruction and stack pointers
+   _UNW_SUCCEED_OR_THROW(unw_get_reg, &cursor, UNW_REG_IP, &ip)
+   _UNW_SUCCEED_OR_THROW(unw_get_reg, &cursor, UNW_REG_SP, &sp)
+   //resolve mangled symbol name
+   //will continue until the buffer is large enough to contain it
+   do {
+    char mangled[(symbol_size += 1024)];
+    unw_status = unw_get_proc_name(&cursor, mangled, sizeof(mangled), &off);
+   } while (unw_status == UNW_ENOMEM);
+   if (unw_status) {
+    throw UnwindException("FATAL: unw_get_proc_name() failed with error code: " + std::to_string(unw_status));
+   }
+   //get symbol name and demangle if possible
+   char mangled[symbol_size];
+   sym = mangled;
+   if (unw_get_proc_name(&cursor, mangled, sizeof(mangled), &off)) {
+    sym = "[stripped]";
+   } else {
+    char *demangled = abi::__cxa_demangle(sym, nullptr, nullptr, &demangle_status);
+    if (!demangle_status) {
+     sym = demangled;
+    }
+   }
+   //resolve object file name
+   if (dladdr((void *)(pip.start_ip + off), &dlinfo) && dlinfo.dli_fname && *dlinfo.dli_fname) {
+    obj_file = dlinfo.dli_fname;
+   } else {
+    obj_file = "[stripped]";
+   }
+   //#frame_num stack_ptr, (symbol_name+offset) [instruction_ptr] in object_file
+   fprintf(
+    log,
+    "#%2d 0x%lx: (%s+0x%lx) [0x%lx] in %s\n",
+    frame_number,
+    (intptr_t)sp,
+    sym,
+    (intptr_t)off,
+    (intptr_t)ip,
+    obj_file
+   );
+   //if the name was demangled, free the allocated string
+   if (!demangle_status) {
+    free((void *)sym);
+   }
+   frame_number += 1;
+  }
+  if (unw_status != 0) {
+   throw UnwindException("FATAL: unw_step() failed with error code: " + std::to_string(unw_status));
+  }
  }
 }
