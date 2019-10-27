@@ -103,7 +103,7 @@ add_custom_command(
     COMMAND git clean -f
     COMMAND git reset --hard
     WORKING_DIRECTORY ${SOURCE_DIR}
-    COMMENT "Cleaning libffi directory..."
+    COMMENT "Cleaning xz directory..."
 )
 
 #libunwind

@@ -11,7 +11,7 @@
 //General utility functions
 namespace FakeJni {
  namespace _CX {
-  using main_method_t = void (JArray<JString *>);
+  using main_method_t = void (JArray<JString *> *);
  }
 
  JClass * createDummyClass(const Jvm & vm);
@@ -20,3 +20,5 @@ namespace FakeJni {
  void createMainMethod(const Jvm & vm, _CX::main_method_t * main, JClass * clazz = nullptr);
  void createMainMethod(const Jvm & vm, std::function<_CX::main_method_t> main, JClass * clazz = nullptr);
 }
+
+DECLARE_NATIVE_ARRAY_DESCRIPTOR(FakeJni::JString *)

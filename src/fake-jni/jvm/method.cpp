@@ -254,7 +254,7 @@ namespace FakeJni {
    && (proxyFuncA == mid.proxyFuncA);
  }
 
- bool JMethodID::operator ==(JNINativeMethod *& mid) const {
+ bool JMethodID::operator==(JNINativeMethod *& mid) const {
   return modifiers == 0
    && type == REGISTER_NATIVES_FUNC
    && strcmp(name, mid->name) == 0

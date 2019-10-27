@@ -3,8 +3,9 @@
 #include "meta.h"
 
 #include <cx/strings.h>
+#include <cx/unsafe.h>
 
-#include <tuple>
+#include <functional>
 
 #define _GET_AARG_MAP(t, member) \
 template<>\
@@ -149,36 +150,35 @@ namespace FakeJni {
   }
 
   template<auto, typename...>
-  class FunctionAccessor;
+  struct FunctionAccessor;
 
   //Entry invoker for member functions
   template<auto N, typename T, typename R, typename... Args>
-  class FunctionAccessor<N, R (T::* const)(Args...)> {
-  public:
-   using argType = typename CX::TemplateTypeIterator<N - 1, Args...>::type;
-   using functionType = R (T::* const)(Args...);
-   using erasedType = void (AnyClass::* const)();
+  struct FunctionAccessor<N, R (T::* const)(Args...)> {
+   using arg_t = typename CX::TemplateTypeIterator<N - 1, Args...>::type;
+   using func_t = R (T::* const)(Args...);
+   using erased_t = void (AnyClass::* const)();
 
    template<typename... DecomposedVarargs>
    [[gnu::always_inline]]
-   inline static R invokeV(void * const inst, erasedType func, va_list list, DecomposedVarargs... args) {
-    return FunctionAccessor<N - 1, functionType>::template invokeV<argType, DecomposedVarargs...>(
+   inline static R invokeV(void * const inst, erased_t func, va_list list, DecomposedVarargs... args) {
+    return FunctionAccessor<N - 1, func_t>::template invokeV<arg_t, DecomposedVarargs...>(
      inst,
      func,
      list,
-     getVArg<argType>(list),
+     getVArg<arg_t>(list),
      args...
     );
    }
 
    template<typename... DecomposedJValues>
    [[gnu::always_inline]]
-   inline static R invokeA(void * const inst, erasedType func, jvalue * const values, DecomposedJValues... args) {
-    return FunctionAccessor<N - 1, functionType>::template invokeA<argType, DecomposedJValues...>(
+   inline static R invokeA(void * const inst, erased_t func, jvalue * const values, DecomposedJValues... args) {
+    return FunctionAccessor<N - 1, func_t>::template invokeA<arg_t, DecomposedJValues...>(
      inst,
      func,
      values + 1,
-     getAArg<argType>(values),
+     getAArg<arg_t>(values),
      args...
     );
    }
@@ -186,8 +186,7 @@ namespace FakeJni {
 
   //Base invoker for member functions
   template<typename T, typename R, typename... Args>
-  class FunctionAccessor<0, R (T::* const)(Args...)> {
-  public:
+  struct FunctionAccessor<0, R (T::* const)(Args...)> {
    using erasedType = void (AnyClass::* const)();
    //Template pack should match Args
    template<typename... Args2>
@@ -201,7 +200,7 @@ namespace FakeJni {
    [[gnu::always_inline]]
    inline static R invokeA(void * const inst, erasedType func, jvalue *values, Args2... args) {
     static_assert(
-     CX::IsSame<std::tuple<Args...>, std::tuple<Args2...>>::value,
+     CX::IsSame<CX::Dummy<Args...>, CX::Dummy<Args2...>>::value,
      "Function argument list does not match base invoker arguments!"
     );
     return (((T*)inst)->*((R (T::*)(Args...))func))(args...);
@@ -210,30 +209,29 @@ namespace FakeJni {
 
   //Entry invoker for non-member functions
   template<auto N, typename R, typename... Args>
-  class FunctionAccessor<N, R (* const)(Args...)> {
-  public:
-   using argType = typename CX::TemplateTypeIterator<N - 1, Args...>::type;
-   using functionType = R (* const)(Args...);
-   using erasedType = void (* const)();
+  struct FunctionAccessor<N, R (* const)(Args...)> {
+   using arg_t = typename CX::TemplateTypeIterator<N - 1, Args...>::type;
+   using func_t = R (* const)(Args...);
+   using erased_t = void (* const)();
 
    template<typename... DecomposedVarargs>
    [[gnu::always_inline]]
-   inline static R invokeV(erasedType func, va_list list, DecomposedVarargs... args) {
-    return FunctionAccessor<N - 1, functionType>::template invokeV<argType, DecomposedVarargs...>(
+   inline static R invokeV(erased_t func, va_list list, DecomposedVarargs... args) {
+    return FunctionAccessor<N - 1, func_t>::template invokeV<arg_t, DecomposedVarargs...>(
      func,
      list,
-     getVArg<argType>(list),
+     getVArg<arg_t>(list),
      args...
     );
    }
 
    template<typename... DecomposedJValues>
    [[gnu::always_inline]]
-   inline static R invokeA(erasedType func, jvalue * const values, DecomposedJValues... args) {
-    return FunctionAccessor<N - 1, functionType>::template invokeA<argType, DecomposedJValues...>(
+   inline static R invokeA(erased_t func, jvalue * const values, DecomposedJValues... args) {
+    return FunctionAccessor<N - 1, func_t>::template invokeA<arg_t, DecomposedJValues...>(
      func,
      values + 1,
-     getAArg<argType>(values),
+     getAArg<arg_t>(values),
      args...
     );
    }
@@ -241,8 +239,7 @@ namespace FakeJni {
 
   //Base invoker for non-member functions
   template<typename R, typename... Args>
-  class FunctionAccessor<0, R (* const)(Args...)> {
-  public:
+  struct FunctionAccessor<0, R (* const)(Args...)> {
    using erasedType = void (* const)();
 
    //Template pack should match Args
@@ -254,12 +251,67 @@ namespace FakeJni {
    }
 
    template<typename... Args2>
+   [[gnu::always_inline]]
    inline static R invokeA(erasedType func, jvalue * const values, Args2... args) {
     static_assert(
-     CX::IsSame<std::tuple<Args...>, std::tuple<Args2...>>::value,
+     CX::IsSame<CX::Dummy<Args...>, CX::Dummy<Args2...>>::value,
      "Function argument list does not match base invoker arguments!"
     );
     return ((R (*)(Args...))func)(args...);
+   }
+  };
+
+  //Entry invoker for stl functors
+  template<auto N, typename R, typename... Args>
+  struct FunctionAccessor<N, std::function<R (Args...)>> {
+   using arg_t = typename CX::TemplateTypeIterator<N - 1, Args...>::type;
+   using func_t = std::function<R (Args...)>;
+   using align_t = _CX::arbitrary_align_t<sizeof(std::function<void ()>)>;
+
+   template<typename... DecomposedVarargs>
+   [[gnu::always_inline]]
+   inline static R invokeV(align_t func, va_list list, DecomposedVarargs... args) {
+    return FunctionAccessor<N - 1, func_t>::template invokeV<arg_t, DecomposedVarargs...>(
+     func,
+     list,
+     getVArg<arg_t>(list),
+     args...
+    );
+   }
+
+   template<typename... DecomposedJValues>
+   [[gnu::always_inline]]
+   inline static R invokeA(align_t func, jvalue * const values, DecomposedJValues... args) {
+    return FunctionAccessor<N - 1, func_t>::template invokeA<arg_t, DecomposedJValues...>(
+     func,
+     values + 1,
+     getAArg<arg_t>(values),
+     args...
+    );
+   }
+  };
+
+  //Base invoker for stl functors
+  template<typename R, typename... Args>
+  struct FunctionAccessor<0, std::function<R (Args...)>> {
+   using align_t = _CX::arbitrary_align_t<sizeof(std::function<void ()>)>;
+   using func_t = std::function<R (Args...)>;
+
+   template<typename... Args2>
+   [[gnu::always_inline]]
+   inline static R invokeV(align_t func, va_list list, Args2... args) {
+    va_end(list);
+    return invokeA(func, nullptr, args...);
+   }
+
+   template<typename... Args2>
+   [[gnu::always_inline]]
+   inline static R invokeA(align_t func, jvalue * const values, Args2... args) {
+    static_assert(
+     CX::IsSame<CX::Dummy<Args...>, CX::Dummy<Args2...>>::value,
+     "Function argument list does not match the base invoker arguments!"
+    );
+    return CX::union_cast<func_t>(func)(args...);
    }
   };
 

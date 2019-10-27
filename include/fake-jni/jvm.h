@@ -832,36 +832,39 @@ namespace FakeJni {
  public:
   using static_func_t = void (* const)();
   using member_func_t = void (_CX::AnyClass::* const)();
+  using arbitrary_func_t = void * (*)(JNIEnv * env, jobject objOrInst, ...);
   using void_func_t = void (*)();
 
   enum Type {
    STATIC_FUNC,
    MEMBER_FUNC,
-   REGISTER_NATIVES_FUNC
+   REGISTER_NATIVES_FUNC,
+   STL_FUNC
   };
 
   const Type type;
 
  private:
-  struct member_ptr_align_t {
-   void * low, * high;
-  } __attribute__((packed));
-
   //Ref-counted map of signature hashes to ffi_cif descriptors
   static std::map<size_t, std::pair<unsigned long, ffi_cif *>> descriptors;
 
   union {
-   //Functions registered through fake-jni
+   //STATIC_FUNC, MEMBER_FUNC and STL_FUNC
    struct {
     //Functions registered through registerNatives do not have modifiers
     const uint32_t modifiers;
-    //high bytes of member pointer for vtable offset in `this`
-    void * adj;
+    union {
+     //STATIC_FUNC and MEMBER_FUNC
+     //high bytes of member pointer for vtable offset in `this`
+     void * adj;
+     //STL_FUNC
+     _CX::arbitrary_align_t<sizeof(std::function<void ()>) - sizeof(fnPtr)> stlFunc;
+    };
     static_func_t
      proxyFuncV,
      proxyFuncA;
    };
-   //Functions registered through registerNatives
+   //REGISTER_NATIVES_FUNC
    struct {
     ffi_cif * descriptor;
     void_func_t
@@ -887,8 +890,6 @@ namespace FakeJni {
   R internalInvoke(const JavaVM * vm, void * clazzOrInst, A args) const;
 
  public:
-  using arbitrary_func_t = void * (*)(JNIEnv * env, jobject objOrInst, ...);
-
   const bool isArbitrary;
 
   enum Modifiers : uint32_t {
@@ -920,7 +921,10 @@ namespace FakeJni {
   JMethodID(R (T::* func)(Args...) const, const char * name, uint32_t modifiers) noexcept;
   //Constructor for RegisterNatives
   JMethodID(const JNINativeMethod * method);
-  //Constructor for arbitrary functions
+  //Constructor for capturing lambdas (non-capturing lambdas are implicitly converted to static functions)
+  template<typename R, typename... Args>
+  JMethodID(std::function<R (Args...)> func, const char * name, uint32_t modifiers) noexcept;
+  //Constructor for arbitrary functions and non-capturing lambdas
   JMethodID(arbitrary_func_t func, const char * signature, const char * name, uint32_t modifiers);
   ~JMethodID();
 
@@ -1379,12 +1383,31 @@ namespace FakeJni {
    verifyName(name),
    verifySignature(_CX::SignatureGenerator<false, R, Args...>::signature),
    //low bytes of member pointer
-   CX::union_cast<member_ptr_align_t>(func).low
+   CX::union_cast<_CX::member_ptr_align_t>(func).low
   },
   type(MEMBER_FUNC),
   modifiers(modifiers),
   //high bytes of member pointer
-  adj(CX::union_cast<member_ptr_align_t>(func).high),
+  adj(CX::union_cast<_CX::member_ptr_align_t>(func).high),
+  proxyFuncV((void (*)())&_CX::FunctionAccessor<sizeof...(Args), decltype(func)>::template invokeV<>),
+  proxyFuncA((void (*)())&_CX::FunctionAccessor<sizeof...(Args), decltype(func)>::template invokeA<>),
+  isArbitrary(false)
+ {
+  _ASSERT_JNI_FUNCTION_COMPLIANCE
+ }
+
+ template<typename R, typename... Args>
+ JMethodID::JMethodID(std::function<R (Args...)> func, const char * name, uint32_t modifiers) noexcept :
+  JNINativeMethod {
+   verifyName(name),
+   verifySignature(_CX::SignatureGenerator<false, R, Args...>::signature),
+   //segmented functor object
+   CX::union_cast<decltype(fnPtr)>(func)
+  },
+  type(STL_FUNC),
+  modifiers(modifiers),
+  //store remaining functor object data
+  stlFunc(CX::union_cast<decltype(stlFunc)>(*(CX::union_cast<char *>(&func) + sizeof(fnPtr)))),
   proxyFuncV((void (*)())&_CX::FunctionAccessor<sizeof...(Args), decltype(func)>::template invokeV<>),
   proxyFuncA((void (*)())&_CX::FunctionAccessor<sizeof...(Args), decltype(func)>::template invokeA<>),
   isArbitrary(false)
@@ -1394,7 +1417,7 @@ namespace FakeJni {
 
  //Performs virtual dispatch
  template<typename R, typename A>
- R JMethodID::virtualInvoke(const JavaVM *vm, void *clazzOrInst, A args) const {
+ R JMethodID::virtualInvoke(const JavaVM * vm, void * clazzOrInst, A args) const {
   auto * clazz = &((JObject *)clazzOrInst)->getClass();
   if (strcmp(clazz->getName(), "java/lang/Class") == 0) {
    //Static method, no virtual dispatch
@@ -1433,7 +1456,7 @@ namespace FakeJni {
 
  //Does not perform virtual dispatch
  template<typename R, typename A>
- R JMethodID::nonVirtualInvoke(const JavaVM *vm, JClass *const clazz, void *const inst, A args) const {
+ R JMethodID::nonVirtualInvoke(const JavaVM * vm, JClass * const clazz, void * const inst, A args) const {
   const auto mid = clazz->getMethod(signature, name);
   if (!mid) {
    throw std::runtime_error(
@@ -1462,7 +1485,7 @@ namespace FakeJni {
     const auto proxy = (R (*)(void *const, member_func_t, A))getFunctionProxy<A>();
     return proxy(
      CX::union_cast<JObject *>(clazzOrInst),
-     CX::union_cast<member_func_t>(member_ptr_align_t{fnPtr, adj}),
+     CX::union_cast<member_func_t>(_CX::member_ptr_align_t{fnPtr, adj}),
      args
     );
    }
@@ -1514,6 +1537,15 @@ namespace FakeJni {
      _INTERNAL_INVOKE_CLEANUP
      return (R)result;
     }
+   }
+   case STL_FUNC: {
+    //reassemble functor object data
+    using align_t = _CX::arbitrary_align_t<sizeof(std::function<void ()>)>;
+    struct Data {
+     decltype(fnPtr) d1;
+     decltype(stlFunc) d2;
+    } __attribute__((packed));
+    return ((R (*)(align_t, A))getFunctionProxy<A>())(CX::union_cast<align_t>(Data{fnPtr, stlFunc}), args);
    }
   }
  }

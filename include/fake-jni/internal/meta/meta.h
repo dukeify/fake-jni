@@ -93,21 +93,30 @@ namespace FakeJni {
   };
 
   public:
-  using cast = typename T::cast;
+   using cast = typename T::cast;
 
-  [[gnu::always_inline]]
-  inline static void assertAliasCorrectness() {
-   static_assert(
-    IsTemplateTemplate<cast>::value && TemplateTemplateDecomposer<cast>::verifyParameters(),
-    "Illegal type for 'cast' alias, should be 'ExplicitCastGenerator<...>'!"
-   );
-  }
- };
+   [[gnu::always_inline]]
+   inline static void assertAliasCorrectness() {
+    static_assert(
+     IsTemplateTemplate<cast>::value && TemplateTemplateDecomposer<cast>::verifyParameters(),
+     "Illegal type for 'cast' alias, should be 'ExplicitCastGenerator<...>'!"
+    );
+   }
+  };
 
- template<typename T, typename = void>
- class BaseDefined : public CX::false_type {};
+  template<typename T, typename = void>
+  class BaseDefined : public CX::false_type {};
 
- template<typename T>
- class BaseDefined<T, CX::void_a<T::base>>;
-}
+  template<typename T>
+  class BaseDefined<T, CX::void_a<T::base>>;
+
+  struct member_ptr_align_t {
+   void * low, * high;
+  } __attribute__((packed));
+
+  template<unsigned N>
+  struct arbitrary_align_t {
+   unsigned char data[N];
+  } __attribute__((packed));
+ }
 }

@@ -15,7 +15,10 @@ if (!cclazz) {\
    return;\
   }\
  }\
-}
+}\
+auto& rVm = const_cast<Jvm &>(vm);\
+clazz->registerMethod(new JMethodID(std::move(main), "main", JMethodID::PUBLIC | JMethodID::STATIC));\
+rVm.registerClass(clazz);
 
 namespace FakeJni {
  JClass * createDummyClass(const Jvm & vm) {
@@ -36,13 +39,11 @@ namespace FakeJni {
 
  void createMainMethod(const Jvm & vm, _CX::main_method_t * main, JClass * cclazz) {
   _CERATE_MAIN_METHOD_CHECK
-  clazz->registerMethod();
-  vm.registerClass(clazz);
  }
 
  void createMainMethod(const Jvm & vm, std::function<_CX::main_method_t> main, const JClass * cclazz) {
   _CERATE_MAIN_METHOD_CHECK
-  clazz->registerMethod(new JMethodID());
-  vm.registerClass(clazz);
  }
 }
+
+DEFINE_NATIVE_ARRAY_DESCRIPTOR(FakeJni::JString *)

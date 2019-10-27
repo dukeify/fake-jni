@@ -79,24 +79,6 @@ BEGIN_NATIVE_DESCRIPTOR(ExampleClass)
  {Constructor<ExampleClass, JDouble, ExampleClass *> {}}
 END_NATIVE_DESCRIPTOR
 
-jint test(JNIEnv *env, jobject obj, JObject * a, JDouble b, JDouble c) {
- printf("Obj type: %s\n", a->getClass().getName());
- printf("0x%lx %f %f\n", (intptr_t)a, b, c);
- return 314;
-}
-
-DECLARE_NATIVE_ARRAY_DESCRIPTOR(JString)
-
-JString * test2(JNIEnv *env, jobject obj, JString *s1, JArray<JString> *astr, JString *s2, JBooleanArray *b) {
- return JString::EMPTY;
-}
-
-JClass dummy{"bruh"};
-
-DEFINE_NATIVE_ARRAY_DESCRIPTOR(JString)
-
-#include <cxxabi.h>
-
 //fake-jni in action
 int main(int argc, char **argv) {
  //Make a JString
