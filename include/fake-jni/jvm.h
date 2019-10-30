@@ -38,12 +38,15 @@ static_assert(\
  "Registered field types cannot be pointers or references to a JNI type!"\
 );
 
-#define _JFIELDID_GET \
-if (isStatic) {\
- return ((T& (*)(void *))fid->proxyGetFunc)(staticProp);\
+#define _JFIELDID_STATIC_CHECK(expr) \
+if ((modifiers & STATIC) == STATIC) {\
+ if (fid == this) {\
+  expr\
+ }\
 } else {\
- return ((T& (*)(void *, memberProp_t))fid->proxyGetFunc)(obj, memberProp);\
-}
+ expr\
+}\
+break;
 
 //Internal JMethodID macros
 #define _ASSERT_JNI_FUNCTION_COMPLIANCE \
@@ -753,26 +756,6 @@ namespace FakeJni {
 
  //fake-jni implementation
  class JFieldID final : public _jfieldID {
- private:
-  using staticProp_t = void * const;
-  using memberProp_t = int (_CX::AnyClass::* const);
-
-  const bool isStatic;
-  const uint32_t modifiers;
-  union {
-   staticProp_t staticProp;
-   memberProp_t memberProp;
-  };
-  const char
-   * const name,
-   * const signature;
-
-  void
-   (* const proxyGetFunc)(),
-   (* const proxySetFunc)();
-
-  const JFieldID * findVirtualMatch(const JClass * clazz) const noexcept;
-
  public:
   template<typename T>
   using get_func_t = T& (*)(void * inst);
@@ -780,6 +763,49 @@ namespace FakeJni {
   using set_func_t = void (*)(void * inst, T * value);
   using v_get_func_t = void * (*)(void * inst);
   using v_set_func_t = void (*)(void * inst, void * value);
+
+  using static_prop_t = void * const;
+  using member_prop_t = int (_CX::AnyClass::* const);
+
+  enum Type {
+   STATIC_PROP,
+   MEMBER_PROP,
+   CALLBACK_PROP,
+   STL_CALLBACK_PROP
+  };
+
+  const Type type;
+
+ private:
+  const uint32_t modifiers;
+  const char
+   * const name,
+   * const signature;
+
+  union {
+   //TODO CALLBACK_PROP only needs the proxy functions
+   //STATIC_PROP, MEMBER_PROP and CALLBACK_PROP
+   struct {
+    union {
+     static_prop_t staticProp;
+     member_prop_t memberProp;
+    };
+    void
+     (* const proxyGetFunc)(),
+     (* const proxySetFunc)();
+   };
+   //STL_CALLBACK_PROP
+   struct {
+    const _CX::arbitrary_align_t<sizeof(std::function<void ()>)>
+     arbitraryGet,
+     arbitrarySet;
+   };
+  };
+
+  const JFieldID * findVirtualMatch(const JClass * clazz) const noexcept;
+
+ public:
+  const bool isArbitrary;
 
   enum Modifiers: uint32_t {
    PUBLIC = 1,
@@ -793,8 +819,6 @@ namespace FakeJni {
    ENUM = 16384
   };
 
-  const bool isArbitrary;
-
   //Constructor for member fields
   template<typename T, typename M>
   JFieldID(T M::* member, const char * name, uint32_t modifiers) noexcept;
@@ -806,6 +830,11 @@ namespace FakeJni {
   JFieldID(get_func_t<T> get, set_func_t<T> set, const char * name, uint32_t modifiers) noexcept;
   //Constructor for arbitrary fields with type-erased user-defined access callbacks
   JFieldID(v_get_func_t get, v_set_func_t set, const char * name, const char * signature, uint32_t modifiers) noexcept;
+  //Constructor for arbitrary fields with user-defined, capturing, access callbacks
+  template<typename T>
+  JFieldID(std::function<T* ()> get, std::function<void (T*)> set, const char * name, uint32_t modifiers) noexcept;
+  //Constructor for arbitrary fields with type-erased user-defined, capturing, access callbacks
+  JFieldID(std::function<void * ()> get, std::function<void (void *)> set, const char * name, const char * signature, uint32_t modifiers) noexcept;
 
   inline const char * getName() const noexcept {
    return name;
@@ -839,7 +868,8 @@ namespace FakeJni {
    STATIC_FUNC,
    MEMBER_FUNC,
    REGISTER_NATIVES_FUNC,
-   STL_FUNC
+   STL_FUNC,
+   ARBITRARY_STL_FUNC
   };
 
   const Type type;
@@ -926,6 +956,11 @@ namespace FakeJni {
   JMethodID(std::function<R (Args...)> func, const char * name, uint32_t modifiers) noexcept;
   //Constructor for arbitrary functions and non-capturing lambdas
   JMethodID(arbitrary_func_t func, const char * signature, const char * name, uint32_t modifiers);
+  //Constructor for arbitrary capturing lambdas
+  //TODO once signature checking is in place, add support for this
+//  template<typename... Args>
+//  JMethodID(std::function<void * (JNIEnv *, jobject, Args...)> func, const char * signature, const char * name, uint32_t modifiers);
+  JMethodID(std::function<void * (JNIEnv *, jobject, jvalue *)> func, const char * signature, const char * name, uint32_t modifiers);
   ~JMethodID();
 
   inline const char * getName() const noexcept {
@@ -1265,11 +1300,11 @@ namespace FakeJni {
  template<typename T, typename M>
  JFieldID::JFieldID(T M::* const member, const char * const name, const uint32_t modifiers) noexcept :
   _jfieldID(),
-  isStatic(false),
+  type(MEMBER_PROP),
   modifiers(modifiers),
-  memberProp((memberProp_t)member),
   name(name),
   signature(_CX::JniTypeBase<T>::signature),
+  memberProp((member_prop_t)member),
   proxyGetFunc((void (*)())&_CX::FieldAccessor<T (M::*)>::get),
   proxySetFunc((void (*)())&_CX::FieldAccessor<T (M::*)>::set),
   isArbitrary(false)
@@ -1280,11 +1315,11 @@ namespace FakeJni {
  template<typename T>
  JFieldID::JFieldID(T * const staticMember, const char * const name, const uint32_t modifiers) noexcept :
   _jfieldID(),
-  isStatic(true),
+  type(STATIC_PROP),
   modifiers(modifiers),
-  staticProp((staticProp_t)staticMember),
   name(name),
   signature(_CX::JniTypeBase<T>::signature),
+  staticProp((static_prop_t)staticMember),
   proxyGetFunc((void (*)())&_CX::FieldAccessor<T*>::get),
   proxySetFunc((void (*)())&_CX::FieldAccessor<T*>::set),
   isArbitrary(false)
@@ -1295,7 +1330,7 @@ namespace FakeJni {
  template<typename T>
  JFieldID::JFieldID(get_func_t<T> get, set_func_t<T> set, const char * name, uint32_t modifiers) noexcept :
   _jfieldID(),
-  isStatic(false),
+  type(CALLBACK_PROP),
   modifiers(modifiers),
   name(name),
   signature(_CX::JniTypeBase<T>::signature),
@@ -1307,19 +1342,40 @@ namespace FakeJni {
  }
 
  template<typename T>
+ JFieldID::JFieldID(std::function<T* ()> get, std::function<void (T*)> set, const char *name, uint32_t modifiers) noexcept :
+  _jfieldID(),
+  type(STL_CALLBACK_PROP),
+  modifiers(modifiers),
+  name(name),
+  signature(_CX::JniTypeBase<T>::signature),
+  arbitraryGet(std::move(CX::union_cast<decltype(arbitraryGet)>(std::move(get)))),
+  arbitrarySet(std::move(CX::union_cast<decltype(arbitrarySet)>(std::move(set)))),
+  isArbitrary(true)
+ {
+  _ASSERT_FIELD_JNI_COMPLIANCE
+ }
+
+ template<typename T>
  T& JFieldID::get(JObject * const obj) const {
   const auto& clazz = obj->getClass();
   auto * fid = findVirtualMatch(&clazz);
   if (fid) {
-   if (isArbitrary) {
-    return ((T& (*)(void *))proxyGetFunc)(obj);
-   } else {
-    if ((modifiers & STATIC) == STATIC) {
-     if (fid == this) {
-      _JFIELDID_GET
-     }
-    } else {
-     _JFIELDID_GET
+   switch (fid->type) {
+    case STATIC_PROP: {
+     _JFIELDID_STATIC_CHECK(
+      return ((T& (*)(static_prop_t))fid->proxyGetFunc)(staticProp);
+     )
+    }
+    case MEMBER_PROP: {
+     _JFIELDID_STATIC_CHECK(
+      return ((T& (*)(void *, member_prop_t))fid->proxyGetFunc)(obj, memberProp);
+     )
+    }
+    case CALLBACK_PROP: {
+     return ((T& (*)(void *))proxyGetFunc)(obj);
+    }
+    case STL_CALLBACK_PROP: {
+     return *CX::union_cast<std::function<T* ()>>(arbitraryGet)();
     }
    }
   }
@@ -1480,6 +1536,13 @@ namespace FakeJni {
  template<typename R, typename A>
  R JMethodID::internalInvoke(const JavaVM * vm, void * clazzOrInst, A args) const {
   using arg_t = typename CX::ComponentTypeResolver<A>::type;
+  //used to reassemble functor object data
+  using align_t = _CX::arbitrary_align_t<sizeof(std::function<void ()>)>;
+  struct Data {
+   decltype(fnPtr) d1;
+   decltype(stlFunc) d2;
+  } __attribute__((packed));
+  //perform invocation
   switch (type) {
    case MEMBER_FUNC: {
     const auto proxy = (R (*)(void *const, member_func_t, A))getFunctionProxy<A>();
@@ -1539,13 +1602,19 @@ namespace FakeJni {
     }
    }
    case STL_FUNC: {
-    //reassemble functor object data
-    using align_t = _CX::arbitrary_align_t<sizeof(std::function<void ()>)>;
-    struct Data {
-     decltype(fnPtr) d1;
-     decltype(stlFunc) d2;
-    } __attribute__((packed));
     return ((R (*)(align_t, A))getFunctionProxy<A>())(CX::union_cast<align_t>(Data{fnPtr, stlFunc}), args);
+   }
+   case ARBITRARY_STL_FUNC: {
+    auto vm_ref = const_cast<JavaVM *>(vm);
+    JNIEnv * env;
+    vm_ref->GetEnv((void **)&env, JNI_VERSION_1_8);
+    return ((R (*)(align_t, const char *, JNIEnv *, void *, A))getFunctionProxy<A>())(
+     CX::union_cast<align_t>(Data{fnPtr, stlFunc}),
+     signature,
+     env,
+     clazzOrInst,
+     args
+    );
    }
   }
  }

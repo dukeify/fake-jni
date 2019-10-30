@@ -3,6 +3,9 @@
 #include <mutex>
 #include <algorithm>
 #include <set>
+#include <map>
+#include <functional>
+#include <cstring>
 
 #include <cx/idioms.h>
 
@@ -287,4 +290,125 @@ namespace FakeJni {
    const_cast<PointerList<T *> &>(*this).dealloc = dealloc;
   }
  };
+
+#define _CASE_CALLBACK_IF_DEFINED(identifier) \
+case #identifier[0]: {\
+ const auto& callback = ref.callbacks[#identifier[0]];\
+ if (callback) {\
+  ref.result.push_back(callback(const_cast<char *>(#identifier)));\
+ }\
+ break;\
+}
+
+#define _JNI_PARSER_TOKEN_CALLBACK \
+const auto size = (size_t)(signature - start + 1);\
+char *token = new char[size + 1];\
+token[size] = '\0';\
+strncpy(token, start, size);\
+result.push_back(callback(token));\
+delete[] token;
+
+ template<typename T>
+ struct JniFunctionParser final {
+  using callback_t = T (char * token);
+
+  std::function<callback_t>& operator[](char identifier) {
+   return callbacks[identifier];
+  }
+
+  std::vector<T> parse(const char * signature) const {
+   auto& ref = const_cast<JniFunctionParser &>(*this);
+   std::scoped_lock lock(ref.parserMutex);
+   char parensMatched = -2;
+   ref.result.clear();
+   while (*signature) {
+    switch(*signature) {
+     case '(': {
+      parensMatched += 1;
+      const auto& callback = ref.callbacks['('];
+      if (callback) {
+       ref.result.push_back(callback(const_cast<char *>("(")));
+      }
+      break;
+     }
+     case ')': {
+      parensMatched += 1;
+      const auto& callback = ref.callbacks[')'];
+      if (callback) {
+       ref.result.push_back(callback(const_cast<char *>(")")));
+      }
+      break;
+     }
+     case 'V': {
+      if (parensMatched == -1) {
+       throw std::runtime_error("Illegal JNI function prototype, void cannot be function argument!");
+      }
+      const auto& callback = ref.callbacks['V'];
+      if (callback) {
+       ref.result.push_back(callback(const_cast<char *>("V")));
+      }
+      break;
+     }
+     _CASE_CALLBACK_IF_DEFINED(Z)
+     _CASE_CALLBACK_IF_DEFINED(B)
+     _CASE_CALLBACK_IF_DEFINED(C)
+     _CASE_CALLBACK_IF_DEFINED(S)
+     _CASE_CALLBACK_IF_DEFINED(I)
+     _CASE_CALLBACK_IF_DEFINED(F)
+     _CASE_CALLBACK_IF_DEFINED(J)
+     _CASE_CALLBACK_IF_DEFINED(D)
+     case 'L': {
+      ref.parseClass(signature);
+      break;
+     }
+     case '[': {
+      ref.parseArray(signature);
+      break;
+     }
+     default: throw std::runtime_error("Illegal JNI function prototype!");
+    }
+    signature++;
+   }
+   if (parensMatched) {
+    throw std::runtime_error("Unmatched parenthesis in JNI function prototype!");
+   }
+   return result;
+  }
+
+ private:
+  std::map<char, std::function<callback_t>> callbacks;
+  std::vector<T> result;
+  std::mutex parserMutex;
+
+  void parseClass(const char *& signature, bool runCallback = true) {
+   const char * start = signature;
+   while (*signature != ';') {
+    signature++;
+   }
+   auto& callback = callbacks['L'];
+   if (callback && runCallback) {
+    _JNI_PARSER_TOKEN_CALLBACK
+   }
+  }
+
+  void parseArray(const char *& signature) {
+   const char * start = signature;
+   bool loop = true;
+   do {
+    signature++;
+    switch(*signature) {
+     case '[': continue;
+     case 'L': parseClass(signature, false);
+     default: loop = false;
+    }
+   } while(loop);
+   auto& callback = callbacks['['];
+   if (callback) {
+    _JNI_PARSER_TOKEN_CALLBACK
+   }
+  }
+ };
+
+#undef _JNI_PARSER_TOKEN_CALLBACK
+#undef _CASE_CALLBACK_IF_DEFINED
 }

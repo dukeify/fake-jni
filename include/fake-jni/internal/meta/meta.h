@@ -3,6 +3,8 @@
 #include <cx/idioms.h>
 #include <cx/classes.h>
 
+#include <cstring>
+
 namespace FakeJni {
  //fake-jni type metadata templates
  namespace _CX {
@@ -117,6 +119,14 @@ namespace FakeJni {
   template<unsigned N>
   struct arbitrary_align_t {
    unsigned char data[N];
+
+   template<unsigned _N>
+   bool operator==(const arbitrary_align_t<_N> arbitrary) const noexcept {
+    if constexpr(N == _N) {
+     return !memcmp(data, arbitrary.data, (size_t)N);
+    }
+    return false;
+   }
   } __attribute__((packed));
  }
 }

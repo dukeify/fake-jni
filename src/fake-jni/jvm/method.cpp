@@ -37,8 +37,7 @@ if (type == &ffi_type) {\
 #define JMETHODID_INVOCATION_PREP \
 const auto argc = descriptor->nargs - 2;\
 for (unsigned int i = 0; i < argc; i++) {\
- const auto type = descriptor->arg_types[i + 2];\
- const auto typeResolvers = typeResolverGenerator(type);\
+ const auto typeResolvers = typeResolverGenerator(descriptor->arg_types[i + 2]);\
  resolvers[i] = typeResolvers.get<0>();\
  resolvers[i + argc] = typeResolvers.get<1>();\
  deallocators[i] = typeResolvers.get<2>();\
@@ -243,6 +242,22 @@ namespace FakeJni {
  {
   JMETHODID_INVOCATION_PREP
  }
+
+ JMethodID::JMethodID(std::function<void * (JNIEnv *, jobject, jvalue *)> func, const char * signature, const char * name, uint32_t modifiers) :
+  _jmethodID(),
+  JNINativeMethod {
+   verifyName(name),
+   verifySignature(signature),
+   //segmented functor object
+   CX::union_cast<decltype(fnPtr)>(func)
+  },
+  type(ARBITRARY_STL_FUNC),
+  modifiers(modifiers),
+  stlFunc(CX::union_cast<decltype(stlFunc)>(*(CX::union_cast<char *>(&func) + sizeof(fnPtr)))),
+  proxyFuncV((void (*)())&_CX::FunctionAccessor<3, std::function<void * (void *, void *, void *)>>::template invokeV<>),
+  proxyFuncA((void (*)())&_CX::FunctionAccessor<3, std::function<void * (void *, void *, void *)>>::template invokeA<>),
+  isArbitrary(true)
+ {}
 
  bool JMethodID::operator ==(const JMethodID & mid) const noexcept {
   return (name == mid.name)

@@ -1,22 +1,29 @@
 #include "fake-jni/jvm.h"
 
-#define _JFIELDID_SET \
-if (isStatic) {\
- ((void (*)(void *, void *))fid->proxySetFunc)(staticProp, value);\
-} else {\
- ((void (*)(void *, int (_CX::AnyClass::*), void *))fid->proxySetFunc)(obj, memberProp, value);\
-}
+#define _JFIELDID_PROXY_CMP \
+(proxyGetFunc == fid.proxyGetFunc) && (proxySetFunc == fid.proxySetFunc)
 
 //Non-template members of JFieldID
 namespace FakeJni {
  JFieldID::JFieldID(v_get_func_t get, v_set_func_t set, const char * name, const char * signature, uint32_t modifiers) noexcept :
   _jfieldID(),
-  isStatic(false),
+  type(CALLBACK_PROP),
   modifiers(modifiers),
   name(name),
   signature(signature),
   proxyGetFunc((void (*)())get),
   proxySetFunc((void (*)())set),
+  isArbitrary(true)
+ {}
+
+ JFieldID::JFieldID(std::function<void *()> get, std::function<void(void *)> set, const char *name, const char *signature, uint32_t modifiers) noexcept :
+  _jfieldID(),
+  type(STL_CALLBACK_PROP),
+  modifiers(modifiers),
+  name(name),
+  signature(signature),
+  arbitraryGet(CX::union_cast<decltype(arbitraryGet)>(std::move(get))),
+  arbitrarySet(CX::union_cast<decltype(arbitraryGet)>(std::move(set))),
   isArbitrary(true)
  {}
 
@@ -41,30 +48,52 @@ namespace FakeJni {
  }
 
  bool JFieldID::operator ==(const JFieldID &fid) const noexcept {
-  return (isStatic == fid.isStatic)
+  const auto predicate = (type == fid.type)
    && (modifiers == fid.modifiers)
-   && (isStatic ? (staticProp == fid.staticProp) : (memberProp == fid.memberProp))
    && (strcmp(name, fid.name) == 0)
    && (strcmp(signature, fid.signature) == 0)
-   && (proxyGetFunc == fid.proxyGetFunc)
-   && (proxySetFunc == fid.proxySetFunc)
    && (isArbitrary == fid.isArbitrary);
+  if (predicate) {
+   switch (type) {
+    case STATIC_PROP: return _JFIELDID_PROXY_CMP && (staticProp == fid.staticProp);
+    case MEMBER_PROP: return _JFIELDID_PROXY_CMP && (memberProp == fid.memberProp);
+    case CALLBACK_PROP: return _JFIELDID_PROXY_CMP;
+    case STL_CALLBACK_PROP: {
+     return (arbitraryGet == fid.arbitraryGet) && (arbitrarySet == fid.arbitrarySet);
+    }
+   }
+  }
+  return false;
  }
 
  void JFieldID::set(JObject * const obj, void * const value) const {
   auto& clazz = obj->getClass();
   auto * fid = findVirtualMatch(&clazz);
   if (fid) {
-   if (isArbitrary) {
-    ((void (*)(void *, void *))proxySetFunc)(obj, value);
-   } else {
-    //If the field is static, it is not inherited from the base
-    if ((modifiers & STATIC) == STATIC) {
-     if (fid == this) {
-      _JFIELDID_SET
-     }
-    } else {
-     _JFIELDID_SET
+   switch (fid->type) {
+    case STATIC_PROP: {
+     _JFIELDID_STATIC_CHECK(
+      ((void (*)(void *, void *))fid->proxySetFunc)(staticProp, value);
+      break;
+     )
+    }
+    case MEMBER_PROP: {
+     _JFIELDID_STATIC_CHECK(
+      ((void (*)(void *, int (_CX::AnyClass::*), void *))fid->proxySetFunc)(obj, memberProp, value);
+      break;
+     )
+    }
+    case CALLBACK_PROP: {
+     _JFIELDID_STATIC_CHECK(
+      ((void (*)(void *, void *))proxySetFunc)(obj, value);
+      break;
+     )
+    }
+    case STL_CALLBACK_PROP: {
+     _JFIELDID_STATIC_CHECK(
+      CX::union_cast<std::function<void (void *)>>(arbitrarySet)(value);
+      break;
+     )
     }
    }
   }

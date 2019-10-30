@@ -1,11 +1,11 @@
 #pragma once
 
 #include "meta.h"
+#include "fake-jni/internal/util.h"
 
 #include <cx/strings.h>
 #include <cx/unsafe.h>
-
-#include <functional>
+#include <cx/vararg.h>
 
 #define _GET_AARG_MAP(t, member) \
 template<>\
@@ -288,6 +288,25 @@ namespace FakeJni {
      getAArg<arg_t>(values),
      args...
     );
+   }
+  };
+
+  template<typename R>
+  struct FunctionAccessor<3, std::function<R (void *, void *, void *)>> {
+   using align_t = _CX::arbitrary_align_t<sizeof(std::function<void ()>)>;
+   using func_t = std::function<R * (void *, void *, jvalue *)>;
+
+   template<typename...>
+   [[gnu::always_inline]]
+   inline static R invokeA(align_t func, const char * signature, void * env, void * classOrInst, jvalue * const values) {
+    return CX::union_cast<func_t>(func)(env, classOrInst, values);
+   }
+
+   //TODO use the new <cx/vararg.h> wrapper
+   template<typename...>
+   [[gnu::always_inline]]
+   inline static R invokeV(align_t func, const char * signature, void * env, void * classOrInst, va_list list) {
+    throw std::runtime_error("unimplemented!");
    }
   };
 

@@ -90,10 +90,10 @@ ExternalProject_Get_Property(lzma SOURCE_DIR)
 set(lzma_SOURCE_DIR ${SOURCE_DIR})
 
 add_library(liblzma STATIC IMPORTED GLOBAL)
-file(MAKE_DIRECTORY ${LIBUNWIND_INSTALL_DIR}/include)
+file(MAKE_DIRECTORY ${LIBLZMA_INSTALL_DIR}/include)
 set_target_properties(liblzma PROPERTIES
     IMPORTED_LOCATION ${INSTALL_DIR}/lib/liblzma.a
-    INTERFACE_INCLUDE_DIRECTORIES ${LIBUNWIND_INSTALL_DIR}/include
+    INTERFACE_INCLUDE_DIRECTORIES ${LIBLZMA_INSTALL_DIR}/include
 )
 
 #clean up liblzma's non-compliant build artifacts
