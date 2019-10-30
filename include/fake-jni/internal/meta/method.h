@@ -19,11 +19,17 @@ public:\
 };
 
 #define _ASSERT_NON_VIRTUAL \
-static_assert(\
- !CX::IsVirtualFunction<F>::value,\
- "Virtual functions cannot be registered with fake-jni! If you intend to register an overload for a native base "\
- "type, you must register a function with the exact same name and signature as the target function in the base."\
-);\
+private:\
+struct NonVirtualAssertion {\
+ constexpr NonVirtualAssertion() noexcept {\
+  static_assert(\
+   !CX::IsVirtualFunction<F>::value,\
+   "Virtual functions cannot be registered with fake-jni! If you intend to register an overload for a native base "\
+   "type, you must register a function with the exact same name and signature as the target function in the base."\
+  );\
+ }\
+};\
+inline static constexpr const NonVirtualAssertion check{};
 
 //Template glue code for method registration and access
 namespace FakeJni {
@@ -385,16 +391,12 @@ namespace FakeJni {
 
  template<auto F, typename T, typename R, typename... Args>
  struct Function<F, R (T::*)(Args...), true> : Function<F, decltype(F), nullptr> {
-  constexpr Function() noexcept {
-   _ASSERT_NON_VIRTUAL
-  }
+  _ASSERT_NON_VIRTUAL
  };
 
  template<auto F, typename T, typename R, typename... Args>
  struct Function<F, R (T::*)(Args...) const, true> : Function<F, decltype(F), nullptr> {
-  constexpr Function() noexcept {
-   _ASSERT_NON_VIRTUAL
-  }
+  _ASSERT_NON_VIRTUAL
  };
 
  template<auto F, typename R, typename... Args>
