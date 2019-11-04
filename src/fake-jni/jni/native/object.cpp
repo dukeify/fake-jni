@@ -13,7 +13,7 @@ namespace FakeJni {
   return nullptr;
  }
 
- jobject NativeInterface::newObjectV(jclass clazz, jmethodID mid, va_list args) const {
+ jobject NativeInterface::newObjectV(jclass clazz, jmethodID mid, CX::va_list_t& args) const {
   return *((JClass *)*clazz)->newInstance(&vm, ((JMethodID *)mid)->getSignature(), args);
  }
 

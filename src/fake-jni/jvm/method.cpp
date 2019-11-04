@@ -1,6 +1,7 @@
 #include "fake-jni/jvm.h"
 
 #include <cx/tuple.h>
+#include <cx/vararg.h>
 
 #include <ffi.h>
 
@@ -28,7 +29,7 @@ throw std::runtime_error("FATAL: Could not parse signature for native method: '"
 #define RESOLVER_CASE(a_type, ffi_type) \
 if (type == &ffi_type) {\
  return CX::Tuple<void (*)(), void (*)(), void (*)()> {\
-  (void (*)())&NativeInvocationManager<a_type>::allocate<va_list>,\
+  (void (*)())&NativeInvocationManager<a_type>::allocate<CX::va_list_t&>,\
   (void (*)())&NativeInvocationManager<a_type>::allocate<jvalue *>,\
   (void (*)())&NativeInvocationManager<a_type>::deallocate\
  };\
@@ -50,7 +51,7 @@ struct NativeInvocationManager {
  static void * allocate(ListType);
 
  template<>
- static void * allocate<va_list>(va_list list) {
+ static void * allocate<CX::va_list_t&>(CX::va_list_t& list) {
   return new Arg;
  }
 
@@ -85,11 +86,6 @@ static auto typeResolverGenerator(ffi_type * const type) {
 //Non-template members of JMethodID
 namespace FakeJni {
  std::map<size_t, std::pair<unsigned long, ffi_cif *>> JMethodID::descriptors;
-
- template<>
- inline JMethodID::static_func_t JMethodID::getFunctionProxy<const jvalue *>() const {
-  return proxyFuncA;
- }
 
  //TODO
  char * JMethodID::verifyName(const char * name) {

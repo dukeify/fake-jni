@@ -135,7 +135,8 @@ namespace FakeJni {
   NewObjectV = [](JNIEnv *env, jclass clazz, jmethodID jmid, va_list l) -> jobject {
    _FETCH_JNI_ENV
    _NATIVE_DEBUG(NewObjectV)
-   return ni->newObjectV(clazz, jmid, l);
+   CX::va_list_t list = l;
+   return ni->newObjectV(clazz, jmid, list);
   };
   NewObjectA = [](JNIEnv *env, jclass clazz, jmethodID jmid, const jvalue *value) -> jobject {
    _FETCH_JNI_ENV
@@ -161,7 +162,8 @@ namespace FakeJni {
   CallObjectMethodV = [](JNIEnv *env, jobject obj, jmethodID jmid, va_list l) -> jobject {
    _FETCH_JNI_ENV
    _NATIVE_DEBUG(CallObjectMethodV)
-   return ni->callObjectMethodV(obj, jmid, l);
+   CX::va_list_t list = l;
+   return ni->callObjectMethodV(obj, jmid, list);
   };
   CallObjectMethodA = [](JNIEnv *env, jobject obj, jmethodID jmid, const jvalue *val) -> jobject {
    _FETCH_JNI_ENV
@@ -172,7 +174,8 @@ namespace FakeJni {
   CallBooleanMethodV = [](JNIEnv *env, jobject obj, jmethodID jmid, va_list l) -> jboolean {
    _FETCH_JNI_ENV
    _NATIVE_DEBUG(CallBooleanMethodV)
-   return ni->callBooleanMethodV(obj, jmid, l);
+   CX::va_list_t list = l;
+   return ni->callBooleanMethodV(obj, jmid, list);
   };
   CallBooleanMethodA = [](JNIEnv *env, jobject obj, jmethodID jmid, const jvalue *val) -> jboolean {
    _FETCH_JNI_ENV
@@ -183,7 +186,8 @@ namespace FakeJni {
   CallByteMethodV = [](JNIEnv *env, jobject obj, jmethodID jmid, va_list l) -> jbyte {
    _FETCH_JNI_ENV
    _NATIVE_DEBUG(CallByteMethodV)
-   return ni->callByteMethodV(obj, jmid, l);
+   CX::va_list_t list = l;
+   return ni->callByteMethodV(obj, jmid, list);
   };
   CallByteMethodA = [](JNIEnv *env, jobject obj, jmethodID jmid, const jvalue *val) -> jbyte {
    _FETCH_JNI_ENV
@@ -194,7 +198,8 @@ namespace FakeJni {
   CallCharMethodV = [](JNIEnv *env, jobject obj, jmethodID jmid, va_list l) -> jchar {
    _FETCH_JNI_ENV
    _NATIVE_DEBUG(CallCharMethodV)
-   return ni->callCharMethodV(obj, jmid, l);
+   CX::va_list_t list = l;
+   return ni->callCharMethodV(obj, jmid, list);
   };
   CallCharMethodA = [](JNIEnv *env, jobject obj, jmethodID jmid, const jvalue *val) -> jchar {
    _FETCH_JNI_ENV
@@ -205,7 +210,8 @@ namespace FakeJni {
   CallShortMethodV = [](JNIEnv *env, jobject obj, jmethodID jmid, va_list l) -> jshort {
    _FETCH_JNI_ENV
    _NATIVE_DEBUG(CallShortMethodV)
-   return ni->callShortMethodV(obj, jmid, l);
+   CX::va_list_t list = l;
+   return ni->callShortMethodV(obj, jmid, list);
   };
   CallShortMethodA = [](JNIEnv *env, jobject obj, jmethodID jmid, const jvalue *val) -> jshort {
    _FETCH_JNI_ENV
@@ -216,7 +222,8 @@ namespace FakeJni {
   CallIntMethodV = [](JNIEnv *env, jobject obj, jmethodID jmid, va_list l) -> jint {
    _FETCH_JNI_ENV
    _NATIVE_DEBUG(CallIntMethodV)
-   return ni->callIntMethodV(obj, jmid, l);
+   CX::va_list_t list = l;
+   return ni->callIntMethodV(obj, jmid, list);
   };
   CallIntMethodA = [](JNIEnv *env, jobject obj, jmethodID jmid, const jvalue *val) -> jint {
    _FETCH_JNI_ENV
@@ -227,7 +234,8 @@ namespace FakeJni {
   CallLongMethodV = [](JNIEnv *env, jobject obj, jmethodID jmid, va_list l) -> jlong {
    _FETCH_JNI_ENV
    _NATIVE_DEBUG(CallLongMethodV)
-   return ni->callLongMethodV(obj, jmid, l);
+   CX::va_list_t list = l;
+   return ni->callLongMethodV(obj, jmid, list);
   };
   CallLongMethodA = [](JNIEnv *env, jobject obj, jmethodID jmid, const jvalue *val) -> jlong {
    _FETCH_JNI_ENV
@@ -238,7 +246,8 @@ namespace FakeJni {
   CallFloatMethodV = [](JNIEnv *env, jobject obj, jmethodID jmid, va_list l) -> jfloat {
    _FETCH_JNI_ENV
    _NATIVE_DEBUG(CallFloatMethodV)
-   return ni->callFloatMethodV(obj, jmid, l);
+   CX::va_list_t list = l;
+   return ni->callFloatMethodV(obj, jmid, list);
   };
   CallFloatMethodA = [](JNIEnv *env, jobject obj, jmethodID jmid, const jvalue *val) -> jfloat {
    _FETCH_JNI_ENV
@@ -249,7 +258,8 @@ namespace FakeJni {
   CallDoubleMethodV = [](JNIEnv *env, jobject obj, jmethodID jmid, va_list l) -> jdouble {
    _FETCH_JNI_ENV
    _NATIVE_DEBUG(CallDoubleMethodV)
-   return ni->callDoubleMethodV(obj, jmid, l);
+   CX::va_list_t list = l;
+   return ni->callDoubleMethodV(obj, jmid, list);
   };
   CallDoubleMethodA = [](JNIEnv *env, jobject obj, jmethodID jmid, const jvalue *val) -> jdouble {
    _FETCH_JNI_ENV
@@ -260,7 +270,8 @@ namespace FakeJni {
   CallVoidMethodV = [](JNIEnv *env, jobject obj, jmethodID jmid, va_list l) -> void {
    _FETCH_JNI_ENV
    _NATIVE_DEBUG(CallVoidMethodV)
-   return ni->callVoidMethodV(obj, jmid, l);
+   CX::va_list_t list = l;
+   return ni->callVoidMethodV(obj, jmid, list);
   };
   CallVoidMethodA = [](JNIEnv *env, jobject obj, jmethodID jmid, const jvalue *val) -> void {
    _FETCH_JNI_ENV
@@ -271,7 +282,8 @@ namespace FakeJni {
   CallNonvirtualObjectMethodV = [](JNIEnv *env, jobject obj, jclass clazz, jmethodID jmid, va_list l) -> jobject {
    _FETCH_JNI_ENV
    _NATIVE_DEBUG(CallNonvirtualObjectMethodV)
-   return ni->callNonvirtualObjectMethodV(obj, clazz, jmid, l);
+   CX::va_list_t list = l;
+   return ni->callNonvirtualObjectMethodV(obj, clazz, jmid, list);
   };
   CallNonvirtualObjectMethodA = [](JNIEnv *env, jobject obj, jclass clazz, jmethodID jmid, const jvalue *val) -> jobject {
    _FETCH_JNI_ENV
@@ -282,7 +294,8 @@ namespace FakeJni {
   CallNonvirtualBooleanMethodV = [](JNIEnv *env, jobject obj, jclass clazz, jmethodID jmid, va_list l) -> jboolean {
    _FETCH_JNI_ENV
    _NATIVE_DEBUG(CallNonvirtualBooleanMethodV)
-   return ni->callNonvirtualBooleanMethodV(obj, clazz, jmid, l);
+   CX::va_list_t list = l;
+   return ni->callNonvirtualBooleanMethodV(obj, clazz, jmid, list);
   };
   CallNonvirtualBooleanMethodA = [](JNIEnv *env, jobject obj, jclass clazz, jmethodID jmid, const jvalue *val) -> jboolean {
    _FETCH_JNI_ENV
@@ -293,7 +306,8 @@ namespace FakeJni {
   CallNonvirtualByteMethodV = [](JNIEnv *env, jobject obj, jclass clazz, jmethodID jmid, va_list l) -> jbyte {
    _FETCH_JNI_ENV
    _NATIVE_DEBUG(CallNonvirtualByteMethodV)
-   return ni->callNonvirtualByteMethodV(obj, clazz, jmid, l);
+   CX::va_list_t list = l;
+   return ni->callNonvirtualByteMethodV(obj, clazz, jmid, list);
   };
   CallNonvirtualByteMethodA = [](JNIEnv *env, jobject obj, jclass clazz, jmethodID jmid, const jvalue *val) -> jbyte {
    _FETCH_JNI_ENV
@@ -304,7 +318,8 @@ namespace FakeJni {
   CallNonvirtualCharMethodV = [](JNIEnv *env, jobject obj, jclass clazz, jmethodID jmid, va_list l) -> jchar {
    _FETCH_JNI_ENV
    _NATIVE_DEBUG(CallNonvirtualCharMethodV)
-   return ni->callNonvirtualCharMethodV(obj, clazz, jmid, l);
+   CX::va_list_t list = l;
+   return ni->callNonvirtualCharMethodV(obj, clazz, jmid, list);
   };
   CallNonvirtualCharMethodA = [](JNIEnv *env, jobject obj, jclass clazz, jmethodID jmid, const jvalue *val) -> jchar {
    _FETCH_JNI_ENV
@@ -315,7 +330,8 @@ namespace FakeJni {
   CallNonvirtualShortMethodV = [](JNIEnv *env, jobject obj, jclass clazz, jmethodID jmid, va_list l) -> jshort {
    _FETCH_JNI_ENV
    _NATIVE_DEBUG(CallNonvirtualShortMethodV)
-   return ni->callNonvirtualShortMethodV(obj, clazz, jmid, l);
+   CX::va_list_t list = l;
+   return ni->callNonvirtualShortMethodV(obj, clazz, jmid, list);
   };
   CallNonvirtualShortMethodA = [](JNIEnv *env, jobject obj, jclass clazz, jmethodID jmid, const jvalue *val) -> jshort {
    _FETCH_JNI_ENV
@@ -326,7 +342,8 @@ namespace FakeJni {
   CallNonvirtualIntMethodV = [](JNIEnv *env, jobject obj, jclass clazz, jmethodID jmid, va_list l) -> jint {
    _FETCH_JNI_ENV
    _NATIVE_DEBUG(CallNonvirtualIntMethodV)
-   return ni->callNonvirtualIntMethodV(obj, clazz, jmid, l);
+   CX::va_list_t list = l;
+   return ni->callNonvirtualIntMethodV(obj, clazz, jmid, list);
   };
   CallNonvirtualIntMethodA = [](JNIEnv *env, jobject obj, jclass clazz, jmethodID jmid, const jvalue *val) -> jint {
    _FETCH_JNI_ENV
@@ -337,7 +354,8 @@ namespace FakeJni {
   CallNonvirtualLongMethodV = [](JNIEnv *env, jobject obj, jclass clazz, jmethodID jmid, va_list l) -> jlong {
    _FETCH_JNI_ENV
    _NATIVE_DEBUG(CallNonvirtualLongMethodV)
-   return ni->callNonvirtualLongMethodV(obj, clazz, jmid, l);
+   CX::va_list_t list = l;
+   return ni->callNonvirtualLongMethodV(obj, clazz, jmid, list);
   };
   CallNonvirtualLongMethodA = [](JNIEnv *env, jobject obj, jclass clazz, jmethodID jmid, const jvalue *val) -> jlong {
    _FETCH_JNI_ENV
@@ -348,7 +366,8 @@ namespace FakeJni {
   CallNonvirtualFloatMethodV = [](JNIEnv *env, jobject obj, jclass clazz, jmethodID jmid, va_list l) -> jfloat {
    _FETCH_JNI_ENV
    _NATIVE_DEBUG(CallNonvirtualFloatMethodV)
-   return ni->callNonvirtualFloatMethodV(obj, clazz, jmid, l);
+   CX::va_list_t list = l;
+   return ni->callNonvirtualFloatMethodV(obj, clazz, jmid, list);
   };
   CallNonvirtualFloatMethodA = [](JNIEnv *env, jobject obj, jclass clazz, jmethodID jmid, const jvalue *val) -> jfloat {
    _FETCH_JNI_ENV
@@ -359,7 +378,8 @@ namespace FakeJni {
   CallNonvirtualDoubleMethodV = [](JNIEnv *env, jobject obj, jclass clazz, jmethodID jmid, va_list l) -> jdouble {
    _FETCH_JNI_ENV
    _NATIVE_DEBUG(CallNonvirtualDoubleMethodV)
-   return ni->callNonvirtualDoubleMethodV(obj, clazz, jmid, l);
+   CX::va_list_t list = l;
+   return ni->callNonvirtualDoubleMethodV(obj, clazz, jmid, list);
   };
   CallNonvirtualDoubleMethodA = [](JNIEnv *env, jobject obj, jclass clazz, jmethodID jmid, const jvalue *val) -> jdouble {
    _FETCH_JNI_ENV
@@ -370,7 +390,8 @@ namespace FakeJni {
   CallNonvirtualVoidMethodV = [](JNIEnv *env, jobject obj, jclass clazz, jmethodID jmid, va_list l) -> void {
    _FETCH_JNI_ENV
    _NATIVE_DEBUG(CallNonvirtualVoidMethodV)
-   return ni->callNonvirtualVoidMethodV(obj, clazz, jmid, l);
+   CX::va_list_t list = l;
+   return ni->callNonvirtualVoidMethodV(obj, clazz, jmid, list);
   };
   CallNonvirtualVoidMethodA = [](JNIEnv *env, jobject obj, jclass clazz, jmethodID jmid, const jvalue *val) -> void {
    _FETCH_JNI_ENV
@@ -481,7 +502,8 @@ namespace FakeJni {
   CallStaticObjectMethodV = [](JNIEnv *env, jclass clazz, jmethodID jmid, va_list l) -> jobject {
    _FETCH_JNI_ENV
    _NATIVE_DEBUG(CallStaticObjectMethodV)
-   return ni->callStaticObjectMethodV(clazz, jmid, l);
+   CX::va_list_t list = l;
+   return ni->callStaticObjectMethodV(clazz, jmid, list);
   };
   CallStaticObjectMethodA = [](JNIEnv *env, jclass clazz, jmethodID jmid, const jvalue *val) -> jobject {
    _FETCH_JNI_ENV
@@ -492,7 +514,8 @@ namespace FakeJni {
   CallStaticBooleanMethodV = [](JNIEnv *env, jclass clazz, jmethodID jmid, va_list l) -> jboolean {
    _FETCH_JNI_ENV
    _NATIVE_DEBUG(CallStaticBooleanMethodV)
-   return ni->callStaticBooleanMethodV(clazz, jmid, l);
+   CX::va_list_t list = l;
+   return ni->callStaticBooleanMethodV(clazz, jmid, list);
   };
   CallStaticBooleanMethodA = [](JNIEnv *env, jclass clazz, jmethodID jmid, const jvalue *val) -> jboolean {
    _FETCH_JNI_ENV
@@ -503,7 +526,8 @@ namespace FakeJni {
   CallStaticByteMethodV = [](JNIEnv *env, jclass clazz, jmethodID jmid, va_list l) -> jbyte {
    _FETCH_JNI_ENV
    _NATIVE_DEBUG(CallStaticByteMethodV)
-   return ni->callStaticByteMethodV(clazz, jmid, l);
+   CX::va_list_t list = l;
+   return ni->callStaticByteMethodV(clazz, jmid, list);
   };
   CallStaticByteMethodA = [](JNIEnv *env, jclass clazz, jmethodID jmid, const jvalue *val) -> jbyte {
    _FETCH_JNI_ENV
@@ -514,7 +538,8 @@ namespace FakeJni {
   CallStaticCharMethodV = [](JNIEnv *env, jclass clazz, jmethodID jmid, va_list l) -> jchar {
    _FETCH_JNI_ENV
    _NATIVE_DEBUG(CallStaticCharMethodV)
-   return ni->callStaticCharMethodV(clazz, jmid, l);
+   CX::va_list_t list = l;
+   return ni->callStaticCharMethodV(clazz, jmid, list);
   };
   CallStaticCharMethodA = [](JNIEnv *env, jclass clazz, jmethodID jmid, const jvalue *val) -> jchar {
    _FETCH_JNI_ENV
@@ -525,7 +550,8 @@ namespace FakeJni {
   CallStaticShortMethodV = [](JNIEnv *env, jclass clazz, jmethodID jmid, va_list l) -> jshort {
    _FETCH_JNI_ENV
    _NATIVE_DEBUG(CallStaticShortMethodV)
-   return ni->callStaticShortMethodV(clazz, jmid, l);
+   CX::va_list_t list = l;
+   return ni->callStaticShortMethodV(clazz, jmid, list);
   };
   CallStaticShortMethodA = [](JNIEnv *env, jclass clazz, jmethodID jmid, const jvalue *val) -> jshort {
    _FETCH_JNI_ENV
@@ -536,7 +562,8 @@ namespace FakeJni {
   CallStaticIntMethodV = [](JNIEnv *env, jclass clazz, jmethodID jmid, va_list l) -> jint {
    _FETCH_JNI_ENV
    _NATIVE_DEBUG(CallStaticIntMethodV)
-   return ni->callStaticIntMethodV(clazz, jmid, l);
+   CX::va_list_t list = l;
+   return ni->callStaticIntMethodV(clazz, jmid, list);
   };
   CallStaticIntMethodA = [](JNIEnv *env, jclass clazz, jmethodID jmid, const jvalue *val) -> jint {
    _FETCH_JNI_ENV
@@ -547,7 +574,8 @@ namespace FakeJni {
   CallStaticLongMethodV = [](JNIEnv *env, jclass clazz, jmethodID jmid, va_list l) -> jlong {
    _FETCH_JNI_ENV
    _NATIVE_DEBUG(CallStaticLongMethodV)
-   return ni->callStaticLongMethodV(clazz, jmid, l);
+   CX::va_list_t list = l;
+   return ni->callStaticLongMethodV(clazz, jmid, list);
   };
   CallStaticLongMethodA = [](JNIEnv *env, jclass clazz, jmethodID jmid, const jvalue *val) -> jlong {
    _FETCH_JNI_ENV
@@ -558,7 +586,8 @@ namespace FakeJni {
   CallStaticFloatMethodV = [](JNIEnv *env, jclass clazz, jmethodID jmid, va_list l) -> jfloat {
    _FETCH_JNI_ENV
    _NATIVE_DEBUG(CallStaticFloatMethodV)
-   return ni->callStaticFloatMethodV(clazz, jmid, l);
+   CX::va_list_t list = l;
+   return ni->callStaticFloatMethodV(clazz, jmid, list);
   };
   CallStaticFloatMethodA = [](JNIEnv *env, jclass clazz, jmethodID jmid, const jvalue *val) -> jfloat {
    _FETCH_JNI_ENV
@@ -569,7 +598,8 @@ namespace FakeJni {
   CallStaticDoubleMethodV = [](JNIEnv *env, jclass clazz, jmethodID jmid, va_list l) -> jdouble {
    _FETCH_JNI_ENV
    _NATIVE_DEBUG(CallStaticDoubleMethodV)
-   return ni->callStaticDoubleMethodV(clazz, jmid, l);
+   CX::va_list_t list = l;
+   return ni->callStaticDoubleMethodV(clazz, jmid, list);
   };
   CallStaticDoubleMethodA = [](JNIEnv *env, jclass clazz, jmethodID jmid, const jvalue *val) -> jdouble {
    _FETCH_JNI_ENV
@@ -580,7 +610,8 @@ namespace FakeJni {
   CallStaticVoidMethodV = [](JNIEnv *env, jclass clazz, jmethodID jmid, va_list l) -> void {
    _FETCH_JNI_ENV
    _NATIVE_DEBUG(CallStaticVoidMethodV)
-   return ni->callStaticVoidMethodV(clazz, jmid, l);
+   CX::va_list_t list = l;
+   return ni->callStaticVoidMethodV(clazz, jmid, list);
   };
   CallStaticVoidMethodA = [](JNIEnv *env, jclass clazz, jmethodID jmid, const jvalue *val) -> void {
    _FETCH_JNI_ENV

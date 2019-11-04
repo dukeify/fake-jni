@@ -1,8 +1,10 @@
 #include "fake-jni/internal/jni/native.h"
 #include "fake-jni/jvm.h"
 
+#include <cx/vararg.h>
+
 #define _BEGIN_VA_LIST \
-va_list l;\
+CX::va_list_t l;\
 va_start(l, jmid);
 
 namespace FakeJni {

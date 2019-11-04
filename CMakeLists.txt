@@ -61,8 +61,8 @@ set_target_properties(libffi PROPERTIES
 #clean up libffi's non-compliant build artifacts
 ExternalProject_Get_Property(ffi SOURCE_DIR)
 add_custom_command(
-    TARGET ffi POST_BUILD
-    COMMAND git clean -f
+    TARGET ffi PRE_BUILD
+    COMMAND git clean -x -d -f
     COMMAND git reset --hard
     WORKING_DIRECTORY ${SOURCE_DIR}
     COMMENT "Cleaning libffi directory..."
@@ -99,8 +99,8 @@ set_target_properties(liblzma PROPERTIES
 #clean up liblzma's non-compliant build artifacts
 ExternalProject_Get_Property(lzma SOURCE_DIR)
 add_custom_command(
-    TARGET lzma POST_BUILD
-    COMMAND git clean -f
+    TARGET lzma PRE_BUILD
+    COMMAND git clean -x -d -f
     COMMAND git reset --hard
     WORKING_DIRECTORY ${SOURCE_DIR}
     COMMENT "Cleaning xz directory..."
@@ -132,6 +132,16 @@ file(MAKE_DIRECTORY ${LIBUNWIND_INSTALL_DIR}/include)
 set_target_properties(libunwind PROPERTIES
     IMPORTED_LOCATION ${INSTALL_DIR}/lib/libunwind.a
     INTERFACE_INCLUDE_DIRECTORIES ${LIBUNWIND_INSTALL_DIR}/include
+)
+
+#clean up libunwind's non-compliant build artifacts
+ExternalProject_Get_Property(unwind SOURCE_DIR)
+add_custom_command(
+        TARGET unwind PRE_BUILD
+        COMMAND git clean -x -d -f
+        COMMAND git reset --hard
+        WORKING_DIRECTORY ${SOURCE_DIR}
+        COMMENT "Cleaning unwind directory..."
 )
 
 #fake-jni
