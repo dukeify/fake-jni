@@ -166,7 +166,7 @@ namespace FakeJni {
    auto& descriptor = pair.second;
    if (!descriptor) {
     auto&& args = getFfiPrototype(signature, name);
-    const auto argc = (unsigned int)args.size() - 2;
+    const auto argc = (unsigned int)args.size() - 1;
     descriptor = new ffi_cif;
     auto types = new ffi_type*[argc + 2];
     //env type
@@ -177,7 +177,7 @@ namespace FakeJni {
     for (unsigned int i = 0; i < argc; i++) {
      types[i + 2] = args[i];
     }
-    auto status = ffi_prep_cif(descriptor, FFI_DEFAULT_ABI, argc + 2, args[argc + 1], types);
+    auto status = ffi_prep_cif(descriptor, FFI_DEFAULT_ABI, argc + 2, args[argc], types);
     if (status != FFI_OK) {
      throw std::runtime_error(
       "FATAL: ffi_prep_cif failed for function: '"
@@ -213,12 +213,12 @@ namespace FakeJni {
    auto& descriptor = pair.second;
    if (!descriptor) {
     auto&& args = getFfiPrototype(signature, name);
-    const auto argc = (unsigned int)args.size() - 2;
+    const auto argc = (unsigned int)args.size() - 1;
     descriptor = new ffi_cif;
     auto types = new ffi_type*[2];
     types[0] = &ffi_type_pointer;
     types[1] = &ffi_type_pointer;
-    auto status = ffi_prep_cif_var(descriptor, FFI_DEFAULT_ABI, 2, argc + 2, args[argc + 1], types);
+    auto status = ffi_prep_cif_var(descriptor, FFI_DEFAULT_ABI, 2, argc + 2, args[argc], types);
     if (status != FFI_OK) {
      throw std::runtime_error(
       "FATAL: ffi_prep_cif_var failed for function: '"
