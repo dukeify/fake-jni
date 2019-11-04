@@ -1032,7 +1032,7 @@ namespace FakeJni {
    using JClassBreeder<T, nullptr>::JClassBreeder;
 
    template<typename A>
-   static JObject * constructorPredicate(const JavaVM * vm, const char * signature, A& args);
+   static JObject * constructorPredicate(const JavaVM * vm, const char * signature, A args);
 
    static constexpr void assertCompliance() noexcept;
   };
@@ -1042,7 +1042,7 @@ namespace FakeJni {
    using JClassBreeder<T, nullptr>::JClassBreeder;
 
    template<typename A>
-   static JObject * constructorPredicate(const JavaVM * vm, const char * signature, A& args);
+   static JObject * constructorPredicate(const JavaVM * vm, const char * signature, A args);
 
    static constexpr void assertCompliance() noexcept;
   };
@@ -1052,7 +1052,7 @@ namespace FakeJni {
  private:
   JObject
    * (* const constructV)(const JavaVM *, const char *, CX::va_list_t&),
-   * (* const constructA)(const JavaVM *, const char *, const jvalue *&);
+   * (* const constructA)(const JavaVM *, const char *, const jvalue *);
 
   const char * const className;
 
@@ -1697,7 +1697,7 @@ namespace FakeJni {
   //Class members
   template<typename T>
   template<typename A>
-  JObject * JClassBreeder<T, true>::constructorPredicate(const JavaVM * const vm, const char * const signature, A& args) {
+  JObject * JClassBreeder<T, true>::constructorPredicate(const JavaVM * const vm, const char * const signature, A args) {
    JClass& descriptor = const_cast<JClass&>(T::descriptor);
    Jvm * const jvm = (Jvm *)const_cast<JavaVM *>(vm);
    for (auto& method : descriptor.functions) {
@@ -1730,7 +1730,7 @@ namespace FakeJni {
   //Non-class members
   template<typename T>
   template<typename A>
-  JObject * JClassBreeder<T, false>::constructorPredicate(const JavaVM * vm, const char * signature, A& args) {
+  JObject * JClassBreeder<T, false>::constructorPredicate(const JavaVM * vm, const char * signature, A args) {
    throw std::runtime_error("FATAL: You cannot construct primitive types!");
    return nullptr;
   }
@@ -1786,7 +1786,7 @@ namespace FakeJni {
  JClass::JClass(uint32_t modifiers, _CX::JClassBreeder<T, true> breeder) noexcept :
   JObject(),
   constructV(&decltype(breeder)::template constructorPredicate<CX::va_list_t&>),
-  constructA(&decltype(breeder)::template constructorPredicate<const jvalue *&>),
+  constructA(&decltype(breeder)::template constructorPredicate<const jvalue *>),
   className(T::name),
   isArbitrary(false),
   modifiers(modifiers),
@@ -1803,7 +1803,7 @@ namespace FakeJni {
  JClass::JClass(uint32_t modifiers, _CX::JClassBreeder<T, false> breeder) noexcept :
   JObject(),
   constructV(&decltype(breeder)::template constructorPredicate<CX::va_list_t&>),
-  constructA(&decltype(breeder)::template constructorPredicate<const jvalue *&>),
+  constructA(&decltype(breeder)::template constructorPredicate<const jvalue *>),
   className(_CX::JniTypeBase<T>::signature),
   isArbitrary(false),
   modifiers(modifiers),

@@ -11,7 +11,7 @@ namespace FakeJni {
   constructV([](const JavaVM * const, const char * const, CX::va_list_t&) -> JObject * {
    _ERROR_ARBITRARY_CLASS
   }),
-  constructA([](const JavaVM * const, const char * const, const jvalue *&) -> JObject * {
+  constructA([](const JavaVM * const, const char * const, const jvalue *) -> JObject * {
    _ERROR_ARBITRARY_CLASS
   }),
   className(name),
