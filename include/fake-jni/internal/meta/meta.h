@@ -112,10 +112,6 @@ namespace FakeJni {
   template<typename T>
   class BaseDefined<T, CX::void_a<T::base>>;
 
-  struct member_ptr_align_t {
-   void * low, * high;
-  } __attribute__((packed));
-
   template<unsigned N>
   struct arbitrary_align_t {
    unsigned char data[N];
