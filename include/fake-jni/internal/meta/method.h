@@ -7,14 +7,20 @@
 #include <cx/unsafe.h>
 #include <cx/vararg.h>
 
-#define _GET_AARG_MAP(t, member) \
+#define _JVALUE_UTIL_MAP(t, member) \
 template<>\
-class JValueArgResolver<false, t> {\
+class JValueUtil<t, false> {\
 public:\
  inline static constexpr const bool isRegisteredResolver = true;\
  [[gnu::always_inline]]\
  inline static t getAArg(jvalue *values) {\
   return (t)values->member;\
+ }\
+ [[gnu::always_inline nodiscard]]\
+ inline static jvalue makeAArg(t value) {\
+  jvalue jv;\
+  jv.member = value;\
+  return jv;\
  }\
 };
 
@@ -30,6 +36,22 @@ struct NonVirtualAssertion {\
  }\
 };\
 inline static constexpr const NonVirtualAssertion check{};
+
+#define _PARSER_CALLBACK(identifier, type) \
+parser[#identifier[0]] = [&](char * token, CX::va_list_t& list) {\
+ if (!argsParsed) {\
+  result.push_back(JValueUtil<type>::makeAArg(CX::safe_va_arg<type>(list)));\
+ }\
+};
+
+#define _PARSER_CALLBACK_OBJECT(identifier, type) \
+parser[#identifier[0]] = [&](char * token, CX::va_list_t& list) {\
+ if (!argsParsed) {\
+  jvalue jv;\
+  jv.l = CX::safe_va_arg<jobject>(list);\
+  result.push_back(jv);\
+ }\
+};
 
 //Template glue code for method registration and access
 namespace FakeJni {
@@ -54,34 +76,30 @@ namespace FakeJni {
   };
 
   //C to C++ Vararg glue
-  template<bool IsClass, typename T>
-  class JValueArgResolver {
+  template<typename T, bool isClass = __is_class(typename CX::ComponentTypeResolver<T>::type)>
+  class JValueUtil {
   public:
-   inline static constexpr const bool isRegisteredResolver = false;
+   static constexpr const auto isRegisteredResolver = false;
   };
 
-  //Function breeder for JValueArgResolver<typename>::getAArg(jvalue *)
+  //Function breeder for JValueUtil<typename>::getAArg(jvalue *)
   template<typename T>
   [[gnu::always_inline]]
   inline static T getAArg(jvalue *values) {
    using componentType = typename ComponentTypeResolver<T>::type;
-   static_assert(
-    JValueArgResolver<false, componentType>::isRegisteredResolver
-    || JValueArgResolver<true, componentType>::isRegisteredResolver,
-    "Illegal JNI function parameter type!"
-   );
-   return JValueArgResolver<__is_class(componentType), T>::getAArg(values);
+   static_assert(JValueUtil<componentType>::isRegisteredResolver, "Illegal JNI function parameter type!");
+   return JValueUtil<T>::getAArg(values);
   }
 
   //Type-to-member-name maps for the jvalue union
-  _GET_AARG_MAP(JBoolean, z)
-  _GET_AARG_MAP(JByte, b)
-  _GET_AARG_MAP(JChar, c)
-  _GET_AARG_MAP(JShort, s)
-  _GET_AARG_MAP(JInt, i)
-  _GET_AARG_MAP(JLong, j)
-  _GET_AARG_MAP(JFloat, f)
-  _GET_AARG_MAP(JDouble, d)
+  _JVALUE_UTIL_MAP(JBoolean, z)
+  _JVALUE_UTIL_MAP(JByte, b)
+  _JVALUE_UTIL_MAP(JChar, c)
+  _JVALUE_UTIL_MAP(JShort, s)
+  _JVALUE_UTIL_MAP(JInt, i)
+  _JVALUE_UTIL_MAP(JLong, j)
+  _JVALUE_UTIL_MAP(JFloat, f)
+  _JVALUE_UTIL_MAP(JDouble, d)
 
   template<auto, typename...>
   struct FunctionAccessor;
@@ -236,11 +254,47 @@ namespace FakeJni {
     return CX::union_cast<func_t>(func)(env, classOrInst, values);
    }
 
-   //TODO use the new <cx/vararg.h> wrapper
    template<typename...>
    [[gnu::always_inline]]
    inline static R invokeV(align_t func, const char * signature, void * env, void * classOrInst, CX::va_list_t& list) {
-    throw std::runtime_error("unimplemented!");
+    struct Parser {
+     JniFunctionParser<CX::va_list_t&> parser;
+     bool argsParsed = false;
+     std::vector<jvalue> result;
+
+     Parser() {
+      parser[')'] = [&](char * token, CX::va_list_t&) { argsParsed = true; };
+      _PARSER_CALLBACK(Z, JBoolean)
+      _PARSER_CALLBACK(B, JByte)
+      _PARSER_CALLBACK(C, JChar)
+      _PARSER_CALLBACK(S, JShort)
+      _PARSER_CALLBACK(I, JInt)
+      _PARSER_CALLBACK(F, JFloat)
+      _PARSER_CALLBACK(J, JLong)
+      _PARSER_CALLBACK(D, JDouble)
+      _PARSER_CALLBACK_OBJECT([, jobject)
+      _PARSER_CALLBACK_OBJECT(L, jobject)
+     }
+
+     jvalue * parse(const char * signature, CX::va_list_t& list) const {
+      auto& ref = const_cast<Parser&>(*this);
+      ref.result.clear();
+      ref.argsParsed = false;
+      parser.parse(signature, list);
+      auto size = result.size();
+      auto values = new jvalue[size];
+      for (decltype(size) i = 0; i < size; i++) {
+       values[i] = result[i];
+      }
+      return values;
+     }
+    };
+
+    static const Parser parser;
+    auto values = parser.parse(signature, list);
+    R ret = invokeA(func, signature, env, classOrInst, values);
+    delete[] values;
+    return ret;
    }
   };
 
@@ -359,3 +413,5 @@ namespace FakeJni {
 
 #undef _GET_AARG_MAP
 #undef _ASSERT_NON_VIRTUAL
+#undef _PARSER_CALLBACK
+#undef _PARSER_CALLBACK_OBJECT

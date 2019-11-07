@@ -1,30 +1,16 @@
 #include "fake-jni/jvm.h"
+#include "fake-jni/internal/util.h"
 
 #include <cx/tuple.h>
 #include <cx/vararg.h>
 
 #include <ffi.h>
 
-#include <limits>
 #include <map>
 #include <functional>
 
-#define SIG_PREAMBLE(case_char, ffi_type) \
-case #case_char[0]: {\
- if (inside_obj_stmt) continue;\
- if (inside_array) {\
-  inside_array = false;\
-  argc += 1;\
-  ffiTypes.push_back(&ffi_type_pointer);\
-  break;\
- }\
-}\
-argc += 1;\
-ffiTypes.push_back(&ffi_type);\
-break;
-
-#define SIG_PARSE_FAILURE \
-throw std::runtime_error("FATAL: Could not parse signature for native method: '" + std::string(name) + "'!");
+#define PARSER_CALLBACK(identifier, value) \
+parser[#identifier[0]] = [&](char * token) { prototype.push_back(&value); };
 
 #define RESOLVER_CASE(a_type, ffi_type) \
 if (type == &ffi_type) {\
@@ -98,57 +84,34 @@ namespace FakeJni {
  }
 
  std::vector<ffi_type *> JMethodID::getFfiPrototype(const char * signature, const char * name) {
-  using int_limit_t = std::numeric_limits<unsigned int>;
-  bool
-   inside_array = false,
-   inside_obj_stmt = false;
-  auto argc = int_limit_t::max();
-  std::vector<ffi_type *> ffiTypes;
-  for (char s : std::string(signature)) {
-   switch (s) {
-    case '(': continue;
-    case 'L': {
-     inside_obj_stmt = true;
-     break;
-    }
-    case ';': {
-     if (!inside_obj_stmt) {
-      SIG_PARSE_FAILURE
-     }
-     inside_obj_stmt = false;
-     if (inside_array) {
-      inside_array = false;
-     }
-     argc += 1;
-     ffiTypes.push_back(&ffi_type_pointer);
-     break;
-    }
-    case '[': {
-     inside_array = true;
-     break;
-    }
-    SIG_PREAMBLE(V, ffi_type_void)
-    SIG_PREAMBLE(Z, ffi_type_uint8)
-    SIG_PREAMBLE(B, ffi_type_sint8)
-    SIG_PREAMBLE(C, ffi_type_uint16)
-    SIG_PREAMBLE(S, ffi_type_sint16)
-    SIG_PREAMBLE(I, ffi_type_sint32)
-    SIG_PREAMBLE(F, ffi_type_float)
-    SIG_PREAMBLE(J, ffi_type_sint64)
-    SIG_PREAMBLE(D, ffi_type_double)
-    case ')': continue;
-    default: {
-     if (!(inside_array || inside_obj_stmt)) {
-      SIG_PARSE_FAILURE
-     }
-    }
+  struct Parser {
+   JniFunctionParser<> parser;
+   std::vector<ffi_type *> prototype;
+
+   Parser() {
+    PARSER_CALLBACK(V, ffi_type_void)
+    PARSER_CALLBACK(Z, ffi_type_uint8)
+    PARSER_CALLBACK(B, ffi_type_sint8)
+    PARSER_CALLBACK(C, ffi_type_uint16)
+    PARSER_CALLBACK(S, ffi_type_sint16)
+    PARSER_CALLBACK(I, ffi_type_sint32)
+    PARSER_CALLBACK(F, ffi_type_float)
+    PARSER_CALLBACK(J, ffi_type_sint64)
+    PARSER_CALLBACK(D, ffi_type_double)
+    PARSER_CALLBACK([, ffi_type_pointer)
+    PARSER_CALLBACK(L, ffi_type_pointer)
    }
-  }
-  //No arguments were parsed, not even the return type
-  if (argc == int_limit_t::max()) {
-   SIG_PARSE_FAILURE
-  }
-  return ffiTypes;
+
+   std::vector<ffi_type *> parse(const char * signature) const {
+    auto& ref = const_cast<Parser&>(*this);
+    ref.prototype.clear();
+    parser.parse(signature);
+    return prototype;
+   }
+  };
+
+  static const Parser parser;
+  return parser.parse(signature);
  }
 
  JMethodID::JMethodID(const JNINativeMethod * method) :

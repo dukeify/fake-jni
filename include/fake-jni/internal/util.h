@@ -295,7 +295,7 @@ namespace FakeJni {
 case #identifier[0]: {\
  const auto& callback = ref.callbacks[#identifier[0]];\
  if (callback) {\
-  ref.result.push_back(callback(const_cast<char *>(#identifier)));\
+  callback(const_cast<char *>(#identifier), args...);\
  }\
  break;\
 }
@@ -305,29 +305,37 @@ const auto size = (size_t)(signature - start + 1);\
 char *token = new char[size + 1];\
 token[size] = '\0';\
 strncpy(token, start, size);\
-result.push_back(callback(token));\
+callback(token, args...);\
 delete[] token;
 
- template<typename T>
+ template<typename... Args>
  struct JniFunctionParser final {
-  using callback_t = T (char * token);
+  using callback_t = void (char * token, Args... args);
+
+  JniFunctionParser() = default;
+  JniFunctionParser(const JniFunctionParser& parser) noexcept :
+   callbacks([&]() {
+    decltype(callbacks) _callbacks;
+    _callbacks.insert(parser.callbacks.begin(), parser.callbacks.end());
+    return _callbacks;
+   }())
+  {}
 
   std::function<callback_t>& operator[](char identifier) {
    return callbacks[identifier];
   }
 
-  std::vector<T> parse(const char * signature) const {
+  void parse(const char * signature, Args... args) const {
    auto& ref = const_cast<JniFunctionParser &>(*this);
    std::scoped_lock lock(ref.parserMutex);
    char parensMatched = -2;
-   ref.result.clear();
    while (*signature) {
     switch(*signature) {
      case '(': {
       parensMatched += 1;
       const auto& callback = ref.callbacks['('];
       if (callback) {
-       ref.result.push_back(callback(const_cast<char *>("(")));
+       callback(const_cast<char *>("("), args...);
       }
       break;
      }
@@ -335,17 +343,17 @@ delete[] token;
       parensMatched += 1;
       const auto& callback = ref.callbacks[')'];
       if (callback) {
-       ref.result.push_back(callback(const_cast<char *>(")")));
+       callback(const_cast<char *>(")"), args...);
       }
       break;
      }
      case 'V': {
       if (parensMatched == -1) {
-       throw std::runtime_error("Illegal JNI function prototype, void cannot be function argument!");
+       throw std::runtime_error("Illegal JNI function prototype, void cannot be a function argument!");
       }
       const auto& callback = ref.callbacks['V'];
       if (callback) {
-       ref.result.push_back(callback(const_cast<char *>("V")));
+       callback(const_cast<char *>("V"), args...);
       }
       break;
      }
@@ -358,11 +366,11 @@ delete[] token;
      _CASE_CALLBACK_IF_DEFINED(J)
      _CASE_CALLBACK_IF_DEFINED(D)
      case 'L': {
-      ref.parseClass(signature);
+      ref.parseClass(signature, args...);
       break;
      }
      case '[': {
-      ref.parseArray(signature);
+      ref.parseArray(signature, args...);
       break;
      }
      default: throw std::runtime_error("Illegal JNI function prototype!");
@@ -372,15 +380,13 @@ delete[] token;
    if (parensMatched) {
     throw std::runtime_error("Unmatched parenthesis in JNI function prototype!");
    }
-   return result;
   }
 
  private:
   std::map<char, std::function<callback_t>> callbacks;
-  std::vector<T> result;
   std::mutex parserMutex;
 
-  void parseClass(const char *& signature, bool runCallback = true) {
+  void parseClass(const char *& signature, Args&... args, bool runCallback = true) {
    const char * start = signature;
    while (*signature != ';') {
     signature++;
@@ -391,20 +397,28 @@ delete[] token;
    }
   }
 
-  void parseArray(const char *& signature) {
+  void parseArray(const char *& signature, Args&... args) {
    const char * start = signature;
-   bool loop = true;
+   bool
+    loop = true,
+    parsedClass = false;
    do {
     signature++;
     switch(*signature) {
      case '[': continue;
-     case 'L': parseClass(signature, false);
+     case 'L': {
+      parsedClass = true;
+      parseClass(signature, args..., false);
+     }
      default: loop = false;
     }
    } while(loop);
    auto& callback = callbacks['['];
    if (callback) {
     _JNI_PARSER_TOKEN_CALLBACK
+   }
+   if (!parsedClass) {
+    signature--;
    }
   }
  };

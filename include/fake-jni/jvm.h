@@ -1741,23 +1741,31 @@ namespace FakeJni {
   }
  }
 
- //JValueArgResolver for JObject derived classes (see meta/method.h)
+ //JValueUtil for JObject derived classes (see meta/method.h)
  namespace _CX {
   template<typename T>
-  class JValueArgResolver<true, T> {
+  class JValueUtil<T, true> {
 
   public:
    inline static constexpr const bool isRegisteredResolver = true;
    using componentType = typename ComponentTypeResolver<T*>::type;
 
+   static_assert(__is_base_of(JObject, componentType), "Illegal JNI function parameter type!");
+
    [[gnu::always_inline]]
-   inline static componentType* getAArg(jvalue *values) {
-    static_assert(__is_base_of(JObject, componentType), "Illegal JNI function parameter type!");
+   inline static componentType * getAArg(jvalue * values) {
     if constexpr(CastDefined<componentType>::value) {
      return componentType::cast::cast((JObject*)values->l);
     } else {
      return (componentType *)values->l;
     }
+   }
+
+   [[gnu::always_inline nodiscard]]
+   inline static jvalue makeAArg(componentType * value) {
+    jvalue jv;
+    jv.l = value;
+    return jv;
    }
   };
  }
