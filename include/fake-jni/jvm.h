@@ -12,6 +12,7 @@
 #include <cx/strings.h>
 #include <cx/unsafe.h>
 #include <cx/vararg.h>
+#include <cx/lambda.h>
 
 #include <ffi.h>
 
@@ -801,7 +802,7 @@ namespace FakeJni {
    };
    //STL_CALLBACK_PROP
    struct {
-    const _CX::arbitrary_align_t<sizeof(std::function<void ()>)>
+    const _CX::arbitrary_align_t<sizeof(CX::Lambda<void ()>)>
      arbitraryGet,
      arbitrarySet;
    };
@@ -837,9 +838,9 @@ namespace FakeJni {
   JFieldID(v_get_func_t get, v_set_func_t set, const char * name, const char * signature, uint32_t modifiers) noexcept;
   //Constructor for arbitrary fields with user-defined, capturing, access callbacks
   template<typename T>
-  JFieldID(std::function<T* ()> get, std::function<void (T*)> set, const char * name, uint32_t modifiers) noexcept;
+  JFieldID(CX::Lambda<T* ()> get, CX::Lambda<void (T*)> set, const char * name, uint32_t modifiers) noexcept;
   //Constructor for arbitrary fields with type-erased user-defined, capturing, access callbacks
-  JFieldID(std::function<void * ()> get, std::function<void (void *)> set, const char * name, const char * signature, uint32_t modifiers) noexcept;
+  JFieldID(CX::Lambda<void * ()> get, CX::Lambda<void (void *)> set, const char * name, const char * signature, uint32_t modifiers) noexcept;
 
   inline const char * getName() const noexcept {
    return name;
@@ -893,7 +894,7 @@ namespace FakeJni {
      //high bytes of member pointer for vtable offset in `this`
      void * adj;
      //STL_FUNC
-     _CX::arbitrary_align_t<sizeof(std::function<void ()>) - sizeof(fnPtr)> stlFunc;
+     _CX::arbitrary_align_t<sizeof(CX::Lambda<void ()>) - sizeof(fnPtr)> stlFunc;
     };
     static_func_t
      proxyFuncV,
@@ -967,14 +968,14 @@ namespace FakeJni {
   JMethodID(const JNINativeMethod * method);
   //Constructor for capturing lambdas (non-capturing lambdas are implicitly converted to static functions)
   template<typename R, typename... Args>
-  JMethodID(std::function<R (Args...)> func, const char * name, uint32_t modifiers) noexcept;
+  JMethodID(CX::Lambda<R (Args...)> func, const char * name, uint32_t modifiers) noexcept;
   //Constructor for arbitrary functions and non-capturing lambdas
   JMethodID(arbitrary_func_t func, const char * signature, const char * name, uint32_t modifiers);
   //Constructor for arbitrary capturing lambdas
   //TODO once signature checking is in place, add support for this
 //  template<typename... Args>
-//  JMethodID(std::function<void * (JNIEnv *, jobject, Args...)> func, const char * signature, const char * name, uint32_t modifiers);
-  JMethodID(std::function<void * (JNIEnv *, jobject, jvalue *)> func, const char * signature, const char * name, uint32_t modifiers);
+//  JMethodID(CX::Lambda<void * (JNIEnv *, jobject, Args...)> func, const char * signature, const char * name, uint32_t modifiers);
+  JMethodID(CX::Lambda<void * (JNIEnv *, jobject, jvalue *)> func, const char * signature, const char * name, uint32_t modifiers);
   ~JMethodID();
 
   inline const char * getName() const noexcept {
@@ -1225,6 +1226,8 @@ namespace FakeJni {
   class ClassDescriptorElement {
   public:
    const std::function<bool (JClass * const)> processHook;
+   //TODO FunctionOperatorExists static assertion fails?
+//   const CX::Lambda<bool (JClass * const)> processHook;
 
    //Constructor for functions
    template<auto F>
@@ -1360,7 +1363,7 @@ namespace FakeJni {
  }
 
  template<typename T>
- JFieldID::JFieldID(std::function<T* ()> get, std::function<void (T*)> set, const char *name, uint32_t modifiers) noexcept :
+ JFieldID::JFieldID(CX::Lambda<T* ()> get, CX::Lambda<void (T*)> set, const char *name, uint32_t modifiers) noexcept :
   _jfieldID(),
   type(STL_CALLBACK_PROP),
   modifiers(modifiers),
@@ -1393,7 +1396,7 @@ namespace FakeJni {
      return ((T& (*)(void *))proxyGetFunc)(obj);
     }
     case STL_CALLBACK_PROP: {
-     return *CX::union_cast<std::function<T* ()>>(arbitraryGet)();
+     return *CX::union_cast<CX::Lambda<T* ()>>(arbitraryGet)();
     }
    }
   }
@@ -1471,7 +1474,7 @@ namespace FakeJni {
  }
 
  template<typename R, typename... Args>
- JMethodID::JMethodID(std::function<R (Args...)> func, const char * name, uint32_t modifiers) noexcept :
+ JMethodID::JMethodID(CX::Lambda<R (Args...)> func, const char * name, uint32_t modifiers) noexcept :
   JNINativeMethod {
    verifyName(name),
    verifySignature(_CX::SignatureGenerator<false, R, Args...>::signature),
@@ -1555,7 +1558,7 @@ namespace FakeJni {
  R JMethodID::internalInvoke(const JavaVM * vm, void * clazzOrInst, A& args) const {
   using arg_t = typename CX::ComponentTypeResolver<A>::type;
   //used to reassemble functor object data
-  using align_t = _CX::arbitrary_align_t<sizeof(std::function<void ()>)>;
+  using align_t = _CX::arbitrary_align_t<sizeof(CX::Lambda<void ()>)>;
   struct Data {
    decltype(fnPtr) d1;
    decltype(stlFunc) d2;

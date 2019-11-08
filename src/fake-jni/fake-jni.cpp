@@ -41,7 +41,7 @@ namespace FakeJni {
   _CERATE_MAIN_METHOD_CHECK
  }
 
- void createMainMethod(const Jvm & vm, std::function<_CX::main_method_t> main, const JClass * cclazz) {
+ void createMainMethod(const Jvm & vm, CX::Lambda<_CX::main_method_t> main, const JClass * cclazz) {
   _CERATE_MAIN_METHOD_CHECK
  }
 }

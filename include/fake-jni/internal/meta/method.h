@@ -6,6 +6,7 @@
 #include <cx/strings.h>
 #include <cx/unsafe.h>
 #include <cx/vararg.h>
+#include <cx/lambda.h>
 
 #define _JVALUE_UTIL_MAP(t, member) \
 template<>\
@@ -215,10 +216,10 @@ namespace FakeJni {
 
   //Entry invoker for stl functors
   template<auto N, typename R, typename... Args>
-  struct FunctionAccessor<N, std::function<R (Args...)>> {
+  struct FunctionAccessor<N, CX::Lambda<R (Args...)>> {
    using arg_t = typename CX::TemplateTypeIterator<N - 1, Args...>::type;
-   using func_t = std::function<R (Args...)>;
-   using align_t = _CX::arbitrary_align_t<sizeof(std::function<void ()>)>;
+   using func_t = CX::Lambda<R (Args...)>;
+   using align_t = _CX::arbitrary_align_t<sizeof(CX::Lambda<void ()>)>;
 
    template<typename... DecomposedVarargs>
    [[gnu::always_inline]]
@@ -244,9 +245,9 @@ namespace FakeJni {
   };
 
   template<typename R>
-  struct FunctionAccessor<3, std::function<R (void *, void *, void *)>> {
-   using align_t = _CX::arbitrary_align_t<sizeof(std::function<void ()>)>;
-   using func_t = std::function<R * (void *, void *, jvalue *)>;
+  struct FunctionAccessor<3, CX::Lambda<R (void *, void *, void *)>> {
+   using align_t = _CX::arbitrary_align_t<sizeof(CX::Lambda<void ()>)>;
+   using func_t = CX::Lambda<R * (void *, void *, jvalue *)>;
 
    template<typename...>
    [[gnu::always_inline]]
@@ -300,9 +301,9 @@ namespace FakeJni {
 
   //Base invoker for stl functors
   template<typename R, typename... Args>
-  struct FunctionAccessor<0, std::function<R (Args...)>> {
-   using align_t = _CX::arbitrary_align_t<sizeof(std::function<void ()>)>;
-   using func_t = std::function<R (Args...)>;
+  struct FunctionAccessor<0, CX::Lambda<R (Args...)>> {
+   using align_t = _CX::arbitrary_align_t<sizeof(CX::Lambda<void ()>)>;
+   using func_t = CX::Lambda<R (Args...)>;
 
    template<typename... Args2>
    [[gnu::always_inline]]

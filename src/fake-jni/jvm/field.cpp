@@ -16,7 +16,7 @@ namespace FakeJni {
   isArbitrary(true)
  {}
 
- JFieldID::JFieldID(std::function<void *()> get, std::function<void(void *)> set, const char *name, const char *signature, uint32_t modifiers) noexcept :
+ JFieldID::JFieldID(CX::Lambda<void *()> get, CX::Lambda<void(void *)> set, const char *name, const char *signature, uint32_t modifiers) noexcept :
   _jfieldID(),
   type(STL_CALLBACK_PROP),
   modifiers(modifiers),
@@ -91,7 +91,7 @@ namespace FakeJni {
     }
     case STL_CALLBACK_PROP: {
      _JFIELDID_STATIC_CHECK(
-      CX::union_cast<std::function<void (void *)>>(arbitrarySet)(value);
+      CX::union_cast<CX::Lambda<void (void *)>>(arbitrarySet)(value);
       break;
      )
     }
