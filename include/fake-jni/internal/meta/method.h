@@ -7,14 +7,20 @@
 #include <cx/unsafe.h>
 #include <cx/vararg.h>
 
-#define _GET_AARG_MAP(t, member) \
+#define _JVALUE_UTIL_MAP(t, member) \
 template<>\
-class JValueArgResolver<false, t> {\
+class JValueUtil<t, false> {\
 public:\
  inline static constexpr const bool isRegisteredResolver = true;\
  [[gnu::always_inline]]\
  inline static t getAArg(jvalue *values) {\
   return (t)values->member;\
+ }\
+ [[gnu::always_inline nodiscard]]\
+ inline static jvalue makeAArg(t value) {\
+  jvalue jv;\
+  jv.member = value;\
+  return jv;\
  }\
 };
 
@@ -30,6 +36,22 @@ struct NonVirtualAssertion {\
  }\
 };\
 inline static constexpr const NonVirtualAssertion check{};
+
+#define _PARSER_CALLBACK(identifier, type) \
+parser[#identifier[0]] = [&](char * token, CX::va_list_t& list) {\
+ if (!argsParsed) {\
+  result.push_back(JValueUtil<type>::makeAArg(CX::safe_va_arg<type>(list)));\
+ }\
+};
+
+#define _PARSER_CALLBACK_OBJECT(identifier, type) \
+parser[#identifier[0]] = [&](char * token, CX::va_list_t& list) {\
+ if (!argsParsed) {\
+  jvalue jv;\
+  jv.l = CX::safe_va_arg<jobject>(list);\
+  result.push_back(jv);\
+ }\
+};
 
 //Template glue code for method registration and access
 namespace FakeJni {
@@ -54,106 +76,30 @@ namespace FakeJni {
   };
 
   //C to C++ Vararg glue
-  template<bool IsClass, typename T>
-  class JValueArgResolver {
+  template<typename T, bool isClass = __is_class(typename CX::ComponentTypeResolver<T>::type)>
+  class JValueUtil {
   public:
-   inline static constexpr const bool isRegisteredResolver = false;
+   static constexpr const auto isRegisteredResolver = false;
   };
 
-  //Function breeder for JValueArgResolver<typename>::getAArg(jvalue *)
+  //Function breeder for JValueUtil<typename>::getAArg(jvalue *)
   template<typename T>
   [[gnu::always_inline]]
   inline static T getAArg(jvalue *values) {
    using componentType = typename ComponentTypeResolver<T>::type;
-   static_assert(
-    JValueArgResolver<false, componentType>::isRegisteredResolver
-    || JValueArgResolver<true, componentType>::isRegisteredResolver,
-    "Illegal JNI function parameter type!"
-   );
-   return JValueArgResolver<__is_class(componentType), T>::getAArg(values);
+   static_assert(JValueUtil<componentType>::isRegisteredResolver, "Illegal JNI function parameter type!");
+   return JValueUtil<T>::getAArg(values);
   }
 
   //Type-to-member-name maps for the jvalue union
-  _GET_AARG_MAP(JBoolean, z)
-  _GET_AARG_MAP(JByte, b)
-  _GET_AARG_MAP(JChar, c)
-  _GET_AARG_MAP(JShort, s)
-  _GET_AARG_MAP(JInt, i)
-  _GET_AARG_MAP(JLong, j)
-  _GET_AARG_MAP(JFloat, f)
-  _GET_AARG_MAP(JDouble, d)
-
-  template<
-   typename T,
-   bool IsPointer = CX::IsPointer<T>::value,
-   bool IsClass = __is_class(T),
-   bool LargerThanInt = (sizeof(T) > sizeof(int))
-  >
-  class VArgResolver;
-
-  //VArgResolver for pointer types
-  template<typename T>
-  class VArgResolver<T*, true, false, (sizeof(T*) > sizeof(int))> {
-  public:
-   [[gnu::always_inline]]
-   inline static T* getVArg(va_list list) {
-    return va_arg(list, T*);
-   }
-  };
-
-  //VArgResolver for integral types smaller than int
-  //Promotes to int and lossy-casts
-  template<typename T>
-  class VArgResolver<T, false, false, false> {
-  public:
-   [[gnu::always_inline]]
-   inline static T getVArg(va_list list) {
-    return (T)va_arg(list, int);
-   }
-  };
-
-  //VArgResolver for integral types larger than int
-  //Promotes to double and lossy-casts
-  template<typename T>
-  class VArgResolver<T, false, false, true> {
-  public:
-   [[gnu::always_inline]]
-   inline static T getVArg(va_list list) {
-    if constexpr(sizeof(T) > sizeof(long double)) {
-     throw std::runtime_error(
-      "FATAL: Cannot consume va_arg larger than 'long double'! Use a pointer instead."
-     );
-    } else if constexpr(sizeof(T) > sizeof(double)) {
-     return (T)va_arg(list, long double);
-    } else {
-     return (T)va_arg(list, double);
-    }
-   }
-  };
-
-  //VArgResolver for object types
-  //Consuming an object type off of a va_list is undefined behaviour
-  template<typename T>
-  class VArgResolver<T, false, true> {
-  public:
-   [[gnu::always_inline]]
-   inline static T getVArg(va_list list) {
-    //Static assertion will always fail in fault-conditions, uses sfinae to prevent
-    //compiler errors in non-fault conditions, since static_assert(false, ...); will
-    //always throw an error, even if the template is not instantiated
-    static_assert(
-     !__is_class(T),
-     "Consuming an object type off of a va_list is undefined behaviour! "
-     "Did you intend to consume a pointer-to-object type?"
-    );
-   }
-  };
-
-  template<typename T>
-  [[gnu::always_inline]]
-  inline static T getVArg(va_list args) {
-   return VArgResolver<T>::getVArg(args);
-  }
+  _JVALUE_UTIL_MAP(JBoolean, z)
+  _JVALUE_UTIL_MAP(JByte, b)
+  _JVALUE_UTIL_MAP(JChar, c)
+  _JVALUE_UTIL_MAP(JShort, s)
+  _JVALUE_UTIL_MAP(JInt, i)
+  _JVALUE_UTIL_MAP(JLong, j)
+  _JVALUE_UTIL_MAP(JFloat, f)
+  _JVALUE_UTIL_MAP(JDouble, d)
 
   template<auto, typename...>
   struct FunctionAccessor;
@@ -167,12 +113,12 @@ namespace FakeJni {
 
    template<typename... DecomposedVarargs>
    [[gnu::always_inline]]
-   inline static R invokeV(void * const inst, erased_t func, va_list list, DecomposedVarargs... args) {
+   inline static R invokeV(void * const inst, erased_t func, CX::va_list_t& list, DecomposedVarargs... args) {
     return FunctionAccessor<N - 1, func_t>::template invokeV<arg_t, DecomposedVarargs...>(
      inst,
      func,
      list,
-     getVArg<arg_t>(list),
+     CX::safe_va_arg<arg_t>(list),
      args...
     );
    }
@@ -197,7 +143,7 @@ namespace FakeJni {
    //Template pack should match Args
    template<typename... Args2>
    [[gnu::always_inline]]
-   inline static R invokeV(void * const inst, erasedType func, va_list list, Args2... args) {
+   inline static R invokeV(void * const inst, erasedType func, CX::va_list_t& list, Args2... args) {
     va_end(list);
     return invokeA(inst, func, nullptr, args...);
    }
@@ -222,11 +168,11 @@ namespace FakeJni {
 
    template<typename... DecomposedVarargs>
    [[gnu::always_inline]]
-   inline static R invokeV(erased_t func, va_list list, DecomposedVarargs... args) {
+   inline static R invokeV(erased_t func, CX::va_list_t& list, DecomposedVarargs... args) {
     return FunctionAccessor<N - 1, func_t>::template invokeV<arg_t, DecomposedVarargs...>(
      func,
      list,
-     getVArg<arg_t>(list),
+     CX::safe_va_arg<arg_t>(list),
      args...
     );
    }
@@ -251,7 +197,7 @@ namespace FakeJni {
    //Template pack should match Args
    template<typename... Args2>
    [[gnu::always_inline]]
-   inline static R invokeV(erasedType func, va_list list, Args2... args) {
+   inline static R invokeV(erasedType func, CX::va_list_t& list, Args2... args) {
     va_end(list);
     return invokeA(func, nullptr, args...);
    }
@@ -276,11 +222,11 @@ namespace FakeJni {
 
    template<typename... DecomposedVarargs>
    [[gnu::always_inline]]
-   inline static R invokeV(align_t func, va_list list, DecomposedVarargs... args) {
+   inline static R invokeV(align_t func, CX::va_list_t& list, DecomposedVarargs... args) {
     return FunctionAccessor<N - 1, func_t>::template invokeV<arg_t, DecomposedVarargs...>(
      func,
      list,
-     getVArg<arg_t>(list),
+     CX::safe_va_arg<arg_t>(list),
      args...
     );
    }
@@ -308,11 +254,47 @@ namespace FakeJni {
     return CX::union_cast<func_t>(func)(env, classOrInst, values);
    }
 
-   //TODO use the new <cx/vararg.h> wrapper
    template<typename...>
    [[gnu::always_inline]]
-   inline static R invokeV(align_t func, const char * signature, void * env, void * classOrInst, va_list list) {
-    throw std::runtime_error("unimplemented!");
+   inline static R invokeV(align_t func, const char * signature, void * env, void * classOrInst, CX::va_list_t& list) {
+    struct Parser {
+     JniFunctionParser<CX::va_list_t&> parser;
+     bool argsParsed = false;
+     std::vector<jvalue> result;
+
+     Parser() {
+      parser[')'] = [&](char * token, CX::va_list_t&) { argsParsed = true; };
+      _PARSER_CALLBACK(Z, JBoolean)
+      _PARSER_CALLBACK(B, JByte)
+      _PARSER_CALLBACK(C, JChar)
+      _PARSER_CALLBACK(S, JShort)
+      _PARSER_CALLBACK(I, JInt)
+      _PARSER_CALLBACK(F, JFloat)
+      _PARSER_CALLBACK(J, JLong)
+      _PARSER_CALLBACK(D, JDouble)
+      _PARSER_CALLBACK_OBJECT([, jobject)
+      _PARSER_CALLBACK_OBJECT(L, jobject)
+     }
+
+     jvalue * parse(const char * signature, CX::va_list_t& list) const {
+      auto& ref = const_cast<Parser&>(*this);
+      ref.result.clear();
+      ref.argsParsed = false;
+      parser.parse(signature, list);
+      auto size = result.size();
+      auto values = new jvalue[size];
+      for (decltype(size) i = 0; i < size; i++) {
+       values[i] = result[i];
+      }
+      return values;
+     }
+    };
+
+    static const Parser parser;
+    auto values = parser.parse(signature, list);
+    R ret = invokeA(func, signature, env, classOrInst, values);
+    delete[] values;
+    return ret;
    }
   };
 
@@ -324,7 +306,7 @@ namespace FakeJni {
 
    template<typename... Args2>
    [[gnu::always_inline]]
-   inline static R invokeV(align_t func, va_list list, Args2... args) {
+   inline static R invokeV(align_t func, CX::va_list_t& list, Args2... args) {
     va_end(list);
     return invokeA(func, nullptr, args...);
    }
@@ -431,3 +413,5 @@ namespace FakeJni {
 
 #undef _GET_AARG_MAP
 #undef _ASSERT_NON_VIRTUAL
+#undef _PARSER_CALLBACK
+#undef _PARSER_CALLBACK_OBJECT

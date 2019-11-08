@@ -11,6 +11,7 @@
 #include <cx/idioms.h>
 #include <cx/strings.h>
 #include <cx/unsafe.h>
+#include <cx/vararg.h>
 
 #include <ffi.h>
 
@@ -62,11 +63,7 @@ static_assert(\
 #define _INTERNAL_INVOKE_VA_ARG(type, ffi_type) \
 if (ffi_arg_t == &ffi_type) {\
  auto *value = values[i + 2];\
- if constexpr(sizeof(type) > sizeof(int)) {\
-  *((type *)value) = (type)va_arg(args, double);\
- } else {\
-  *((type *)value) = (type)va_arg(args, int);\
- }\
+ *((type *)value) = CX::safe_va_arg<type>(args);\
  continue;\
 }
 
@@ -248,7 +245,7 @@ namespace FakeJni {
   virtual jboolean isSameObject(jobject, jobject) const;
   virtual jobject allocObject(jclass) const;
 //  virtual jobject newObject(jclass, jmethodID, ...) const;
-  virtual jobject newObjectV(jclass, jmethodID, va_list) const;
+  virtual jobject newObjectV(jclass, jmethodID, CX::va_list_t&) const;
   virtual jobject newObjectA(jclass, jmethodID, const jvalue *) const;
   virtual jclass getObjectClass(jobject) const;
   virtual jboolean isInstanceOf(jobject, jclass) const;
@@ -275,95 +272,95 @@ namespace FakeJni {
   //jni/native/method.cpp
   virtual jmethodID getMethodID(jclass, const char *, const char *) const;
 //  virtual jobject callObjectMethod(jobject, jmethodID, ...) const;
-  virtual jobject callObjectMethodV(jobject, jmethodID, va_list) const;
+  virtual jobject callObjectMethodV(jobject, jmethodID, CX::va_list_t&) const;
   virtual jobject callObjectMethodA(jobject, jmethodID, const jvalue *) const;
 //  virtual jboolean callBooleanMethod(jobject, jmethodID, ...) const;
-  virtual jboolean callBooleanMethodV(jobject, jmethodID, va_list) const;
+  virtual jboolean callBooleanMethodV(jobject, jmethodID, CX::va_list_t&) const;
   virtual jboolean callBooleanMethodA(jobject, jmethodID, const jvalue *) const;
 //  virtual jbyte callByteMethod(jobject, jmethodID, ...) const;
-  virtual jbyte callByteMethodV(jobject, jmethodID, va_list) const;
+  virtual jbyte callByteMethodV(jobject, jmethodID, CX::va_list_t&) const;
   virtual jbyte callByteMethodA(jobject, jmethodID, const jvalue *) const;
 //  virtual jchar callCharMethod(jobject, jmethodID, ...) const;
-  virtual jchar callCharMethodV(jobject, jmethodID, va_list) const;
+  virtual jchar callCharMethodV(jobject, jmethodID, CX::va_list_t&) const;
   virtual jchar callCharMethodA(jobject, jmethodID, const jvalue *) const;
 //  virtual jshort callShortMethod(jobject, jmethodID, ...) const;
-  virtual jshort callShortMethodV(jobject, jmethodID, va_list) const;
+  virtual jshort callShortMethodV(jobject, jmethodID, CX::va_list_t&) const;
   virtual jshort callShortMethodA(jobject, jmethodID, const jvalue *) const;
 //  virtual jint callIntMethod(jobject, jmethodID, ...) const;
-  virtual jint callIntMethodV(jobject, jmethodID, va_list) const;
+  virtual jint callIntMethodV(jobject, jmethodID, CX::va_list_t&) const;
   virtual jint callIntMethodA(jobject, jmethodID, const jvalue *) const;
 //  virtual jlong callLongMethod(jobject, jmethodID, ...) const;
-  virtual jlong callLongMethodV(jobject, jmethodID, va_list) const;
+  virtual jlong callLongMethodV(jobject, jmethodID, CX::va_list_t&) const;
   virtual jlong callLongMethodA(jobject, jmethodID, const jvalue *) const;
 //  virtual jfloat callFloatMethod(jobject, jmethodID, ...) const;
-  virtual jfloat callFloatMethodV(jobject, jmethodID, va_list) const;
+  virtual jfloat callFloatMethodV(jobject, jmethodID, CX::va_list_t&) const;
   virtual jfloat callFloatMethodA(jobject, jmethodID, const jvalue *) const;
 //  virtual jdouble callDoubleMethod(jobject, jmethodID, ...) const;
-  virtual jdouble callDoubleMethodV(jobject, jmethodID, va_list) const;
+  virtual jdouble callDoubleMethodV(jobject, jmethodID, CX::va_list_t&) const;
   virtual jdouble callDoubleMethodA(jobject, jmethodID, const jvalue *) const;
 //  virtual void callVoidMethod(jobject, jmethodID, ...) const;
-  virtual void callVoidMethodV(jobject, jmethodID, va_list) const;
+  virtual void callVoidMethodV(jobject, jmethodID, CX::va_list_t&) const;
   virtual void callVoidMethodA(jobject, jmethodID, const jvalue *) const;
 //  virtual jobject callNonvirtualObjectMethod(jobject, jclass, jmethodID, ...) const;
-  virtual jobject callNonvirtualObjectMethodV(jobject, jclass, jmethodID, va_list) const;
+  virtual jobject callNonvirtualObjectMethodV(jobject, jclass, jmethodID, CX::va_list_t&) const;
   virtual jobject callNonvirtualObjectMethodA(jobject, jclass, jmethodID, const jvalue *) const;
 //  virtual jboolean callNonvirtualBooleanMethod(jobject, jclass, jmethodID, ...) const;
-  virtual jboolean callNonvirtualBooleanMethodV(jobject, jclass, jmethodID, va_list) const;
+  virtual jboolean callNonvirtualBooleanMethodV(jobject, jclass, jmethodID, CX::va_list_t&) const;
   virtual jboolean callNonvirtualBooleanMethodA(jobject, jclass, jmethodID, const jvalue *) const;
 //  virtual jbyte callNonvirtualByteMethod(jobject, jclass, jmethodID, ...) const;
-  virtual jbyte callNonvirtualByteMethodV(jobject, jclass, jmethodID, va_list) const;
+  virtual jbyte callNonvirtualByteMethodV(jobject, jclass, jmethodID, CX::va_list_t&) const;
   virtual jbyte callNonvirtualByteMethodA(jobject, jclass, jmethodID, const jvalue *) const;
 //  virtual jchar callNonvirtualCharMethod(jobject, jclass, jmethodID, ...) const;
-  virtual jchar callNonvirtualCharMethodV(jobject, jclass, jmethodID, va_list) const;
+  virtual jchar callNonvirtualCharMethodV(jobject, jclass, jmethodID, CX::va_list_t&) const;
   virtual jchar callNonvirtualCharMethodA(jobject, jclass, jmethodID, const jvalue *) const;
 //  virtual jshort callNonvirtualShortMethod(jobject, jclass, jmethodID, ...) const;
-  virtual jshort callNonvirtualShortMethodV(jobject, jclass, jmethodID, va_list) const;
+  virtual jshort callNonvirtualShortMethodV(jobject, jclass, jmethodID, CX::va_list_t&) const;
   virtual jshort callNonvirtualShortMethodA(jobject, jclass, jmethodID, const jvalue *) const;
 //  virtual jint callNonvirtualIntMethod(jobject, jclass, jmethodID, ...) const;
-  virtual jint callNonvirtualIntMethodV(jobject, jclass, jmethodID, va_list) const;
+  virtual jint callNonvirtualIntMethodV(jobject, jclass, jmethodID, CX::va_list_t&) const;
   virtual jint callNonvirtualIntMethodA(jobject, jclass, jmethodID, const jvalue *) const;
 //  virtual jlong callNonvirtualLongMethod(jobject, jclass, jmethodID, ...) const;
-  virtual jlong callNonvirtualLongMethodV(jobject, jclass, jmethodID, va_list) const;
+  virtual jlong callNonvirtualLongMethodV(jobject, jclass, jmethodID, CX::va_list_t&) const;
   virtual jlong callNonvirtualLongMethodA(jobject, jclass, jmethodID, const jvalue *) const;
 //  virtual jfloat callNonvirtualFloatMethod(jobject, jclass, jmethodID, ...) const;
-  virtual jfloat callNonvirtualFloatMethodV(jobject, jclass, jmethodID, va_list) const;
+  virtual jfloat callNonvirtualFloatMethodV(jobject, jclass, jmethodID, CX::va_list_t&) const;
   virtual jfloat callNonvirtualFloatMethodA(jobject, jclass, jmethodID, const jvalue *) const;
 //  virtual jdouble callNonvirtualDoubleMethod(jobject, jclass, jmethodID, ...) const;
-  virtual jdouble callNonvirtualDoubleMethodV(jobject, jclass, jmethodID, va_list) const;
+  virtual jdouble callNonvirtualDoubleMethodV(jobject, jclass, jmethodID, CX::va_list_t&) const;
   virtual jdouble callNonvirtualDoubleMethodA(jobject, jclass, jmethodID, const jvalue *) const;
 //  virtual void callNonvirtualVoidMethod(jobject, jclass, jmethodID, ...) const;
-  virtual void callNonvirtualVoidMethodV(jobject, jclass, jmethodID, va_list) const;
+  virtual void callNonvirtualVoidMethodV(jobject, jclass, jmethodID, CX::va_list_t&) const;
   virtual void callNonvirtualVoidMethodA(jobject, jclass, jmethodID, const jvalue *) const;
   virtual jmethodID getStaticMethodID(jclass, const char *, const char *) const;
 //  virtual jobject callStaticObjectMethod(jclass, jmethodID, ...) const;
-  virtual jobject callStaticObjectMethodV(jclass, jmethodID, va_list) const;
+  virtual jobject callStaticObjectMethodV(jclass, jmethodID, CX::va_list_t&) const;
   virtual jobject callStaticObjectMethodA(jclass, jmethodID, const jvalue *) const;
 //  virtual jboolean callStaticBooleanMethod(jclass, jmethodID, ...) const;
-  virtual jboolean callStaticBooleanMethodV(jclass, jmethodID, va_list) const;
+  virtual jboolean callStaticBooleanMethodV(jclass, jmethodID, CX::va_list_t&) const;
   virtual jboolean callStaticBooleanMethodA(jclass, jmethodID, const jvalue *) const;
 //  virtual jbyte callStaticByteMethod(jclass, jmethodID, ...) const;
-  virtual jbyte callStaticByteMethodV(jclass, jmethodID, va_list) const;
+  virtual jbyte callStaticByteMethodV(jclass, jmethodID, CX::va_list_t&) const;
   virtual jbyte callStaticByteMethodA(jclass, jmethodID, const jvalue *) const;
 //  virtual jchar callStaticCharMethod(jclass, jmethodID, ...) const;
-  virtual jchar callStaticCharMethodV(jclass, jmethodID, va_list) const;
+  virtual jchar callStaticCharMethodV(jclass, jmethodID, CX::va_list_t&) const;
   virtual jchar callStaticCharMethodA(jclass, jmethodID, const jvalue *) const;
 //  virtual jshort callStaticShortMethod(jclass, jmethodID, ...) const;
-  virtual jshort callStaticShortMethodV(jclass, jmethodID, va_list) const;
+  virtual jshort callStaticShortMethodV(jclass, jmethodID, CX::va_list_t&) const;
   virtual jshort callStaticShortMethodA(jclass, jmethodID, const jvalue *) const;
 //  virtual jint callStaticIntMethod(jclass, jmethodID, ...) const;
-  virtual jint callStaticIntMethodV(jclass, jmethodID, va_list) const;
+  virtual jint callStaticIntMethodV(jclass, jmethodID, CX::va_list_t&) const;
   virtual jint callStaticIntMethodA(jclass, jmethodID, const jvalue *) const;
 //  virtual jlong callStaticLongMethod(jclass, jmethodID, ...) const;
-  virtual jlong callStaticLongMethodV(jclass, jmethodID, va_list) const;
+  virtual jlong callStaticLongMethodV(jclass, jmethodID, CX::va_list_t&) const;
   virtual jlong callStaticLongMethodA(jclass, jmethodID, const jvalue *) const;
 //  virtual jfloat callStaticFloatMethod(jclass, jmethodID, ...) const;
-  virtual jfloat callStaticFloatMethodV(jclass, jmethodID, va_list) const;
+  virtual jfloat callStaticFloatMethodV(jclass, jmethodID, CX::va_list_t&) const;
   virtual jfloat callStaticFloatMethodA(jclass, jmethodID, const jvalue *) const;
 //  virtual jdouble callStaticDoubleMethod(jclass, jmethodID, ...) const;
-  virtual jdouble callStaticDoubleMethodV(jclass, jmethodID, va_list) const;
+  virtual jdouble callStaticDoubleMethodV(jclass, jmethodID, CX::va_list_t&) const;
   virtual jdouble callStaticDoubleMethodA(jclass, jmethodID, const jvalue *) const;
 //  virtual void callStaticVoidMethod(jclass, jmethodID, ...) const;
-  virtual void callStaticVoidMethodV(jclass, jmethodID, va_list) const;
+  virtual void callStaticVoidMethodV(jclass, jmethodID, CX::va_list_t&) const;
   virtual void callStaticVoidMethodA(jclass, jmethodID, const jvalue *) const;
 
   //jni/native/field.cpp
@@ -427,13 +424,21 @@ namespace FakeJni {
   virtual jobjectArray newObjectArray(jsize, jclass, jobject) const;
   virtual jobject getObjectArrayElement(jobjectArray, jsize) const;
   virtual void setObjectArrayElement(jobjectArray, jsize, jobject) const;
+  [[nodiscard]]
   virtual jbooleanArray newBooleanArray(jsize) const;
+  [[nodiscard]]
   virtual jbyteArray newByteArray(jsize) const;
+  [[nodiscard]]
   virtual jcharArray newCharArray(jsize) const;
+  [[nodiscard]]
   virtual jshortArray newShortArray(jsize) const;
+  [[nodiscard]]
   virtual jintArray newIntArray(jsize) const;
+  [[nodiscard]]
   virtual jlongArray newLongArray(jsize) const;
+  [[nodiscard]]
   virtual jfloatArray newFloatArray(jsize) const;
+  [[nodiscard]]
   virtual jdoubleArray newDoubleArray(jsize) const;
   virtual jboolean *getBooleanArrayElements(jbooleanArray, jboolean *) const;
   virtual jbyte *getByteArrayElements(jbyteArray, jboolean *) const;
@@ -859,8 +864,8 @@ namespace FakeJni {
 // class JMethodID final : public _jmethodID, private JNINativeMethod {
  class JMethodID final : public _jmethodID, public JNINativeMethod {
  public:
-  using static_func_t = void (* const)();
-  using member_func_t = void (_CX::AnyClass::* const)();
+  using static_func_t = void (*)();
+  using member_func_t = void (_CX::AnyClass::*)();
   using arbitrary_func_t = void * (*)(JNIEnv * env, jobject objOrInst, ...);
   using void_func_t = void (*)();
 
@@ -903,21 +908,30 @@ namespace FakeJni {
    };
   };
 
-  //Default case for va_list
-  //TODO this is nasty, there is no type checking for `T` on `JMethodID::invoke<R, T>` because of va_list
-  // fix this
-  template<typename>
-  [[gnu::always_inline]]
+  template<typename T>
+  [[gnu::always_inline nodiscard]]
   static_func_t getFunctionProxy() const {
-   return proxyFuncV;
+   using component_t = typename CX::ComponentTypeResolver<T>::type;
+   if (type == REGISTER_NATIVES_FUNC) {
+    throw std::runtime_error(
+     "FATAL: Internal error: JMethodID::getFunctionProxy<T> only accepts CX::va_list_t and jvalue as type parameters!"
+    );
+   } else {
+    if constexpr(CX::IsSame<component_t, CX::va_list_t>::value) {
+     return proxyFuncV;
+    } else if constexpr(CX::IsSame<component_t, jvalue>::value) {
+     return proxyFuncA;
+    }
+   }
   }
 
   static /*const*/ char * verifyName(const char * name);
   static /*const*/ char * verifySignature(const char * sig);
+  [[nodiscard]]
   static std::vector<ffi_type *> getFfiPrototype(const char * signature, const char * name);
 
   template<typename R, typename A>
-  R internalInvoke(const JavaVM * vm, void * clazzOrInst, A args) const;
+  R internalInvoke(const JavaVM * vm, void * clazzOrInst, A& args) const;
 
  public:
   const bool isArbitrary;
@@ -981,9 +995,9 @@ namespace FakeJni {
   bool operator ==(const JMethodID& mid) const noexcept;
   bool operator ==(JNINativeMethod*& mid) const;
   template<typename R, typename A>
-  R virtualInvoke(const JavaVM *vm, void *clazzOrInst, A args) const;
+  R virtualInvoke(const JavaVM *vm, void *clazzOrInst, A& args) const;
   template<typename R, typename A>
-  R nonVirtualInvoke(const JavaVM *vm, JClass *const clazz, void *const inst, A args) const;
+  R nonVirtualInvoke(const JavaVM *vm, JClass *const clazz, void *const inst, A& args) const;
   template<typename R>
   R invoke(const JavaVM * vm, const JObject * clazzOrInst, ...) const;
  };
@@ -1037,7 +1051,7 @@ namespace FakeJni {
  class JClass : public JObject {
  private:
   JObject
-   * (* const constructV)(const JavaVM *, const char *, va_list),
+   * (* const constructV)(const JavaVM *, const char *, CX::va_list_t&),
    * (* const constructA)(const JavaVM *, const char *, const jvalue *);
 
   const char * const className;
@@ -1082,16 +1096,20 @@ namespace FakeJni {
   bool registerMethod(const JMethodID * mid) const;
   bool unregisterMethod(const JMethodID * mid) const noexcept;
   const JMethodID * getMethod(const char * sig, const char * name) const noexcept;
+  [[nodiscard]]
   const PointerList<const JMethodID *>& getMethods() const noexcept;
   bool registerField(JFieldID * fid) const noexcept;
   bool unregisterField(JFieldID * fid) const noexcept;
   const JFieldID * getField(const char * name) const noexcept;
   const JFieldID * getField(const char * sig, const char * name) const noexcept;
+  [[nodiscard]]
   const PointerList<const JFieldID *>& getFields() const noexcept;
   virtual const char * getName() const noexcept;
   //Object construction for c-varargs
-  JObject * newInstance(const JavaVM * vm, const char * signature, va_list list) const;
+  [[nodiscard]]
+  JObject * newInstance(const JavaVM * vm, const char * signature, CX::va_list_t& list) const;
   //Object construction for jvalue arrays
+  [[nodiscard]]
   JObject * newInstance(const JavaVM * vm, const char * signature, const jvalue * values) const;
  };
 
@@ -1439,12 +1457,12 @@ namespace FakeJni {
    verifyName(name),
    verifySignature(_CX::SignatureGenerator<false, R, Args...>::signature),
    //low bytes of member pointer
-   CX::union_cast<_CX::member_ptr_align_t>(func).low
+   CX::union_cast<CX::member_ptr_align_t>(func).ptr
   },
   type(MEMBER_FUNC),
   modifiers(modifiers),
   //high bytes of member pointer
-  adj(CX::union_cast<_CX::member_ptr_align_t>(func).high),
+  adj(CX::union_cast<CX::member_ptr_align_t>(func).offset),
   proxyFuncV((void (*)())&_CX::FunctionAccessor<sizeof...(Args), decltype(func)>::template invokeV<>),
   proxyFuncA((void (*)())&_CX::FunctionAccessor<sizeof...(Args), decltype(func)>::template invokeA<>),
   isArbitrary(false)
@@ -1473,7 +1491,7 @@ namespace FakeJni {
 
  //Performs virtual dispatch
  template<typename R, typename A>
- R JMethodID::virtualInvoke(const JavaVM * vm, void * clazzOrInst, A args) const {
+ R JMethodID::virtualInvoke(const JavaVM * vm, void * clazzOrInst, A& args) const {
   auto * clazz = &((JObject *)clazzOrInst)->getClass();
   if (strcmp(clazz->getName(), "java/lang/Class") == 0) {
    //Static method, no virtual dispatch
@@ -1512,7 +1530,7 @@ namespace FakeJni {
 
  //Does not perform virtual dispatch
  template<typename R, typename A>
- R JMethodID::nonVirtualInvoke(const JavaVM * vm, JClass * const clazz, void * const inst, A args) const {
+ R JMethodID::nonVirtualInvoke(const JavaVM * vm, JClass * const clazz, void * const inst, A& args) const {
   const auto mid = clazz->getMethod(signature, name);
   if (!mid) {
    throw std::runtime_error(
@@ -1528,13 +1546,13 @@ namespace FakeJni {
 
  template<typename R>
  R JMethodID::invoke(const JavaVM * const vm, const JObject * clazzOrInst, ...) const {
-  va_list list;
+  CX::va_list_t list;
   va_start(list, clazzOrInst);
   return internalInvoke<R>(vm, (void *)clazzOrInst, list);
  }
 
  template<typename R, typename A>
- R JMethodID::internalInvoke(const JavaVM * vm, void * clazzOrInst, A args) const {
+ R JMethodID::internalInvoke(const JavaVM * vm, void * clazzOrInst, A& args) const {
   using arg_t = typename CX::ComponentTypeResolver<A>::type;
   //used to reassemble functor object data
   using align_t = _CX::arbitrary_align_t<sizeof(std::function<void ()>)>;
@@ -1548,7 +1566,7 @@ namespace FakeJni {
     const auto proxy = (R (*)(void *const, member_func_t, A))getFunctionProxy<A>();
     return proxy(
      CX::union_cast<JObject *>(clazzOrInst),
-     CX::union_cast<member_func_t>(_CX::member_ptr_align_t{fnPtr, adj}),
+     CX::union_cast<member_func_t>(CX::member_ptr_align_t{fnPtr, adj}),
      args
     );
    }
@@ -1569,9 +1587,8 @@ namespace FakeJni {
      values[i + 2] = ((void * (*)(A))resolvers[i + resolverOffset])(args);
     }
 
-    //Would be CX::IsSame<T, va_list> but this comparison is not guaranteed
     //Copy all primitives or object pointers into values (va_list only, jvalue* is done above)
-    if constexpr (!CX::IsSame<arg_t, jvalue>::value) {
+    if constexpr (CX::IsSame<arg_t, CX::va_list_t>::value) {
      for (unsigned int i = 0; i < argc; i++) {
       const auto* ffi_arg_t = descriptor->arg_types[i + 2];
       _INTERNAL_INVOKE_VA_ARG(JByte, ffi_type_sint8)
@@ -1583,7 +1600,7 @@ namespace FakeJni {
       _INTERNAL_INVOKE_VA_ARG(JDouble, ffi_type_double)
 //      _INTERNAL_INVOKE_VA_ARG(JObject *, ffi_type_pointer)
       if (ffi_arg_t == &ffi_type_pointer) {
-       *((JObject **)values[i + 2]) = va_arg(args, JObject *);
+       *((JObject **)values[i + 2]) = CX::safe_va_arg<JObject *>(args);
        continue;
       }
      }
@@ -1724,23 +1741,31 @@ namespace FakeJni {
   }
  }
 
- //JValueArgResolver for JObject derived classes (see meta/method.h)
+ //JValueUtil for JObject derived classes (see meta/method.h)
  namespace _CX {
   template<typename T>
-  class JValueArgResolver<true, T> {
+  class JValueUtil<T, true> {
 
   public:
    inline static constexpr const bool isRegisteredResolver = true;
    using componentType = typename ComponentTypeResolver<T*>::type;
 
+   static_assert(__is_base_of(JObject, componentType), "Illegal JNI function parameter type!");
+
    [[gnu::always_inline]]
-   inline static componentType* getAArg(jvalue *values) {
-    static_assert(__is_base_of(JObject, componentType), "Illegal JNI function parameter type!");
+   inline static componentType * getAArg(jvalue * values) {
     if constexpr(CastDefined<componentType>::value) {
      return componentType::cast::cast((JObject*)values->l);
     } else {
      return (componentType *)values->l;
     }
+   }
+
+   [[gnu::always_inline nodiscard]]
+   inline static jvalue makeAArg(componentType * value) {
+    jvalue jv;
+    jv.l = value;
+    return jv;
    }
   };
  }
@@ -1768,7 +1793,7 @@ namespace FakeJni {
  template<typename T>
  JClass::JClass(uint32_t modifiers, _CX::JClassBreeder<T, true> breeder) noexcept :
   JObject(),
-  constructV(&decltype(breeder)::template constructorPredicate<va_list>),
+  constructV(&decltype(breeder)::template constructorPredicate<CX::va_list_t&>),
   constructA(&decltype(breeder)::template constructorPredicate<const jvalue *>),
   className(T::name),
   isArbitrary(false),
@@ -1785,7 +1810,7 @@ namespace FakeJni {
  template<typename T>
  JClass::JClass(uint32_t modifiers, _CX::JClassBreeder<T, false> breeder) noexcept :
   JObject(),
-  constructV(&decltype(breeder)::template constructorPredicate<va_list>),
+  constructV(&decltype(breeder)::template constructorPredicate<CX::va_list_t&>),
   constructA(&decltype(breeder)::template constructorPredicate<const jvalue *>),
   className(_CX::JniTypeBase<T>::signature),
   isArbitrary(false),

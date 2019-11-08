@@ -79,6 +79,10 @@ BEGIN_NATIVE_DESCRIPTOR(ExampleClass)
  {Constructor<ExampleClass, JDouble, ExampleClass *> {}}
 END_NATIVE_DESCRIPTOR
 
+static void bruh(JNIEnv *env, jobject clazzOrInst, JDouble value) {
+ printf("Value: %f\n", value);
+}
+
 //fake-jni in action
 int main(int argc, char **argv) {
  //Make a JString
