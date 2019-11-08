@@ -90,7 +90,7 @@ int main(int argc, char **argv) {
 
  //Create a shiny new fake JVM instance
  Jvm vm;
- vm.registerDefaultSignalHandler();
+// vm.registerDefaultSignalHandler();
  vm.start();
 
  //Register ExampleClass on the JVM instance
