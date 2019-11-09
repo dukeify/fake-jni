@@ -338,6 +338,8 @@ namespace FakeJni {
 #endif
    if (library->jniBound()) {
     if (!library->jniLoad()) {
+     //set Jvm::currentVm to nullptr before throwing an exception, so the Jvm signal handler does not  process this
+     currentVm = nullptr;
      throw std::runtime_error("FATAL: Error initializing JNI library: '" + path + "'");
     }
    }
@@ -345,6 +347,8 @@ namespace FakeJni {
    if (library->agentBound()) {
     const auto agentInitializer = (running ? &Library::agentAttach : &Library::agentLoad);
     if ((library->*agentInitializer)(const_cast<char *>(options.c_str()))) {
+     currentVm = nullptr;
+     //set Jvm::currentVm to nullptr before throwing an exception, so the Jvm signal handler does not  process this
      throw std::runtime_error("FATAL: Error initializing agent library: '" + path + "'");
     }
    }
@@ -420,6 +424,7 @@ namespace FakeJni {
     }
    }
    if (!main) {
+    currentVm = nullptr;
     throw std::runtime_error("No classes define the default Java entry point: 'main([Ljava/lang/String;)V'!");
    }
    main->invoke<void>(this, encapsulatingClass);
