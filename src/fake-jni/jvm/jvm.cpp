@@ -521,7 +521,10 @@ namespace FakeJni {
    symbol_size = DEFAULT_MANGLED_SYMBOL_NAME_CACHE - 1024;
   bool demangleAttempted = false;
   Dl_info dlinfo;
-  const char *sym, *obj_file;
+  const char
+   *sym,
+   *obj_file,
+   *demangled;
 
   _UNW_SUCCEED_OR_THROW(unw_getcontext, &uc)
   _UNW_SUCCEED_OR_THROW(unw_init_local, &cursor, &uc)
@@ -550,7 +553,7 @@ namespace FakeJni {
     sym = "[stripped]";
    } else {
     demangleAttempted = true;
-    char *demangled = abi::__cxa_demangle(sym, nullptr, nullptr, &demangle_status);
+    demangled = abi::__cxa_demangle(sym, nullptr, nullptr, &demangle_status);
     if (!demangle_status) {
      sym = demangled;
     }
@@ -574,7 +577,7 @@ namespace FakeJni {
    );
    //if the name was demangled, free the allocated string
    if (demangleAttempted) {
-    free((void *)sym);
+    free((void *)demangled);
    }
    frame_number += 1;
   }
