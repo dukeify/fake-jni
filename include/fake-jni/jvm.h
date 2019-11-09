@@ -1094,6 +1094,7 @@ namespace FakeJni {
   JClass(const JClass& clazz) noexcept;
   virtual ~JClass() = default;
 
+  uint32_t getModifiers() const noexcept;
   bool registerMethod(const JMethodID * mid) const;
   bool unregisterMethod(const JMethodID * mid) const noexcept;
   const JMethodID * getMethod(const char * sig, const char * name) const noexcept;

@@ -41,6 +41,10 @@ namespace FakeJni {
   }
  }
 
+ uint32_t JClass::getModifiers() const noexcept {
+  return modifiers;
+ }
+
  bool JClass::registerMethod(const JMethodID * const mid) const {
   if (isArbitrary) {
    if (mid->type == JMethodID::MEMBER_FUNC) {
