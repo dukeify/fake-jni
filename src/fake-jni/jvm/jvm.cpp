@@ -382,34 +382,34 @@ namespace FakeJni {
   }
   currentVm = this;
   running = true;
-  //TODO REMOVE
-  throw std::runtime_error("unimplemented");
   try {
    const JClass * encapsulatingClass = nullptr;
    const JMethodID * main = nullptr;
    for (auto& clazz : classes) {
-    for (auto& mid : clazz->getMethods()) {
-     if (strcmp(mid->getName(), "main") == 0) {
-      if (strcmp(mid->getSignature(), "([java/lang/String;)V") == 0) {
-       encapsulatingClass = clazz;
-       main = mid;
+    if (!main) {
+     for (auto& mid : clazz->getMethods()) {
+      if (strcmp(mid->getName(), "main") == 0) {
+       if (strcmp(mid->getSignature(), "([java/lang/String;)V") == 0) {
+        encapsulatingClass = clazz;
+        main = mid;
+        break;
+       }
       }
      }
-     break;
     }
    }
    if (!main) {
-    throw std::runtime_error("FATAL: No classes define the default Java entry point: 'main([Ljava/lang/String;)V'!");
+    throw std::runtime_error("No classes define the default Java entry point: 'main([Ljava/lang/String;)V'!");
    }
    main->invoke<void>(this, encapsulatingClass);
   } catch(const std::exception &ex) {
-   //TODO
+   //TODO put the Jvm into an errored state so the user can handle the error
    fprintf(log, "FATAL: VM encountered an uncaught exception with message:\n%s\n", ex.what());
-//   throw;
+   exit(-1);
   } catch(...) {
-   //TODO
+   //TODO put the Jvm into an errored state so the user can handle the error
    fprintf(log, "FATAL: VM encountered an unknown fatal error!\n");
-//   throw;
+   exit(-1);
   }
   running = false;
   currentVm = nullptr;
@@ -445,6 +445,11 @@ namespace FakeJni {
    fprintf(log, "FATAL: Encountered unexpected exception unwinding stack!\n");
    exit(-1);
   }
+  //If vm execution has not entered through Jvm::start(), Jvm::attachLibrary or Jvm::removeLibrary
+  if (!Jvm::currentVm) {
+   fprintf(log, "FATAL: JVM execution started through unsupported entry point!\n");
+   abort();
+  }
   unw_cursor_t cursor;
   unw_context_t uc;
   unw_word_t off;
@@ -452,9 +457,9 @@ namespace FakeJni {
    unw_status,
    demangle_status = -1,
    symbol_size = DEFAULT_MANGLED_SYMBOL_NAME_CACHE - 1024;
-  bool startFound = false;
+  bool returnFrameFound = false;
 
-  //TODO put the Jvm into an errored state so that the user can handle the error
+  //TODO put the Jvm into an errored state so the user can handle the error
   //find FakeJni::Jvm::start() and continue execution at that frame
   //initialize frame to the current frame for local unwinding
   _UNW_SUCCEED_OR_EXIT(unw_getcontext, &uc)
@@ -484,13 +489,19 @@ namespace FakeJni {
 #endif
     continue;
    }
-   if (strcmp(sym, "FakeJni::Jvm::start()") == 0) {
-    startFound = true;
+   if (running) {
+    if (strcmp(sym, "FakeJni::Jvm::start()") == 0) {
+     returnFrameFound = true;
+    }
+   } else {
+    if (((uintptr_t)strstr(sym, "FakeJni::Jvm::attachLibrary") | (uintptr_t)strstr(sym, "FakeJni::Jvm::removeLibrary")) != 0) {
+     returnFrameFound = true;
+    }
    }
    if (!demangle_status) {
     free(sym);
    }
-   if (startFound) {
+   if (returnFrameFound) {
     break;
    }
   }
@@ -498,8 +509,16 @@ namespace FakeJni {
    fprintf(log, "FATAL: unw_step() failed with error code: %d\n", unw_status);
    exit(-1);
   }
-  if (!startFound) {
-   fprintf(log, "FATAL: FakeJni::Jvm::start() entry point was not found on the stack!\n");
+  if (!returnFrameFound) {
+   if (running) {
+    fprintf(log, "FATAL: FakeJni::Jvm::start() entry point was not found on the stack!\n");
+   } else {
+    fprintf(
+     log,
+     "FATAL: Neither FakeJni::Jvm::attachLibrary() nor FakeJni::Jvm::removeLibrary() entry points were not "
+     "found on the stack!\n"
+    );
+   }
    exit(-1);
   }
   //if resume is successful this code will never be reached
@@ -582,7 +601,7 @@ namespace FakeJni {
    frame_number += 1;
   }
   if (unw_status != 0) {
-   throw UnwindException("FATAL: unw_step() failed with error code: " + std::to_string(unw_status));
+   throw UnwindException("unw_step() failed with error code: " + std::to_string(unw_status));
   }
  }
 }
