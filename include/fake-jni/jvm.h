@@ -23,7 +23,6 @@
 #include <algorithm>
 #include <cstdint>
 #include <cstring>
-#include <functional>
 #include <map>
 #include <mutex>
 #include <shared_mutex>
@@ -1145,6 +1144,17 @@ namespace FakeJni {
   static PointerList<Jvm *> vms;
   static thread_local const Jvm * currentVm;
 
+  //handles the currentVm threadlocal so that it is always cleaned up once the encapsulating scope exits
+  //can also handle other values that must be modified once the encapsulating scope exits
+  struct VmThreadContext {
+   mutable std::vector<CX::Lambda<void ()>> destructorHooks;
+
+   VmThreadContext(const Jvm & vm);
+   ~VmThreadContext();
+  };
+
+  VmThreadContext setVmContext() const;
+
  public:
   struct UnwindException final : std::runtime_error {
    using std::runtime_error::runtime_error;
@@ -1226,9 +1236,7 @@ namespace FakeJni {
  namespace _CX {
   class ClassDescriptorElement {
   public:
-   const std::function<bool (JClass * const)> processHook;
-   //TODO FunctionOperatorExists static assertion fails?
-//   const CX::Lambda<bool (JClass * const)> processHook;
+   const CX::Lambda<bool (JClass * const)> processHook;
 
    //Constructor for functions
    template<auto F>

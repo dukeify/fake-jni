@@ -41,6 +41,24 @@ namespace FakeJni {
  PointerList<Jvm *> Jvm::vms;
  thread_local const Jvm *Jvm::currentVm;
 
+ Jvm::VmThreadContext::VmThreadContext(const FakeJni::Jvm &vm) {
+  if (Jvm::currentVm) {
+   throw std::runtime_error("FATAL: Tried to overwrite context of a running JVM instance!");
+  }
+  Jvm::currentVm = &vm;
+ }
+
+ Jvm::VmThreadContext::~VmThreadContext() {
+  for (auto& hook : destructorHooks) {
+   hook();
+  }
+  Jvm::currentVm = nullptr;
+ }
+
+ Jvm::VmThreadContext Jvm::setVmContext() const {
+  return {*this};
+ }
+
  Jvm::Jvm(FILE *log) :
   JavaVM(),
   uuid(generateJvmUuid()),
@@ -271,9 +289,10 @@ namespace FakeJni {
  }
 
  bool Jvm::unregisterClass(const JClass * clazz) {
-//  const auto end = classes.end();
+  const auto end = classes.end();
 //  const auto found = end != classes.erase(std::remove(classes.begin(), end, clazz), end);
-  const auto found = classes.contains(clazz);
+//  const auto found = classes.contains(clazz);
+  const auto found = (classes.erase(clazz) != end);
 #ifdef FAKE_JNI_DEBUG
   if (!found) {
    fprintf(
@@ -302,7 +321,8 @@ namespace FakeJni {
   LibraryOptions loptions
  ) {
   std::scoped_lock libraryLock(library_mutex);
-  currentVm = this;
+  [[maybe_unused]]
+  const auto&& context = setVmContext();
   std::string path = rpath.empty() ? "(embedded)" : rpath;
   bool libraryExists = false;
   for (auto lib : libraries) {
@@ -338,7 +358,6 @@ namespace FakeJni {
    fprintf(log, "WARNING: Library '%s' is already registered on this DefaultJvm instance!\n", path.c_str());
   }
 #endif
-  currentVm = nullptr;
  }
 
  //Removes a library from the DefaultJvm instance
@@ -356,7 +375,8 @@ namespace FakeJni {
 
  bool Jvm::removeLibrary(const Library * library, const std::string & options) {
   std::scoped_lock libraryLock(library_mutex);
-  currentVm = this;
+  [[maybe_unused]]
+  const auto&& context = setVmContext();
 #ifdef FAKE_JNI_DEBUG
   fprintf(log, "DEBUG: Removing library: '%s'\n", library->path.c_str());
 #endif
@@ -367,8 +387,6 @@ namespace FakeJni {
    library->agentUnload(const_cast<char *>(options.c_str()));
   }
   libraries.erase(library);
-//  delete library;
-  currentVm = nullptr;
   return true;
  }
 
@@ -377,10 +395,13 @@ namespace FakeJni {
  }
 
  void Jvm::start() {
+  [[maybe_unused]]
+  const auto&& context = setVmContext();
   if (running) {
    throw std::runtime_error("FATAL: Tried to start JVM instance twice!");
   }
-  currentVm = this;
+  context.destructorHooks.emplace_back([&]() { running = false; });
+//  currentVm = this;
   running = true;
   try {
    const JClass * encapsulatingClass = nullptr;
@@ -411,8 +432,6 @@ namespace FakeJni {
    fprintf(log, "FATAL: VM encountered an unknown fatal error!\n");
    exit(-1);
   }
-  running = false;
-  currentVm = nullptr;
  }
 
  //TODO
