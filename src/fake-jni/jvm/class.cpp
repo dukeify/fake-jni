@@ -45,7 +45,7 @@ namespace FakeJni {
   return modifiers;
  }
 
- bool JClass::registerMethod(const JMethodID * const mid) const {
+ bool JClass::registerMethod(const JMethodID * const mid, bool deallocate) const {
   if (isArbitrary) {
    if (mid->type == JMethodID::MEMBER_FUNC) {
     throw std::runtime_error(
@@ -63,7 +63,11 @@ namespace FakeJni {
     }
    }
   }
-  functions_ref.insert(mid);
+  if (deallocate) {
+   functions_ref.insert(mid);
+  } else {
+   functions_ref.insert(mid, nullptr);
+  }
   return true;
  }
 
@@ -88,7 +92,7 @@ namespace FakeJni {
   return functions;
  }
 
- bool JClass::registerField(JFieldID * const fid) const noexcept {
+ bool JClass::registerField(JFieldID * const fid, bool deallocate) const noexcept {
   auto& fields_ref = const_cast<PointerList<const JFieldID *>&>(fields);
   for (auto reg_fid : fields_ref) {
    if (*reg_fid == *fid) {
@@ -99,7 +103,11 @@ namespace FakeJni {
     }
    }
   }
-  fields_ref.insert(fid);
+  if (deallocate) {
+   fields_ref.insert(fid);
+  } else {
+   fields_ref.insert(fid, nullptr);
+  }
   return true;
  }
 

@@ -1095,12 +1095,12 @@ namespace FakeJni {
   virtual ~JClass() = default;
 
   uint32_t getModifiers() const noexcept;
-  bool registerMethod(const JMethodID * mid) const;
+  bool registerMethod(const JMethodID * mid, bool deallocate = true) const;
   bool unregisterMethod(const JMethodID * mid) const noexcept;
   const JMethodID * getMethod(const char * sig, const char * name) const noexcept;
   [[nodiscard]]
   const PointerList<const JMethodID *>& getMethods() const noexcept;
-  bool registerField(JFieldID * fid) const noexcept;
+  bool registerField(JFieldID * fid, bool deallocate = true) const noexcept;
   bool unregisterField(JFieldID * fid) const noexcept;
   const JFieldID * getField(const char * name) const noexcept;
   const JFieldID * getField(const char * sig, const char * name) const noexcept;
