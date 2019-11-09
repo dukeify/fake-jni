@@ -301,6 +301,8 @@ namespace FakeJni {
   const std::string & options,
   LibraryOptions loptions
  ) {
+  std::scoped_lock libraryLock(library_mutex);
+  currentVm = this;
   std::string path = rpath.empty() ? "(embedded)" : rpath;
   bool libraryExists = false;
   for (auto lib : libraries) {
@@ -336,6 +338,7 @@ namespace FakeJni {
    fprintf(log, "WARNING: Library '%s' is already registered on this DefaultJvm instance!\n", path.c_str());
   }
 #endif
+  currentVm = nullptr;
  }
 
  //Removes a library from the DefaultJvm instance
@@ -352,6 +355,8 @@ namespace FakeJni {
  }
 
  bool Jvm::removeLibrary(const Library * library, const std::string & options) {
+  std::scoped_lock libraryLock(library_mutex);
+  currentVm = this;
 #ifdef FAKE_JNI_DEBUG
   fprintf(log, "DEBUG: Removing library: '%s'\n", library->path.c_str());
 #endif
@@ -363,6 +368,7 @@ namespace FakeJni {
   }
   libraries.erase(library);
 //  delete library;
+  currentVm = nullptr;
   return true;
  }
 
