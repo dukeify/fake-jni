@@ -8,6 +8,8 @@
 #include <cx/vararg.h>
 #include <cx/lambda.h>
 
+#include <vector>
+
 #define _JVALUE_UTIL_MAP(t, member) \
 template<>\
 class JValueUtil<t, false> {\
