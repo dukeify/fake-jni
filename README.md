@@ -34,10 +34,13 @@ target_link_libraries(my_project fake-jni)
 | `BUILD_FAKE_JNI_ASAN` | `=[ON OFF]` | `OFF` | Builds with ASAN |
 | `FFI_CC` | `={DESIRED_C_COMPILER}` | `${CMAKE_C_COMPILER}` | Set the C compiler for `libffi` |
 | `FFI_CXX` | `={DESIRED_CXX_COMPILER}` | `${CMAKE_CXX_COMPILER}` | Set the C++ compiler for `libffi` |
+| `FFI_CONFIGURE_FLAGS` | `={CONFIGURE_FLAGS}` | `` | Set the configure flags for `libffi` |
 | `LZMA_CC` | `={DESIRED_C_COMPILER}` | `${CMAKE_C_COMPILER}` | Set the C compiler for `liblzma` |
 | `LZMA_CXX` | `={DESIRED_CXX_COMPILER}` | `${CMAKE_CXX_COMPILER}` | Set the C++ compiler for `liblzma` |
+| `LZMA_CONFIGURE_FLAGS` | `={CONFIGURE_FLAGS}` | `` | Set the configure flags for `libxz` |
 | `UNWIND_CC` | `={DESIRED_C_COMPILER}` | `${CMAKE_C_COMPILER}` | Set the C compiler for `libunwind` |
 | `UNWIND_CXX` | `={DESIRED_CXX_COMPILER}` | `${CMAKE_CXX_COMPILER}` | Set the C++ compiler for `libunwind` | 
+| `UNWIND_CONFIGURE_FLAGS` | `={CONFIGURE_FLAGS}` | `` | Set the configure flags for `libunwind` |
 
 Simply build as usual:
 ```sh
