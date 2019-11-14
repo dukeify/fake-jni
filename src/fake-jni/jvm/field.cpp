@@ -9,8 +9,8 @@ namespace FakeJni {
   _jfieldID(),
   type(CALLBACK_PROP),
   modifiers(modifiers),
-  name(name),
-  signature(signature),
+  name(_INTERNAL_ARBITRARY_ALLOC_STR(name)),
+  signature(_INTERNAL_ARBITRARY_ALLOC_STR(signature)),
   proxyGetFunc((void (*)())get),
   proxySetFunc((void (*)())set),
   isArbitrary(true)
@@ -20,12 +20,19 @@ namespace FakeJni {
   _jfieldID(),
   type(STL_CALLBACK_PROP),
   modifiers(modifiers),
-  name(name),
-  signature(signature),
+  name(_INTERNAL_ARBITRARY_ALLOC_STR(name)),
+  signature(_INTERNAL_ARBITRARY_ALLOC_STR(signature)),
   arbitraryGet(CX::union_cast<decltype(arbitraryGet)>(std::move(get))),
   arbitrarySet(CX::union_cast<decltype(arbitraryGet)>(std::move(set))),
   isArbitrary(true)
  {}
+
+ JFieldID::~JFieldID() {
+  if (isArbitrary) {
+   delete[] name;
+   delete[] signature;
+  }
+ }
 
  const JFieldID * JFieldID::findVirtualMatch(const JClass * clazz) const noexcept {
   const auto * jobjDescriptor = JObject::getDescriptor();

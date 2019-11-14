@@ -5,14 +5,6 @@
 #define _ERROR_ARBITRARY_CLASS \
 throw std::runtime_error("FATAL: Cannot construct an arbitrary class with no native backing!");
 
-#define _ALLOC_CLASS_NAME(_name) \
-[&]() -> const char * {\
- const auto len = strlen(_name);\
- auto allocName = new char[len + 1];\
- memcpy(allocName, name, len + 1);\
- return allocName;\
-}()
-
 namespace FakeJni {
  JClass::JClass(const char * name, uint32_t modifiers) noexcept :
   JObject(),
@@ -22,7 +14,7 @@ namespace FakeJni {
   constructA([](const JavaVM * const, const char * const, const jvalue *) -> JObject * {
    _ERROR_ARBITRARY_CLASS
   }),
-  className(_ALLOC_CLASS_NAME(name)),
+  className(_INTERNAL_ARBITRARY_ALLOC_STR(name)),
   isArbitrary(true),
   modifiers(modifiers),
   parent(JObject::descriptor),
@@ -34,7 +26,7 @@ namespace FakeJni {
   JObject(),
   constructV(clazz.constructV),
   constructA(clazz.constructA),
-  className((clazz.isArbitrary ? _ALLOC_CLASS_NAME(clazz.className) : clazz.className)),
+  className((clazz.isArbitrary ? _INTERNAL_ARBITRARY_ALLOC_STR(clazz.className) : clazz.className)),
   isArbitrary(clazz.isArbitrary),
   modifiers(clazz.modifiers),
   parent(clazz.parent),

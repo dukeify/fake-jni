@@ -164,8 +164,8 @@ namespace FakeJni {
  JMethodID::JMethodID(arbitrary_func_t func, const char * signature, const char * name, uint32_t modifiers) :
   _jmethodID(),
   JNINativeMethod {
-   verifyName(name),
-   verifySignature(signature),
+   verifyName(_INTERNAL_ARBITRARY_ALLOC_STR(name)),
+   verifySignature(_INTERNAL_ARBITRARY_ALLOC_STR(signature)),
    (void *)func
   },
   //ReturnType (*fnPtr)(JNIEnv *env, jobject objectOrClass, ...)
@@ -205,8 +205,8 @@ namespace FakeJni {
  JMethodID::JMethodID(CX::Lambda<void * (JNIEnv *, jobject, jvalue *)> func, const char * signature, const char * name, uint32_t modifiers) :
   _jmethodID(),
   JNINativeMethod {
-   verifyName(name),
-   verifySignature(signature),
+   verifyName(_INTERNAL_ARBITRARY_ALLOC_STR(name)),
+   verifySignature(_INTERNAL_ARBITRARY_ALLOC_STR(signature)),
    //segmented functor object
    CX::union_cast<decltype(fnPtr)>(func)
   },
@@ -248,6 +248,10 @@ namespace FakeJni {
     delete[] cif->arg_types;
     delete cif;
    }
+  }
+  if (isArbitrary) {
+   delete[] name;
+   delete[] signature;
   }
  }
 }

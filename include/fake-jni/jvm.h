@@ -74,6 +74,14 @@ for (unsigned int i = 0; i < argc; i++) {\
  ((void (*)(void *))deallocators[i])(values[i + 2]);\
 }
 
+#define _INTERNAL_ARBITRARY_ALLOC_STR(_name) \
+[&]() -> const char * {\
+ const auto len = strlen(_name);\
+ auto allocStr = new char[len + 1];\
+ memcpy(allocStr, _name, len + 1);\
+ return allocStr;\
+}()
+
 //FAKE-JNI API MACROS
 #define DUAL_OVERLOAD_RESOLVER(_1, _2, OVERLOAD, ...) OVERLOAD
 
@@ -840,6 +848,7 @@ namespace FakeJni {
   JFieldID(CX::Lambda<T* ()> get, CX::Lambda<void (T*)> set, const char * name, uint32_t modifiers) noexcept;
   //Constructor for arbitrary fields with type-erased user-defined, capturing, access callbacks
   JFieldID(CX::Lambda<void * ()> get, CX::Lambda<void (void *)> set, const char * name, const char * signature, uint32_t modifiers) noexcept;
+  ~JFieldID();
 
   inline const char * getName() const noexcept {
    return name;
