@@ -815,8 +815,6 @@ namespace FakeJni {
    };
   };
 
-  const JFieldID * findVirtualMatch(const JClass * clazz) const noexcept;
-
   template<typename T>
   T * get(JObject * obj) const;
 
@@ -860,9 +858,10 @@ namespace FakeJni {
   [[nodiscard]]
   virtual uint32_t getModifiers() const noexcept;
   virtual bool operator ==(const JFieldID &fid) const noexcept;
+  virtual const JFieldID * findVirtualMatch(const JClass * clazz) const noexcept;
   [[nodiscard]]
-  virtual jvalue get(JObject * obj) const;
-  virtual void set(JObject * obj, void * value) const;
+  virtual jvalue get(const JavaVM * vm, JObject * obj) const;
+  virtual void set(const JavaVM * vm, JObject * obj, void * value) const;
  };
 
  //fake-jni implementation
@@ -936,8 +935,6 @@ namespace FakeJni {
 
   //template bases
   template<typename R, typename A>
-  R internalInvoke(const JavaVM * vm, void * clazzOrInst, A& args) const;
-  template<typename R, typename A>
   R vInvoke(const JavaVM * vm, void * clazzOrInst, A& args) const;
   template<typename R, typename A>
   R nvInvoke(const JavaVM * vm, JClass * clazz, void * inst, A& args) const;
@@ -994,11 +991,15 @@ namespace FakeJni {
   JMethodID(CX::Lambda<void * (JNIEnv *, jobject, jvalue *)> func, const char * signature, const char * name, uint32_t modifiers);
   virtual ~JMethodID();
 
+  template<typename R, typename A>
+  R directInvoke(const JavaVM * vm, void * clazzOrInst, A& args) const;
+
   virtual bool operator ==(const JMethodID& mid) const noexcept;
   virtual bool operator ==(const JNINativeMethod*& mid) const;
   virtual const char * getName() const noexcept;
   virtual const char * getSignature() const noexcept;
   virtual uint32_t getModifiers() const noexcept;
+  virtual const JMethodID * findVirtualMatch(const JClass * clazz) const;
 
   //user overrides
   virtual jvalue invoke(const JavaVM * vm, const JObject * clazzOrInst, ...) const;
@@ -1531,28 +1532,10 @@ namespace FakeJni {
       + "' as a static method!"
     );
    }
-   return internalInvoke<R, A>(vm, clazzOrInst, args);
+   return directInvoke<R, A>(vm, clazzOrInst, args);
   } else {
    //Member method, virtual dispatch
-   const auto * jobjDescriptor = JObject::getDescriptor();
-   while (clazz != jobjDescriptor) {
-    for (auto& method : clazz->getMethods()) {
-     if (strcmp(name, method->getName()) == 0) {
-      if (strcmp(signature, method->getSignature()) == 0) {
-       return method->internalInvoke<R, A>(vm, clazzOrInst, args);
-      }
-     }
-    }
-    clazz = &clazz->parent;
-   }
-   throw std::runtime_error(
-    "FATAL: Could not perform virtual function invocation for '"
-    + std::string(name)
-    + signature
-    + "' since no classes in the inheritance hierarchy of '"
-    + clazz->getName()
-    + "'register a matching overload!"
-   );
+   return findVirtualMatch(clazz)->directInvoke<R, A>(vm, clazzOrInst, args);
   }
  }
 
@@ -1569,11 +1552,11 @@ namespace FakeJni {
      + signature
      + "'!");
   }
-  return mid->template internalInvoke<R, A>(vm, inst, args);
+  return mid->template directInvoke<R, A>(vm, inst, args);
  }
 
  template<typename R, typename A>
- R JMethodID::internalInvoke(const JavaVM * vm, void * clazzOrInst, A& args) const {
+ R JMethodID::directInvoke(const JavaVM * vm, void * clazzOrInst, A& args) const {
   using arg_t = typename CX::ComponentTypeResolver<A>::type;
   //perform invocation
   switch (type) {

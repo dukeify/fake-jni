@@ -5,26 +5,6 @@
 
 //Non-template members of JFieldID
 namespace FakeJni {
- const JFieldID * JFieldID::findVirtualMatch(const JClass * clazz) const noexcept {
-  const auto * jobjDescriptor = JObject::getDescriptor();
-  const JFieldID * fieldDescriptor = clazz->getField(signature, name);
-  if (!fieldDescriptor) {
-   clazz = &clazz->parent;
-   while (clazz != jobjDescriptor) {
-    for (auto& fid : clazz->getFields()) {
-     if (strcmp(fid->getName(), name) == 0) {
-      if (strcmp(fid->getSignature(), signature) == 0) {
-       fieldDescriptor = fid;
-       break;
-      }
-     }
-    }
-    clazz = &clazz->parent;
-   }
-  }
-  return fieldDescriptor;
- }
-
  JFieldID::JFieldID(v_get_func_t get, v_set_func_t set, const char * name, const char * signature, uint32_t modifiers) noexcept :
   _jfieldID(),
   type(CALLBACK_PROP),
@@ -85,11 +65,31 @@ namespace FakeJni {
   return false;
  }
 
- jvalue JFieldID::get(JObject * obj) const {
+ const JFieldID * JFieldID::findVirtualMatch(const JClass * clazz) const noexcept {
+  const auto * jobjDescriptor = JObject::getDescriptor();
+  const JFieldID * fieldDescriptor = clazz->getField(signature, name);
+  if (!fieldDescriptor) {
+   clazz = &clazz->parent;
+   while (clazz != jobjDescriptor) {
+    for (auto& fid : clazz->getFields()) {
+     if (strcmp(fid->getName(), name) == 0) {
+      if (strcmp(fid->getSignature(), signature) == 0) {
+       fieldDescriptor = fid;
+       break;
+      }
+     }
+    }
+    clazz = &clazz->parent;
+   }
+  }
+  return fieldDescriptor;
+ }
+
+ jvalue JFieldID::get(const JavaVM * vm, JObject * obj) const {
   return CX::union_cast<jvalue>(get<jvalue>(obj));
  }
 
- void JFieldID::set(JObject * const obj, void * const value) const {
+ void JFieldID::set(const JavaVM * vm, JObject * const obj, void * const value) const {
   auto clazz = &obj->getClass();
   const JFieldID * fid = this;
   if (clazz != &JClass::descriptor) {

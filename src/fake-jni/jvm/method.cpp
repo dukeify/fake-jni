@@ -289,10 +289,32 @@ namespace FakeJni {
   }
  }
 
+ const JMethodID * JMethodID::findVirtualMatch(const JClass * clazz) const {
+  const auto * jobjDescriptor = JObject::getDescriptor();
+  while (clazz != jobjDescriptor) {
+   for (auto& method : clazz->getMethods()) {
+    if (strcmp(name, method->getName()) == 0) {
+     if (strcmp(signature, method->getSignature()) == 0) {
+      return method;
+     }
+    }
+   }
+   clazz = &clazz->parent;
+  }
+  throw std::runtime_error(
+   "FATAL: Could not perform virtual function invocation for '"
+   + std::string(name)
+   + signature
+   + "' since no classes in the inheritance hierarchy of '"
+   + clazz->getName()
+   + "'register a matching overload!"
+  );
+ }
+
  jvalue JMethodID::invoke(const JavaVM * const vm, const JObject * clazzOrInst, ...) const {
   CX::va_list_t list;
   va_start(list, clazzOrInst);
-  return internalInvoke<jvalue>(vm, (void *)clazzOrInst, list);
+  return directInvoke<jvalue>(vm, (void *)clazzOrInst, list);
  }
 
  jvalue JMethodID::virtualInvoke(const JavaVM * vm, void * clazzOrObj, CX::va_list_t& list) const {
