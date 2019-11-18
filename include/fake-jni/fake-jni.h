@@ -1,8 +1,8 @@
 #pragma once
 
-#include <functional>
-
+//JVM core headers
 #include "fake-jni/jvm.h"
+//Extension headers with JDK support
 #include "fake-jni/array.h"
 #include "fake-jni/string.h"
 #include "fake-jni/throwable.h"

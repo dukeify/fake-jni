@@ -5,6 +5,26 @@
 
 //Non-template members of JFieldID
 namespace FakeJni {
+ const JFieldID * JFieldID::findVirtualMatch(const JClass * clazz) const noexcept {
+  const auto * jobjDescriptor = JObject::getDescriptor();
+  const JFieldID * fieldDescriptor = clazz->getField(signature, name);
+  if (!fieldDescriptor) {
+   clazz = &clazz->parent;
+   while (clazz != jobjDescriptor) {
+    for (auto& fid : clazz->getFields()) {
+     if (strcmp(fid->getName(), name) == 0) {
+      if (strcmp(fid->getSignature(), signature) == 0) {
+       fieldDescriptor = fid;
+       break;
+      }
+     }
+    }
+    clazz = &clazz->parent;
+   }
+  }
+  return fieldDescriptor;
+ }
+
  JFieldID::JFieldID(v_get_func_t get, v_set_func_t set, const char * name, const char * signature, uint32_t modifiers) noexcept :
   _jfieldID(),
   type(CALLBACK_PROP),
@@ -34,24 +54,16 @@ namespace FakeJni {
   }
  }
 
- const JFieldID * JFieldID::findVirtualMatch(const JClass * clazz) const noexcept {
-  const auto * jobjDescriptor = JObject::getDescriptor();
-  const JFieldID * fieldDescriptor = clazz->getField(signature, name);
-  if (!fieldDescriptor) {
-   clazz = &clazz->parent;
-   while (clazz != jobjDescriptor) {
-    for (auto& fid : clazz->getFields()) {
-     if (strcmp(fid->getName(), name) == 0) {
-      if (strcmp(fid->getSignature(), signature) == 0) {
-       fieldDescriptor = fid;
-       break;
-      }
-     }
-    }
-    clazz = &clazz->parent;
-   }
-  }
-  return fieldDescriptor;
+ const char * JFieldID::getName() const noexcept {
+  return name;
+ }
+
+ const char * JFieldID::getSignature() const noexcept {
+  return signature;
+ }
+
+ uint32_t JFieldID::getModifiers() const noexcept {
+  return modifiers;
  }
 
  bool JFieldID::operator ==(const JFieldID &fid) const noexcept {
@@ -73,40 +85,47 @@ namespace FakeJni {
   return false;
  }
 
+ jvalue JFieldID::get(JObject * obj) const {
+  return CX::union_cast<jvalue>(get<jvalue>(obj));
+ }
+
  void JFieldID::set(JObject * const obj, void * const value) const {
-  auto& clazz = obj->getClass();
-  auto * fid = findVirtualMatch(&clazz);
+  auto clazz = &obj->getClass();
+  const JFieldID * fid = this;
+  if (clazz != &JClass::descriptor) {
+   fid = findVirtualMatch(clazz);
+  }
   if (fid) {
    switch (fid->type) {
     case STATIC_PROP: {
      _JFIELDID_STATIC_CHECK(
       ((void (*)(void *, void *))fid->proxySetFunc)(staticProp, value);
-      break;
+      return;
      )
     }
     case MEMBER_PROP: {
      _JFIELDID_STATIC_CHECK(
       ((void (*)(void *, int (_CX::AnyClass::*), void *))fid->proxySetFunc)(obj, memberProp, value);
-      break;
+      return;
      )
     }
     case CALLBACK_PROP: {
      _JFIELDID_STATIC_CHECK(
       ((void (*)(void *, void *))proxySetFunc)(obj, value);
-      break;
+      return;
      )
     }
     case STL_CALLBACK_PROP: {
      _JFIELDID_STATIC_CHECK(
       CX::union_cast<CX::Lambda<void (void *)>>(arbitrarySet)(value);
-      break;
+      return;
      )
     }
    }
   }
   throw std::runtime_error(
    "FATAL: '"
-    + std::string(clazz.getName())
+    + std::string(clazz->getName())
     + "' does not contain or inherit any fields matching '"
     + name
     + "' -> '"

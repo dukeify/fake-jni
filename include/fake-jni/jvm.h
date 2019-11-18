@@ -768,7 +768,7 @@ namespace FakeJni {
  };
 
  //fake-jni implementation
- class JFieldID final : public _jfieldID {
+ class JFieldID : public _jfieldID {
  public:
   template<typename T>
   using get_func_t = T& (*)(void * inst);
@@ -817,6 +817,9 @@ namespace FakeJni {
 
   const JFieldID * findVirtualMatch(const JClass * clazz) const noexcept;
 
+  template<typename T>
+  T * get(JObject * obj) const;
+
  public:
   const bool isArbitrary;
 
@@ -848,30 +851,22 @@ namespace FakeJni {
   JFieldID(CX::Lambda<T* ()> get, CX::Lambda<void (T*)> set, const char * name, uint32_t modifiers) noexcept;
   //Constructor for arbitrary fields with type-erased user-defined, capturing, access callbacks
   JFieldID(CX::Lambda<void * ()> get, CX::Lambda<void (void *)> set, const char * name, const char * signature, uint32_t modifiers) noexcept;
-  ~JFieldID();
+  virtual ~JFieldID();
 
-  inline const char * getName() const noexcept {
-   return name;
-  }
-
-  inline const char * getSignature() const noexcept {
-   return signature;
-  }
-
-  inline uint32_t getModifiers() const noexcept {
-   return modifiers;
-  }
-
-  bool operator ==(const JFieldID &fid) const noexcept;
-  template<typename T>
-  T& get(JObject * obj) const;
-  void set(JObject * obj, void * value) const;
+  [[nodiscard]]
+  virtual const char * getName() const noexcept;
+  [[nodiscard]]
+  virtual const char * getSignature() const noexcept;
+  [[nodiscard]]
+  virtual uint32_t getModifiers() const noexcept;
+  virtual bool operator ==(const JFieldID &fid) const noexcept;
+  [[nodiscard]]
+  virtual jvalue get(JObject * obj) const;
+  virtual void set(JObject * obj, void * value) const;
  };
 
  //fake-jni implementation
- //TODO protect the mutable fields in JNINativeMethod
-// class JMethodID final : public _jmethodID, private JNINativeMethod {
- class JMethodID final : public _jmethodID, public JNINativeMethod {
+ class JMethodID : public _jmethodID, public JNINativeMethod {
  public:
   using static_func_t = void (*)();
   using member_func_t = void (_CX::AnyClass::*)();
@@ -889,9 +884,6 @@ namespace FakeJni {
   const Type type;
 
  private:
-  //Ref-counted map of signature hashes to ffi_cif descriptors
-  static std::map<size_t, std::pair<unsigned long, ffi_cif *>> descriptors;
-
   union {
    //STATIC_FUNC, MEMBER_FUNC and STL_FUNC
    struct {
@@ -939,10 +931,26 @@ namespace FakeJni {
   [[nodiscard]]
   static std::vector<ffi_type *> getFfiPrototype(const char * signature, const char * name);
 
+  //Ref-counted map of signature hashes to ffi_cif descriptors
+  static std::map<size_t, std::pair<unsigned long, ffi_cif *>> descriptors;
+
+  //template bases
   template<typename R, typename A>
   R internalInvoke(const JavaVM * vm, void * clazzOrInst, A& args) const;
+  template<typename R, typename A>
+  R vInvoke(const JavaVM * vm, void * clazzOrInst, A& args) const;
+  template<typename R, typename A>
+  R nvInvoke(const JavaVM * vm, JClass * clazz, void * inst, A& args) const;
 
  public:
+  //used to reassemble functor object data
+  using functor_align_t = _CX::arbitrary_align_t<sizeof(CX::Lambda<void ()>)>;
+
+  struct FunctorData {
+   decltype(fnPtr) d1;
+   decltype(stlFunc) d2;
+  } __attribute__((packed));
+
   const bool isArbitrary;
 
   enum Modifiers : uint32_t {
@@ -984,31 +992,20 @@ namespace FakeJni {
 //  template<typename... Args>
 //  JMethodID(CX::Lambda<void * (JNIEnv *, jobject, Args...)> func, const char * signature, const char * name, uint32_t modifiers);
   JMethodID(CX::Lambda<void * (JNIEnv *, jobject, jvalue *)> func, const char * signature, const char * name, uint32_t modifiers);
-  ~JMethodID();
+  virtual ~JMethodID();
 
-  inline const char * getName() const noexcept {
-   return name;
-  }
+  virtual bool operator ==(const JMethodID& mid) const noexcept;
+  virtual bool operator ==(const JNINativeMethod*& mid) const;
+  virtual const char * getName() const noexcept;
+  virtual const char * getSignature() const noexcept;
+  virtual uint32_t getModifiers() const noexcept;
 
-  inline const char * getSignature() const noexcept {
-   return signature;
-  }
-
-  inline uint32_t getModifiers() const noexcept {
-   switch (type) {
-    case REGISTER_NATIVES_FUNC: return 0;
-    default: return modifiers;
-   }
-  }
-
-  bool operator ==(const JMethodID& mid) const noexcept;
-  bool operator ==(JNINativeMethod*& mid) const;
-  template<typename R, typename A>
-  R virtualInvoke(const JavaVM *vm, void *clazzOrInst, A& args) const;
-  template<typename R, typename A>
-  R nonVirtualInvoke(const JavaVM *vm, JClass *const clazz, void *const inst, A& args) const;
-  template<typename R>
-  R invoke(const JavaVM * vm, const JObject * clazzOrInst, ...) const;
+  //user overrides
+  virtual jvalue invoke(const JavaVM * vm, const JObject * clazzOrInst, ...) const;
+  virtual jvalue virtualInvoke(const JavaVM * vm, void * clazzOrObj, CX::va_list_t& list) const;
+  virtual jvalue virtualInvoke(const JavaVM * vm, void * clazzOrObj, const jvalue * args) const;
+  virtual jvalue nonVirtualInvoke(const JavaVM * vm, JClass * clazz, void * inst, CX::va_list_t& list) const;
+  virtual jvalue nonVirtualInvoke(const JavaVM * vm, JClass * clazz, void * inst, const jvalue * args) const;
  };
 
  //Template glue code for native class registration
@@ -1102,25 +1099,25 @@ namespace FakeJni {
   JClass(const JClass & clazz) noexcept;
   virtual ~JClass();
 
-  uint32_t getModifiers() const noexcept;
-  bool registerMethod(const JMethodID * mid, bool deallocate = true) const;
-  bool unregisterMethod(const JMethodID * mid) const noexcept;
-  const JMethodID * getMethod(const char * sig, const char * name) const noexcept;
+  virtual uint32_t getModifiers() const noexcept;
+  virtual bool registerMethod(const JMethodID * mid, bool deallocate = true) const;
+  virtual bool unregisterMethod(const JMethodID * mid) const noexcept;
+  virtual const JMethodID * getMethod(const char * sig, const char * name) const noexcept;
   [[nodiscard]]
-  const PointerList<const JMethodID *>& getMethods() const noexcept;
-  bool registerField(JFieldID * fid, bool deallocate = true) const noexcept;
-  bool unregisterField(JFieldID * fid) const noexcept;
-  const JFieldID * getField(const char * name) const noexcept;
-  const JFieldID * getField(const char * sig, const char * name) const noexcept;
+  virtual const PointerList<const JMethodID *>& getMethods() const noexcept;
+  virtual bool registerField(JFieldID * fid, bool deallocate = true) const noexcept;
+  virtual bool unregisterField(JFieldID * fid) const noexcept;
+  virtual const JFieldID * getField(const char * name) const noexcept;
+  virtual const JFieldID * getField(const char * sig, const char * name) const noexcept;
   [[nodiscard]]
-  const PointerList<const JFieldID *>& getFields() const noexcept;
+  virtual const PointerList<const JFieldID *>& getFields() const noexcept;
   virtual const char * getName() const noexcept;
   //Object construction for c-varargs
   [[nodiscard]]
-  JObject * newInstance(const JavaVM * vm, const char * signature, CX::va_list_t& list) const;
+  virtual JObject * newInstance(const JavaVM * vm, const char * signature, CX::va_list_t& list) const;
   //Object construction for jvalue arrays
   [[nodiscard]]
-  JObject * newInstance(const JavaVM * vm, const char * signature, const jvalue * values) const;
+  virtual JObject * newInstance(const JavaVM * vm, const char * signature, const jvalue * values) const;
  };
 
  //FAKE-JNI USER API
@@ -1395,32 +1392,35 @@ namespace FakeJni {
  }
 
  template<typename T>
- T& JFieldID::get(JObject * const obj) const {
-  const auto& clazz = obj->getClass();
-  auto * fid = findVirtualMatch(&clazz);
+ T* JFieldID::get(JObject * const obj) const {
+  auto clazz = &obj->getClass();
+  const JFieldID * fid = this;
+  if (clazz != &JClass::descriptor) {
+   fid = findVirtualMatch(clazz);
+  }
   if (fid) {
    switch (fid->type) {
     case STATIC_PROP: {
      _JFIELDID_STATIC_CHECK(
-      return ((T& (*)(static_prop_t))fid->proxyGetFunc)(staticProp);
+      return ((T* (*)(static_prop_t))fid->proxyGetFunc)(staticProp);
      )
     }
     case MEMBER_PROP: {
      _JFIELDID_STATIC_CHECK(
-      return ((T& (*)(void *, member_prop_t))fid->proxyGetFunc)(obj, memberProp);
+      return ((T* (*)(void *, member_prop_t))fid->proxyGetFunc)(obj, memberProp);
      )
     }
     case CALLBACK_PROP: {
-     return ((T& (*)(void *))proxyGetFunc)(obj);
+     return ((T* (*)(void *))proxyGetFunc)(obj);
     }
     case STL_CALLBACK_PROP: {
-     return *CX::union_cast<CX::Lambda<T* ()>>(arbitraryGet)();
+     return CX::union_cast<CX::Lambda<T* ()>>(arbitraryGet)();
     }
    }
   }
   throw std::runtime_error(
    "FATAL: Class '"
-   + std::string(clazz.getName())
+   + std::string(clazz->getName())
    + "' does not contain or inherit any fields matching '"
    + name
    + signature
@@ -1510,9 +1510,11 @@ namespace FakeJni {
   _ASSERT_JNI_FUNCTION_COMPLIANCE
  }
 
+
+
  //Performs virtual dispatch
  template<typename R, typename A>
- R JMethodID::virtualInvoke(const JavaVM * vm, void * clazzOrInst, A& args) const {
+ R JMethodID::vInvoke(const JavaVM * vm, void * clazzOrInst, A& args) const {
   auto * clazz = &((JObject *)clazzOrInst)->getClass();
   if (strcmp(clazz->getName(), "java/lang/Class") == 0) {
    //Static method, no virtual dispatch
@@ -1551,7 +1553,7 @@ namespace FakeJni {
 
  //Does not perform virtual dispatch
  template<typename R, typename A>
- R JMethodID::nonVirtualInvoke(const JavaVM * vm, JClass * const clazz, void * const inst, A& args) const {
+ R JMethodID::nvInvoke(const JavaVM * vm, JClass * const clazz, void * const inst, A& args) const {
   const auto mid = clazz->getMethod(signature, name);
   if (!mid) {
    throw std::runtime_error(
@@ -1562,25 +1564,12 @@ namespace FakeJni {
      + signature
      + "'!");
   }
-  return mid->internalInvoke<R, A>(vm, inst, args);
- }
-
- template<typename R>
- R JMethodID::invoke(const JavaVM * const vm, const JObject * clazzOrInst, ...) const {
-  CX::va_list_t list;
-  va_start(list, clazzOrInst);
-  return internalInvoke<R>(vm, (void *)clazzOrInst, list);
+  return mid->template internalInvoke<R, A>(vm, inst, args);
  }
 
  template<typename R, typename A>
  R JMethodID::internalInvoke(const JavaVM * vm, void * clazzOrInst, A& args) const {
   using arg_t = typename CX::ComponentTypeResolver<A>::type;
-  //used to reassemble functor object data
-  using align_t = _CX::arbitrary_align_t<sizeof(CX::Lambda<void ()>)>;
-  struct Data {
-   decltype(fnPtr) d1;
-   decltype(stlFunc) d2;
-  } __attribute__((packed));
   //perform invocation
   switch (type) {
    case MEMBER_FUNC: {
@@ -1640,14 +1629,14 @@ namespace FakeJni {
     }
    }
    case STL_FUNC: {
-    return ((R (*)(align_t, A))getFunctionProxy<A>())(CX::union_cast<align_t>(Data{fnPtr, stlFunc}), args);
+    return ((R (*)(functor_align_t, A))getFunctionProxy<A>())(CX::union_cast<functor_align_t>(FunctorData{fnPtr, stlFunc}), args);
    }
    case ARBITRARY_STL_FUNC: {
     auto vm_ref = const_cast<JavaVM *>(vm);
     JNIEnv * env;
     vm_ref->GetEnv((void **)&env, JNI_VERSION_1_8);
-    return ((R (*)(align_t, const char *, JNIEnv *, void *, A))getFunctionProxy<A>())(
-     CX::union_cast<align_t>(Data{fnPtr, stlFunc}),
+    return ((R (*)(functor_align_t, const char *, JNIEnv *, void *, A))getFunctionProxy<A>())(
+     CX::union_cast<functor_align_t>(FunctorData{fnPtr, stlFunc}),
      signature,
      env,
      clazzOrInst,
@@ -1723,7 +1712,7 @@ namespace FakeJni {
    Jvm * const jvm = (Jvm *)const_cast<JavaVM *>(vm);
    for (auto& method : descriptor.functions) {
     if (strcmp(method->getSignature(), signature) == 0 && strcmp(method->getName(), "<init>") == 0) {
-     const auto inst = method->nonVirtualInvoke<T *>(vm, &descriptor, &descriptor, args);
+     const T * inst = method->nonVirtualInvoke(vm, &descriptor, &descriptor, args);
      JObject * baseInst;
      if constexpr(_CX::JniTypeBase<T>::hasComplexHierarchy) {
       baseInst = (JObject *)T::cast::cast(inst);

@@ -228,7 +228,7 @@ namespace FakeJni {
    && (proxyFuncA == mid.proxyFuncA);
  }
 
- bool JMethodID::operator==(JNINativeMethod *& mid) const {
+ bool JMethodID::operator==(const JNINativeMethod *& mid) const {
   return modifiers == 0
    && type == REGISTER_NATIVES_FUNC
    && strcmp(name, mid->name) == 0
@@ -253,5 +253,42 @@ namespace FakeJni {
    delete[] name;
    delete[] signature;
   }
+ }
+
+ const char * JMethodID::getName() const noexcept {
+  return name;
+ }
+
+ const char * JMethodID::getSignature() const noexcept {
+  return signature;
+ }
+
+ uint32_t JMethodID::getModifiers() const noexcept {
+  switch (type) {
+   case REGISTER_NATIVES_FUNC: return 0;
+   default: return modifiers;
+  }
+ }
+
+ jvalue JMethodID::invoke(const JavaVM * const vm, const JObject * clazzOrInst, ...) const {
+  CX::va_list_t list;
+  va_start(list, clazzOrInst);
+  return internalInvoke<jvalue>(vm, (void *)clazzOrInst, list);
+ }
+
+ jvalue JMethodID::virtualInvoke(const JavaVM * vm, void * clazzOrObj, CX::va_list_t& list) const {
+  return vInvoke<jvalue>(vm, clazzOrObj, list);
+ }
+
+ jvalue JMethodID::virtualInvoke(const JavaVM * vm, void * clazzOrObj, const jvalue * args) const {
+  return vInvoke<jvalue>(vm, clazzOrObj, args);
+ }
+
+ jvalue JMethodID::nonVirtualInvoke(const JavaVM * vm, JClass * clazz, void * inst, CX::va_list_t& list) const {
+  return nvInvoke<jvalue>(vm, clazz, inst, list);
+ }
+
+ jvalue JMethodID::nonVirtualInvoke(const JavaVM * vm, JClass * clazz, void * inst, const jvalue * args) const {
+  return nvInvoke<jvalue>(vm, clazz, inst, args);
  }
 }

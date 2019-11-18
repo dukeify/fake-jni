@@ -2,6 +2,8 @@
 
 #include "fake-jni/internal/meta/meta.h"
 
+#include "cx/unsafe.h"
+
 #define _DEFINE_JNI_CLASS(name, base) \
 class name : public base {\
 public:\
@@ -161,6 +163,15 @@ union jvalue {
  jfloat f;
  jdouble d;
  jobject l;
+
+ template<typename T>
+ operator T() const {
+  using component_t = typename CX::ComponentTypeResolver<T>::type;
+  constexpr const auto isPrimitive = CX::MatchAny<T, jboolean, jbyte, jchar, jshort, jint, jlong, jfloat, jdouble, jobject>::value;
+//  static_assert(isPrimitive || (__is_base_of(JObject, component_t) && CX::IsPointer<T>::value));
+  static_assert(isPrimitive || (__is_class(component_t) && CX::IsPointer<T>::value));
+  return CX::union_cast<T>(*this);
+ }
 };
 
 enum jobjectRefType {

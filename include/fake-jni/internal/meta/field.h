@@ -20,8 +20,8 @@ namespace FakeJni {
    using erased_t = int (AnyClass::* const);
 
    [[gnu::always_inline]]
-   inline static F& get(void * inst, erased_t field) {
-    return ((T * const)inst)->*((type_t)field);
+   inline static F* get(void * inst, erased_t field) {
+    return &(((T * const)inst)->*((type_t)field));
    }
 
    [[gnu::always_inline]]
@@ -38,8 +38,8 @@ namespace FakeJni {
    using erased_t = int (AnyClass::* const);
 
    [[gnu::always_inline]]
-   inline static const F& get(void * inst, erased_t field) {
-    return ((T*)inst)->*((type_t)field);
+   inline static const F* get(void * inst, erased_t field) {
+    return &(((T*)inst)->*((type_t)field));
    }
 
    [[gnu::always_inline]]

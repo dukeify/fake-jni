@@ -289,12 +289,12 @@ namespace FakeJni {
  }
 
  bool Jvm::unregisterClass(const JClass * clazz) {
-  const auto end = classes.end();
-//  const auto found = end != classes.erase(std::remove(classes.begin(), end, clazz), end);
-//  const auto found = classes.contains(clazz);
-  const auto found = (classes.erase(clazz) != end);
+  const auto found = classes.contains(clazz);
+if (found) {
+ classes.erase(clazz);
+}
 #ifdef FAKE_JNI_DEBUG
-  if (!found) {
+  else {
    fprintf(
     log,
     "WARNING: Class '%s' is not registered on the JVM instance '%s'!\n",
@@ -427,7 +427,7 @@ namespace FakeJni {
     currentVm = nullptr;
     throw std::runtime_error("No classes define the default Java entry point: 'main([Ljava/lang/String;)V'!");
    }
-   main->invoke<void>(this, encapsulatingClass);
+   main->invoke(this, encapsulatingClass);
   } catch(const std::exception &ex) {
    //TODO put the Jvm into an errored state so the user can handle the error
    fprintf(log, "FATAL: VM encountered an uncaught exception with message:\n%s\n", ex.what());

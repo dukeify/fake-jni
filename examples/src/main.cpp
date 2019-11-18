@@ -90,8 +90,7 @@ int main(int argc, char **argv) {
 
  //Create a shiny new fake JVM instance
  Jvm vm;
-// vm.registerDefaultSignalHandler();
- vm.start();
+ vm.registerDefaultSignalHandler();
 
  //Register ExampleClass on the JVM instance
  vm.registerClass<ExampleClass>();
@@ -101,7 +100,7 @@ int main(int argc, char **argv) {
  vm.attachLibrary("");
 
  //Start fake-jni
-// vm->start();
+ vm.start();
 
  //Not necessary
  vm.unregisterClass<ExampleClass>();

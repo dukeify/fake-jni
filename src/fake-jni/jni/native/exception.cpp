@@ -35,7 +35,7 @@ namespace FakeJni {
   //clean up string eventually
   auto jstrMessage = new JString(message);
   vm.addInstance(jstrMessage);
-  vm.throwException(*constructor->invoke<JThrowable *>(&vm, clazz, jstrMessage));
+  vm.throwException(constructor->invoke(&vm, clazz, jstrMessage));
   return 0;
  }
 
