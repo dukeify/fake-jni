@@ -1497,7 +1497,14 @@ namespace FakeJni {
    verifyName(name),
    verifySignature(_CX::SignatureGenerator<false, R, Args...>::signature),
    //segmented functor object
-   CX::union_cast<decltype(fnPtr)>(func)
+   [&]() {
+    //prevent the allocated anonymous struct from being freed when the destructor func is run, so it can be used
+    //later throughout JMethodID. Will be freed in the destructor of JMethodID
+    if (func.capture.type == func.capture.ANONYMOUS) {
+     func.capture.type = func.capture.UINIT;
+    }
+    return CX::union_cast<decltype(fnPtr)>(func);
+   }()
   },
   type(STL_FUNC),
   modifiers(modifiers),
@@ -1509,8 +1516,6 @@ namespace FakeJni {
  {
   _ASSERT_JNI_FUNCTION_COMPLIANCE
  }
-
-
 
  //Performs virtual dispatch
  template<typename R, typename A>
@@ -1608,7 +1613,6 @@ namespace FakeJni {
       _INTERNAL_INVOKE_VA_ARG(JFloat, ffi_type_float)
       _INTERNAL_INVOKE_VA_ARG(JLong, ffi_type_sint64)
       _INTERNAL_INVOKE_VA_ARG(JDouble, ffi_type_double)
-//      _INTERNAL_INVOKE_VA_ARG(JObject *, ffi_type_pointer)
       if (ffi_arg_t == &ffi_type_pointer) {
        *((JObject **)values[i + 2]) = CX::safe_va_arg<JObject *>(args);
        continue;

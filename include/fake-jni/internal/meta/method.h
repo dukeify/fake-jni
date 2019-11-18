@@ -321,7 +321,25 @@ namespace FakeJni {
      CX::IsSame<CX::Dummy<Args...>, CX::Dummy<Args2...>>::value,
      "Function argument list does not match the base invoker arguments!"
     );
-    return CX::union_cast<func_t>(func)(args...);
+    func_t f = CX::union_cast<func_t>(func);
+    bool anonymous = f.capture.type == f.capture.UINIT;
+    if (anonymous) {
+     f.capture.type = f.capture.ANONYMOUS;
+    }
+    if constexpr (CX::IsSame<R, void>::value) {
+     //prevent the allocated anonymous struct from being freed so that it may be invoked again
+     if (anonymous) {
+      f.capture.type = f.capture.UINIT;
+     }
+     f(args...);
+    } else {
+     R result = f(args...);
+     //prevent the allocated anonymous struct from being freed so that it may be invoked again
+     if (anonymous) {
+      f.capture.type = f.capture.UINIT;
+     }
+     return result;
+    }
    }
   };
 

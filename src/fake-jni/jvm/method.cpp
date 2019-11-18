@@ -208,7 +208,14 @@ namespace FakeJni {
    verifyName(_INTERNAL_ARBITRARY_ALLOC_STR(name)),
    verifySignature(_INTERNAL_ARBITRARY_ALLOC_STR(signature)),
    //segmented functor object
-   CX::union_cast<decltype(fnPtr)>(func)
+   [&]() {
+    //prevent the allocated anonymous struct from being freed when the destructor func is run, so it can be used
+    //later throughout JMethodID. Will be freed in the destructor of JMethodID
+    if (func.capture.type == func.capture.ANONYMOUS) {
+     func.capture.type = func.capture.UINIT;
+    }
+    return CX::union_cast<decltype(fnPtr)>(func);
+   }()
   },
   type(ARBITRARY_STL_FUNC),
   modifiers(modifiers),
@@ -238,16 +245,28 @@ namespace FakeJni {
 
  JMethodID::~JMethodID() {
   //Clean up runtime-generated ffi descriptor and proxy functions
-  if (type == REGISTER_NATIVES_FUNC) {
-   delete[] resolvers;
-   delete[] deallocators;
-   auto& pair = descriptors[std::hash<std::string>{}(signature)];
-   pair.first -= 1;
-   if (pair.first == 0) {
-    auto& cif = pair.second;
-    delete[] cif->arg_types;
-    delete cif;
+  switch(type) {
+   case STL_FUNC: {
+    //recreate lambda object so the destructor will run, freeing the allocated anonymous struct (if any)
+    auto lambda = CX::union_cast<CX::Lambda<void ()>>(FunctorData{fnPtr, stlFunc});
+    if (lambda.capture.type == lambda.capture.UINIT) {
+     lambda.capture.type = lambda.capture.ANONYMOUS;
+    }
+    break;
    }
+   case REGISTER_NATIVES_FUNC: {
+    delete[] resolvers;
+    delete[] deallocators;
+    auto& pair = descriptors[std::hash<std::string>{}(signature)];
+    pair.first -= 1;
+    if (pair.first == 0) {
+     auto& cif = pair.second;
+     delete[] cif->arg_types;
+     delete cif;
+    }
+    break;
+   }
+   default: break;
   }
   if (isArbitrary) {
    delete[] name;
