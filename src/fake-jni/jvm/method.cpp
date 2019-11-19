@@ -114,6 +114,22 @@ namespace FakeJni {
   return parser.parse(signature);
  }
 
+ JMethodID::JMethodID(const FakeJni::JMethodID * mid, bool dealloc) :
+  JNINativeMethod {
+   verifyName([&]() -> char *{
+    if (!mid) {
+     throw std::runtime_error("FATAL: Tried to create composed method descriptor with nullptr!");
+    }
+    return mid->name;
+   }()),
+   verifySignature(mid->signature),
+   (void *)mid
+  },
+  type(COMPOSED_FUNC),
+  dealloc(dealloc),
+  isArbitrary(false)
+ {}
+
  JMethodID::JMethodID(const JNINativeMethod * method) :
   _jmethodID(),
   JNINativeMethod {
@@ -226,21 +242,27 @@ namespace FakeJni {
  {}
 
  bool JMethodID::operator ==(const JMethodID & mid) const noexcept {
-  return (name == mid.name)
-   && (strcmp(signature, mid.signature) == 0)
-   && (type == mid.type)
-   && (modifiers == mid.modifiers)
-   && ((type == MEMBER_FUNC) ? (fnPtr == mid.fnPtr && adj == mid.adj) : (fnPtr == mid.fnPtr))
-   && (proxyFuncV == mid.proxyFuncV)
-   && (proxyFuncA == mid.proxyFuncA);
+  switch (type) {
+   case COMPOSED_FUNC: return ((JMethodID *)fnPtr)->operator==(mid);
+   default: return (name == mid.name)
+    && (strcmp(signature, mid.signature) == 0)
+    && (type == mid.type)
+    && (modifiers == mid.modifiers)
+    && ((type == MEMBER_FUNC) ? (fnPtr == mid.fnPtr && adj == mid.adj) : (fnPtr == mid.fnPtr))
+    && (proxyFuncV == mid.proxyFuncV)
+    && (proxyFuncA == mid.proxyFuncA);
+  }
  }
 
  bool JMethodID::operator==(const JNINativeMethod *& mid) const {
-  return modifiers == 0
-   && type == REGISTER_NATIVES_FUNC
-   && strcmp(name, mid->name) == 0
-   && strcmp(signature, mid->signature) == 0
-   && fnPtr == mid->fnPtr;
+  switch (type) {
+   case COMPOSED_FUNC: return ((JMethodID *)fnPtr)->operator==(mid);
+   default: return modifiers == 0
+    && type == REGISTER_NATIVES_FUNC
+    && strcmp(name, mid->name) == 0
+    && strcmp(signature, mid->signature) == 0
+    && fnPtr == mid->fnPtr;
+  }
  }
 
  JMethodID::~JMethodID() {
@@ -266,6 +288,12 @@ namespace FakeJni {
     }
     break;
    }
+   case COMPOSED_FUNC: {
+    if (dealloc) {
+     delete (JMethodID *)fnPtr;
+    }
+    break;
+   }
    default: break;
   }
   if (isArbitrary) {
@@ -285,30 +313,38 @@ namespace FakeJni {
  uint32_t JMethodID::getModifiers() const noexcept {
   switch (type) {
    case REGISTER_NATIVES_FUNC: return 0;
+   case COMPOSED_FUNC: return ((JMethodID *)fnPtr)->getModifiers();
    default: return modifiers;
   }
  }
 
  const JMethodID * JMethodID::findVirtualMatch(const JClass * clazz) const {
-  const auto * jobjDescriptor = JObject::getDescriptor();
-  while (clazz != jobjDescriptor) {
-   for (auto& method : clazz->getMethods()) {
-    if (strcmp(name, method->getName()) == 0) {
-     if (strcmp(signature, method->getSignature()) == 0) {
-      return method;
-     }
-    }
+  switch (type) {
+   case COMPOSED_FUNC: {
+    ((JMethodID *)fnPtr)->findVirtualMatch(clazz);
    }
-   clazz = &clazz->parent;
+   default: {
+    const auto * jobjDescriptor = JObject::getDescriptor();
+    while (clazz != jobjDescriptor) {
+     for (auto& method : clazz->getMethods()) {
+      if (strcmp(name, method->getName()) == 0) {
+       if (strcmp(signature, method->getSignature()) == 0) {
+        return method;
+       }
+      }
+     }
+     clazz = &clazz->parent;
+    }
+    throw std::runtime_error(
+     "FATAL: Could not perform virtual function invocation for '"
+     + std::string(name)
+     + signature
+     + "' since no classes in the inheritance hierarchy of '"
+     + clazz->getName()
+     + "'register a matching overload!"
+    );
+   }
   }
-  throw std::runtime_error(
-   "FATAL: Could not perform virtual function invocation for '"
-   + std::string(name)
-   + signature
-   + "' since no classes in the inheritance hierarchy of '"
-   + clazz->getName()
-   + "'register a matching overload!"
-  );
  }
 
  jvalue JMethodID::invoke(const JavaVM * const vm, const JObject * clazzOrInst, ...) const {
@@ -318,18 +354,30 @@ namespace FakeJni {
  }
 
  jvalue JMethodID::virtualInvoke(const JavaVM * vm, void * clazzOrObj, CX::va_list_t& list) const {
-  return vInvoke<jvalue>(vm, clazzOrObj, list);
+  switch (type) {
+   case COMPOSED_FUNC: return ((JMethodID *)fnPtr)->virtualInvoke(vm, clazzOrObj, list);
+   default: return vInvoke<jvalue>(vm, clazzOrObj, list);
+  }
  }
 
  jvalue JMethodID::virtualInvoke(const JavaVM * vm, void * clazzOrObj, const jvalue * args) const {
-  return vInvoke<jvalue>(vm, clazzOrObj, args);
+  switch (type) {
+   case COMPOSED_FUNC: return ((JMethodID *)fnPtr)->virtualInvoke(vm, clazzOrObj, args);
+   default: return vInvoke<jvalue>(vm, clazzOrObj, args);
+  }
  }
 
  jvalue JMethodID::nonVirtualInvoke(const JavaVM * vm, JClass * clazz, void * inst, CX::va_list_t& list) const {
-  return nvInvoke<jvalue>(vm, clazz, inst, list);
+  switch (type) {
+   case COMPOSED_FUNC: return ((JMethodID *)fnPtr)->nonVirtualInvoke(vm, clazz, inst, list);
+   default: return nvInvoke<jvalue>(vm, clazz, inst, list);
+  }
  }
 
  jvalue JMethodID::nonVirtualInvoke(const JavaVM * vm, JClass * clazz, void * inst, const jvalue * args) const {
-  return nvInvoke<jvalue>(vm, clazz, inst, args);
+  switch (type) {
+   case COMPOSED_FUNC: return ((JMethodID *)fnPtr)->nonVirtualInvoke(vm, clazz, inst, args);
+   default: return nvInvoke<jvalue>(vm, clazz, inst, args);
+  }
  }
 }

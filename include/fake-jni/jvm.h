@@ -877,14 +877,15 @@ namespace FakeJni {
    MEMBER_FUNC,
    REGISTER_NATIVES_FUNC,
    STL_FUNC,
-   ARBITRARY_STL_FUNC
+   ARBITRARY_STL_FUNC,
+   COMPOSED_FUNC
   };
 
   const Type type;
 
  private:
   union {
-   //STATIC_FUNC, MEMBER_FUNC and STL_FUNC
+   //STATIC_FUNC, MEMBER_FUNC, STL_FUNC and ARBITRARY_STL_FUNC
    struct {
     //Functions registered through registerNatives do not have modifiers
     const uint32_t modifiers;
@@ -906,6 +907,8 @@ namespace FakeJni {
      * const resolvers,
      * const deallocators;
    };
+   //COMPOSED_FUNC
+   bool dealloc;
   };
 
   template<typename T>
@@ -965,6 +968,8 @@ namespace FakeJni {
    SYNTHETIC = 4096
   };
 
+  //Constructor for composed descriptors
+  JMethodID(const JMethodID * mid, bool dealloc = false);
   //Constructor for delegate constructors
   template<typename R, typename... Args>
   JMethodID(R (* func)(Args...), uint32_t modifiers) noexcept;
@@ -1629,6 +1634,9 @@ namespace FakeJni {
      clazzOrInst,
      args
     );
+   }
+   case COMPOSED_FUNC: {
+    return ((JMethodID *)fnPtr)->directInvoke<R, A>(vm, clazzOrInst, args);
    }
   }
  }
