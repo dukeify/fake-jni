@@ -40,6 +40,26 @@ struct NonVirtualAssertion {\
 };\
 inline static constexpr const NonVirtualAssertion check{};
 
+//prevent the allocated anonymous struct from being freed so that it may be invoked again
+#define _INVOKE_MANGLED_LAMBDA(...) \
+func_t f = CX::union_cast<func_t>(func);\
+bool anonymous = f.capture.type == f.capture.UINIT;\
+if (anonymous) {\
+ f.capture.type = f.capture.ANONYMOUS;\
+}\
+if constexpr (CX::IsSame<R, void>::value) {\
+ if (anonymous) {\
+  f.capture.type = f.capture.UINIT;\
+ }\
+ f(__VA_ARGS__);\
+} else {\
+ R result = f(__VA_ARGS__);\
+ if (anonymous) {\
+  f.capture.type = f.capture.UINIT;\
+ }\
+ return result;\
+}
+
 #define _PARSER_CALLBACK(identifier, type) \
 parser[#identifier[0]] = [&](char * token, CX::va_list_t& list) {\
  if (!argsParsed) {\
@@ -254,7 +274,7 @@ namespace FakeJni {
    template<typename...>
    [[gnu::always_inline]]
    inline static R invokeA(align_t func, const char * signature, void * env, void * classOrInst, jvalue * const values) {
-    return CX::union_cast<func_t>(func)(env, classOrInst, values);
+    _INVOKE_MANGLED_LAMBDA(env, classOrInst, values)
    }
 
    template<typename...>
@@ -321,25 +341,7 @@ namespace FakeJni {
      CX::IsSame<CX::Dummy<Args...>, CX::Dummy<Args2...>>::value,
      "Function argument list does not match the base invoker arguments!"
     );
-    func_t f = CX::union_cast<func_t>(func);
-    bool anonymous = f.capture.type == f.capture.UINIT;
-    if (anonymous) {
-     f.capture.type = f.capture.ANONYMOUS;
-    }
-    if constexpr (CX::IsSame<R, void>::value) {
-     //prevent the allocated anonymous struct from being freed so that it may be invoked again
-     if (anonymous) {
-      f.capture.type = f.capture.UINIT;
-     }
-     f(args...);
-    } else {
-     R result = f(args...);
-     //prevent the allocated anonymous struct from being freed so that it may be invoked again
-     if (anonymous) {
-      f.capture.type = f.capture.UINIT;
-     }
-     return result;
-    }
+    _INVOKE_MANGLED_LAMBDA(args...)
    }
   };
 
