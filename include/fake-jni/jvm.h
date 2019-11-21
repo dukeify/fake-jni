@@ -1503,14 +1503,7 @@ namespace FakeJni {
    verifyName(name),
    verifySignature(_CX::SignatureGenerator<false, R, Args...>::signature),
    //segmented functor object
-   [&]() {
-    //prevent the allocated anonymous struct from being freed when the destructor func is run, so it can be used
-    //later throughout JMethodID. Will be freed in the destructor of JMethodID
-    if (func.capture.type == func.capture.ANONYMOUS) {
-     func.capture.type = func.capture.UINIT;
-    }
-    return CX::union_cast<decltype(fnPtr)>(func);
-   }()
+   CX::union_cast<decltype(fnPtr)>(func)
   },
   type(STL_FUNC),
   modifiers(modifiers),
