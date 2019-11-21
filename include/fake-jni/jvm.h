@@ -993,7 +993,7 @@ namespace FakeJni {
   //TODO once signature checking is in place, add support for this
 //  template<typename... Args>
 //  JMethodID(CX::Lambda<void * (JNIEnv *, jobject, Args...)> func, const char * signature, const char * name, uint32_t modifiers);
-  JMethodID(CX::Lambda<void * (JNIEnv *, jobject, jvalue *)> func, const char * signature, const char * name, uint32_t modifiers);
+  JMethodID(CX::Lambda<jvalue (JNIEnv *, jobject, jvalue *)> func, const char * signature, const char * name, uint32_t modifiers);
   virtual ~JMethodID();
 
   template<typename R, typename A>

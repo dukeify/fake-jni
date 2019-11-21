@@ -218,7 +218,8 @@ namespace FakeJni {
   JMETHODID_INVOCATION_PREP
  }
 
- JMethodID::JMethodID(CX::Lambda<void * (JNIEnv *, jobject, jvalue *)> func, const char * signature, const char * name, uint32_t modifiers) :
+ //TODO change return value of arbitrary callbakcs to jvalue
+ JMethodID::JMethodID(CX::Lambda<jvalue (JNIEnv *, jobject, jvalue *)> func, const char * signature, const char * name, uint32_t modifiers) :
   _jmethodID(),
   JNINativeMethod {
    verifyName(_INTERNAL_ARBITRARY_ALLOC_STR(name)),
@@ -229,8 +230,8 @@ namespace FakeJni {
   type(ARBITRARY_STL_FUNC),
   modifiers(modifiers),
   stlFunc(CX::union_cast<decltype(stlFunc)>(*(CX::union_cast<char *>(&func) + sizeof(fnPtr)))),
-  proxyFuncV((void (*)())&_CX::FunctionAccessor<3, CX::Lambda<void * (void *, void *, void *)>>::template invokeV<>),
-  proxyFuncA((void (*)())&_CX::FunctionAccessor<3, CX::Lambda<void * (void *, void *, void *)>>::template invokeA<>),
+  proxyFuncV((void (*)())&_CX::FunctionAccessor<3, CX::Lambda<jvalue (void *, void *, void *)>>::template invokeV<>),
+  proxyFuncA((void (*)())&_CX::FunctionAccessor<3, CX::Lambda<jvalue (void *, void *, void *)>>::template invokeA<>),
   isArbitrary(true)
  {}
 

@@ -249,7 +249,7 @@ namespace FakeJni {
   template<typename R>
   struct FunctionAccessor<3, CX::Lambda<R (void *, void *, void *)>> {
    using align_t = _CX::arbitrary_align_t<sizeof(CX::Lambda<void ()>)>;
-   using func_t = CX::Lambda<R * (void *, void *, jvalue *)>;
+   using func_t = CX::Lambda<R (void *, void *, jvalue *)>;
 
    template<typename...>
    [[gnu::always_inline]]
