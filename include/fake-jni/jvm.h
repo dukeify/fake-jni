@@ -784,24 +784,31 @@ namespace FakeJni {
    STATIC_PROP,
    MEMBER_PROP,
    CALLBACK_PROP,
-   STL_CALLBACK_PROP
+   STL_CALLBACK_PROP,
+   COMPOSED_PROP
   };
 
   const Type type;
 
  private:
+  //TODO COMPOSED_PROP does not need any of these values
   const uint32_t modifiers;
   const char
    * const name,
    * const signature;
 
   union {
-   //TODO CALLBACK_PROP only needs the proxy functions
    //STATIC_PROP, MEMBER_PROP and CALLBACK_PROP
    struct {
+    //TODO CALLBACK_PROP only needs the proxy functions
+    // COMPOSED_PROP only needs composed
     union {
      static_prop_t staticProp;
      member_prop_t memberProp;
+     struct {
+      const JFieldID * const composed;
+      bool dealloc;
+     };
     };
     void
      (* const proxyGetFunc)(),
@@ -833,6 +840,8 @@ namespace FakeJni {
    ENUM = 16384
   };
 
+  //Constructor for field composition
+  JFieldID(const JFieldID * fid, bool dealloc = false);
   //Constructor for member fields
   template<typename T, typename M>
   JFieldID(T M::* member, const char * name, uint32_t modifiers) noexcept;
@@ -1422,6 +1431,7 @@ namespace FakeJni {
     case STL_CALLBACK_PROP: {
      return CX::union_cast<CX::Lambda<T* ()>>(arbitraryGet)();
     }
+    default: break;
    }
   }
   throw std::runtime_error(

@@ -116,13 +116,13 @@ namespace FakeJni {
 
  JMethodID::JMethodID(const FakeJni::JMethodID * mid, bool dealloc) :
   JNINativeMethod {
-   verifyName([&]() -> char *{
+   [&]() -> char *{
     if (!mid) {
      throw std::runtime_error("FATAL: Tried to create composed method descriptor with nullptr!");
     }
-    return mid->name;
-   }()),
-   verifySignature(mid->signature),
+    return nullptr;
+   }(),
+   nullptr,
    (void *)mid
   },
   type(COMPOSED_FUNC),
@@ -294,11 +294,17 @@ namespace FakeJni {
  }
 
  const char * JMethodID::getName() const noexcept {
-  return name;
+  switch(type) {
+   case COMPOSED_FUNC: return ((JMethodID *)fnPtr)->getName();
+   default: return name;
+  }
  }
 
  const char * JMethodID::getSignature() const noexcept {
-  return signature;
+  switch(type) {
+   case COMPOSED_FUNC: return ((JMethodID *)fnPtr)->getSignature();
+   default: return signature;
+  }
  }
 
  uint32_t JMethodID::getModifiers() const noexcept {
