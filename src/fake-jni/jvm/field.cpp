@@ -42,8 +42,14 @@ namespace FakeJni {
  {}
 
  JFieldID::~JFieldID() {
-  if (dealloc) {
-   delete composed;
+  switch(type) {
+   case COMPOSED_PROP: {
+    if (dealloc) {
+     delete composed;
+    }
+    break;
+   }
+   default: break;
   }
   if (isArbitrary) {
    delete[] name;
