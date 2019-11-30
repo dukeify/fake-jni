@@ -1081,7 +1081,9 @@ namespace FakeJni {
   DEFINE_CLASS_NAME("java/lang/Class")
   //Internal fake-jni native class metadata
 
-  const bool isArbitrary;
+  const bool
+   isArbitrary,
+   isPrimitive;
 
   template<typename T>
   operator T() const;
@@ -1806,6 +1808,7 @@ namespace FakeJni {
   constructA(&decltype(breeder)::template constructorPredicate<const jvalue *>),
   className(T::name),
   isArbitrary(false),
+  isPrimitive(false),
   modifiers(modifiers),
   parent(breeder.parent),
   functions{true},
@@ -1823,6 +1826,7 @@ namespace FakeJni {
   constructA(&decltype(breeder)::template constructorPredicate<const jvalue *>),
   className(_CX::JniTypeBase<T>::signature),
   isArbitrary(false),
+  isPrimitive(true),
   modifiers(modifiers),
   parent(breeder.parent),
   functions{true},
