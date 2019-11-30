@@ -878,7 +878,7 @@ namespace FakeJni {
  public:
   using static_func_t = void (*)();
   using member_func_t = void (_CX::AnyClass::*)();
-  using arbitrary_func_t = void * (*)(JNIEnv * env, jobject objOrInst, ...);
+  using arbitrary_func_t = jvalue (*)(JNIEnv * env, jobject objOrInst, ...);
   using void_func_t = void (*)();
 
   enum Type {
@@ -1243,6 +1243,7 @@ namespace FakeJni {
   virtual bool removeLibrary(const std::string & path, const std::string & options = "");
   virtual const PointerList<const Library *>& getLibraries() const;
   virtual void start();
+  virtual void start(const JObject * args);
   virtual JInt destroy();
   virtual void throwException(jthrowable throwable);
   virtual jthrowable getException() const;

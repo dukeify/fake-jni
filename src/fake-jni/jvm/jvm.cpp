@@ -1,8 +1,5 @@
 #include "fake-jni/internal/util.h"
-#include "fake-jni/jvm.h"
-#include "fake-jni/array.h"
-#include "fake-jni/string.h"
-#include "fake-jni/throwable.h"
+#include "fake-jni/fake-jni.h"
 
 #include <algorithm>
 #include <mutex>
@@ -399,6 +396,19 @@ if (found) {
  }
 
  void Jvm::start() {
+  JArray<JString *> args{};
+  start(&args);
+ }
+
+ void Jvm::start(const JObject * oArgs) {
+  if (oArgs) {
+   if (strcmp(oArgs->getClass().getName(), JArray<JString *>::descriptor.getName())) {
+    throw std::runtime_error("FATAL: JVM entry point only accepts an array of stings!");
+   }
+  } else {
+   throw std::runtime_error("FATAL: You must provide a non-null array of arguments for the JVM entry point!");
+  }
+  auto args = (JArray<JString *> *)oArgs;
   [[maybe_unused]]
   const auto&& context = setVmContext();
   if (running) {
@@ -427,7 +437,7 @@ if (found) {
     currentVm = nullptr;
     throw std::runtime_error("No classes define the default Java entry point: 'main([Ljava/lang/String;)V'!");
    }
-   main->invoke(this, encapsulatingClass);
+   main->invoke(this, encapsulatingClass, args);
   } catch(const std::exception &ex) {
    //TODO put the Jvm into an errored state so the user can handle the error
    fprintf(log, "FATAL: VM encountered an uncaught exception with message:\n%s\n", ex.what());
