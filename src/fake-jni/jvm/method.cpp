@@ -239,7 +239,7 @@ namespace FakeJni {
   switch (type) {
    case COMPOSED_FUNC: return ((JMethodID *)fnPtr)->operator==(mid);
    default: return (name == mid.name)
-    && (strcmp(signature, mid.signature) == 0)
+    && (strcmp(getSignature(), mid.getSignature()) == 0)
     && (type == mid.type)
     && (modifiers == mid.modifiers)
     && ((type == MEMBER_FUNC) ? (fnPtr == mid.fnPtr && adj == mid.adj) : (fnPtr == mid.fnPtr))
@@ -253,8 +253,8 @@ namespace FakeJni {
    case COMPOSED_FUNC: return ((JMethodID *)fnPtr)->operator==(mid);
    default: return modifiers == 0
     && type == REGISTER_NATIVES_FUNC
-    && strcmp(name, mid->name) == 0
-    && strcmp(signature, mid->signature) == 0
+    && strcmp(getName(), mid->name) == 0
+    && strcmp(getSignature(), mid->signature) == 0
     && fnPtr == mid->fnPtr;
   }
  }
@@ -322,6 +322,9 @@ namespace FakeJni {
    }
    default: {
     const auto * jobjDescriptor = JObject::getDescriptor();
+    const auto
+     name = getName(),
+     signature = getSignature();
     while (clazz != jobjDescriptor) {
      for (auto& method : clazz->getMethods()) {
       if (strcmp(name, method->getName()) == 0) {
