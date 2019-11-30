@@ -164,6 +164,14 @@ union jvalue {
  jdouble d;
  jobject l;
 
+ jvalue() noexcept {
+  if constexpr(sizeof(l) > sizeof(j)) {
+   l = nullptr;
+  } else {
+   j = 0;
+  }
+ }
+
  template<typename T>
  operator T() const {
   using component_t = typename CX::ComponentTypeResolver<T>::type;
