@@ -1159,6 +1159,7 @@ namespace FakeJni {
   PointerList<const JClass *> classes;
   //TODO if classloaders are ever implemented, this property will be handled by the ClassLoader model
   std::map<const JClass *, PointerList<JObject *>> instances;
+  std::map<jobject const, jobjectRefType> refs;
   mutable std::shared_mutex instances_mutex, library_mutex;
 
   bool removeLibrary(const Library * library, const std::string & options);
@@ -1225,6 +1226,8 @@ namespace FakeJni {
   virtual const PointerList<JObject *>& operator[](const JClass * clazz) const;
   virtual PointerList<JObject *>& operator[](const JClass * clazz);
   virtual const decltype(instances)& getAllInstances() const;
+  virtual decltype(refs)& getReferences();
+  virtual const decltype(refs)& getReferences() const;
   virtual bool addInstance(JObject * inst);
   virtual bool removeInstance(JObject * inst);
   virtual bool isRunning() const;

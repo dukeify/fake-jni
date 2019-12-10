@@ -221,6 +221,14 @@ namespace FakeJni {
   return instances;
  }
 
+ decltype(Jvm::refs)& Jvm::getReferences() {
+  return refs;
+ }
+
+ const decltype(Jvm::refs)& Jvm::getReferences() const {
+  return refs;
+ }
+
  bool Jvm::addInstance(JObject * inst) {
   auto& instances = (*this)[&inst->getClass()];
   if (!instances.contains(inst)) {
