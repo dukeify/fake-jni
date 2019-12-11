@@ -9,14 +9,10 @@ namespace FakeJni {
   return 0;
  }
 
-//TODO implement
  jint NativeInterface::getVersion() const {
-  throw std::runtime_error("FATAL: 'JVMNativeInterface_::getVersion' is unimplemented!");
-  return 0;
+  return JNI_VERSION_1_8;
  }
 
- //TODO throws NoSuchMethodError if a method is not native or cannot be found
- // once exceptions are implemented, add this functionality
  jint NativeInterface::registerNatives(jclass jclass, const JNINativeMethod * methods, const jint numMethods) const {
   bool success = true;
   const JClass * clazz = *jclass;

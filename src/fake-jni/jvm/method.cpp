@@ -43,7 +43,6 @@ struct NativeInvocationManager {
 
  template<>
  static void * allocate<jvalue *>(jvalue * const values) {
-  printf("jvalue * allocate!\n");
   const auto data = new Arg;
   *data = FakeJni::_CX::getAArg<Arg>(values);
   return (void *)data;
@@ -133,9 +132,47 @@ namespace FakeJni {
  JMethodID::JMethodID(const JNINativeMethod * method) :
   _jmethodID(),
   JNINativeMethod {
-   verifyName(method->name),
-   verifySignature(method->signature),
-   method->fnPtr
+   verifyName(_INTERNAL_ARBITRARY_ALLOC_STR(method->name)),
+   verifySignature(_INTERNAL_ARBITRARY_ALLOC_STR(method->signature)),
+//   [&]() -> void * {
+//#ifdef FAKE_JNI_DEBUG
+//    auto const vm = Jvm::getCurrentVm();
+//    const auto log = (vm ? vm->getLog() : stdout);
+//#endif
+//    Dl_info info;
+//    //look up symbol information and dlopen it
+//    try {
+//     if (dladdr((void *)method->fnPtr, &info)) {
+//      const auto handle = dlopen(info.dli_fname, RTLD_LAZY);
+//      if (!handle) {
+//#ifdef FAKE_JNI_DEBUG
+//       fprintf(log, "WARNING: dlopen failed with message:\n%s\n", dlerror());
+//#endif
+//       throw -1;
+//      }
+//      const auto sym = dlsym(handle, info.dli_sname);
+//      if (!sym) {
+//#ifdef FAKE_JNI_DEBUG
+//       fprintf(log, "WARNING: dlsym failed with message:\n%s\n", dlerror());
+//#endif
+//       throw -1;
+//      }
+//      return (void *)sym;
+//     }
+//    } catch (...) {
+//#ifdef FAKE_JNI_DEBUG
+//     fprintf(
+//      log,
+//      "WARNING: Could not resolve symbol information for register natives constructed JMethodID:"
+//      "\n\t0x%lx -> %s\nUsing provided value instead!\n",
+//      (uintptr_t)method->fnPtr,
+//      signature
+//     );
+//#endif
+//    }
+//    return (void *)method->fnPtr;
+//   }()
+   (void *)method->fnPtr
   },
   //ReturnType (*fnPtr)(JNIEnv *env, jobject objectOrClass, ...)
   type(REGISTER_NATIVES_FUNC),
@@ -172,7 +209,7 @@ namespace FakeJni {
   }()),
   resolvers(new void_func_t[2 * (descriptor->nargs - 2)]),
   deallocators(new void_func_t[descriptor->nargs - 2]),
-  isArbitrary(false)
+  isArbitrary(true)
  {
   JMETHODID_INVOCATION_PREP
  }
@@ -180,8 +217,8 @@ namespace FakeJni {
  JMethodID::JMethodID(arbitrary_func_t func, const char * signature, const char * name, uint32_t modifiers) :
   _jmethodID(),
   JNINativeMethod {
-   verifyName(_INTERNAL_ARBITRARY_ALLOC_STR(name)),
-   verifySignature(_INTERNAL_ARBITRARY_ALLOC_STR(signature)),
+   verifyName(name),
+   verifySignature(signature),
    (void *)func
   },
   //ReturnType (*fnPtr)(JNIEnv *env, jobject objectOrClass, ...)
@@ -213,7 +250,7 @@ namespace FakeJni {
   }()),
   resolvers(new void_func_t[2 * (descriptor->nargs - 2)]),
   deallocators(new void_func_t[descriptor->nargs - 2]),
-  isArbitrary(true)
+  isArbitrary(false)
  {
   JMETHODID_INVOCATION_PREP
  }

@@ -103,24 +103,50 @@ namespace FakeJni {
   registerClass(&doubleDescriptor);
  }
 
+#define _SIG_SET(_signal, action) \
+if (sigaction(_signal, &new_sa, &action) == -1) {\
+ throw std::runtime_error("FATAL: Could not set the default Jvm _signal signal handler!");\
+}
+
+#define _SIG_CASE(_signal, action) \
+case _signal: {\
+ if (action.sa_handler) {\
+  (*action.sa_handler)(sig);\
+ } else if (action.sa_sigaction) {\
+  (*action.sa_sigaction)(sig, info, uc);\
+ }\
+}
+
  void Jvm::registerDefaultSignalHandler() {
-  static struct sigaction new_sa, old_sa;
-  new_sa.sa_handler = [](int sig) -> void {
+  static struct sigaction
+   new_sa,
+   old_abrt_sa,
+   old_segv_sa,
+   old_ill_sa;
+  new_sa.sa_flags |= SA_SIGINFO;
+  new_sa.sa_sigaction = [](int sig, siginfo_t * info, void * uc) -> void {
+   static const auto error = "Received fatal signal: %s\n";
    //vm is a thread_local variable that is only set when Jvm::start() is invoked, and is unset when it returns
    //if vm is not set, then no vm is currently running and the previous signal handler should be used
    const auto vm = Jvm::getCurrentVm();
    if (vm) {
-    vm->fatalError("Received fatal signal!");
+    auto ssig = strsignal(sig);
+    char message[strlen(ssig) + (strlen(error) - 2) + 1];
+    snprintf(message, sizeof(message), error, ssig);
+    vm->fatalError(message, (ucontext_t *)uc);
    } else {
-    if (old_sa.sa_handler) {
-     (*old_sa.sa_handler)(sig);
+    switch(sig){
+     _SIG_CASE(SIGABRT, old_abrt_sa)
+     _SIG_CASE(SIGSEGV, old_segv_sa)
+     _SIG_CASE(SIGILL, old_ill_sa)
+     default: { /*do nothing*/ }
     }
    }
   };
   sigemptyset(&new_sa.sa_mask);
-  if (sigaction(SIGABRT, &new_sa, &old_sa) == -1) {
-   throw std::runtime_error("FATAL: Could not set the default Jvm signal handler!");
-  }
+  _SIG_SET(SIGABRT, old_abrt_sa)
+  _SIG_SET(SIGSEGV, old_segv_sa)
+  _SIG_SET(SIGILL, old_ill_sa)
  }
 
  const char * Jvm::generateJvmUuid() noexcept {
@@ -477,9 +503,17 @@ if (found) {
  }
 
  void Jvm::fatalError(const char * message) const {
+  fatalError(message, nullptr);
+ }
+
+ void Jvm::fatalError(const char * message, ucontext_t * context) const {
   printf("FATAL: Fatal error thrown on Jvm instance '%s' with message: \n%s\n\n", uuid, message);
   try {
-   printBacktrace();
+   if (context) {
+    printBacktrace(context);
+   } else {
+    printBacktrace();
+   }
   } catch (UnwindException &e) {
    fprintf(log, "FATAL: Encountered exception unwinding stack:\n%s\n", e.what());
    exit(-1);
@@ -492,8 +526,8 @@ if (found) {
    fprintf(log, "FATAL: JVM execution started through unsupported entry point!\n");
    abort();
   }
-  unw_cursor_t cursor;
   unw_context_t uc;
+  unw_cursor_t cursor;
   unw_word_t off;
   int
    unw_status,
@@ -504,8 +538,12 @@ if (found) {
   //TODO put the Jvm into an errored state so the user can handle the error
   //find FakeJni::Jvm::start() and continue execution at that frame
   //initialize frame to the current frame for local unwinding
-  _UNW_SUCCEED_OR_EXIT(unw_getcontext, &uc)
-  _UNW_SUCCEED_OR_EXIT(unw_init_local, &cursor, &uc)
+  if (context) {
+   _UNW_SUCCEED_OR_EXIT(unw_init_local, &cursor, context)
+  } else {
+   _UNW_SUCCEED_OR_EXIT(unw_getcontext, &uc)
+   _UNW_SUCCEED_OR_EXIT(unw_init_local, &cursor, &uc)
+  }
   //unwind each frame up the stack
   while ((unw_status = unw_step(&cursor)) > 0) {
    //resolve mangled symbol name
@@ -569,7 +607,7 @@ if (found) {
   exit(-1);
  }
 
- void Jvm::printBacktrace() const {
+ void Jvm::printBacktrace(ucontext_t * context) const {
   printf("Backtrace: #STACK_FRAME STACK_POINTER: (SYMBOL_NAME+OFFSET) [INSTRUCTION_POINTER] in SYMBOL_SOURCE\n");
   unw_cursor_t cursor;
   unw_context_t uc;
@@ -586,9 +624,12 @@ if (found) {
    *sym,
    *obj_file,
    *demangled;
-
-  _UNW_SUCCEED_OR_THROW(unw_getcontext, &uc)
-  _UNW_SUCCEED_OR_THROW(unw_init_local, &cursor, &uc)
+  if (context) {
+   _UNW_SUCCEED_OR_THROW(unw_init_local, &cursor, context)
+  } else {
+   _UNW_SUCCEED_OR_THROW(unw_getcontext, &uc)
+   _UNW_SUCCEED_OR_THROW(unw_init_local, &cursor, &uc)
+  }
   while ((unw_status = unw_step(&cursor)) > 0) {
    pip.unwind_info = nullptr;
    //get process info
@@ -646,4 +687,4 @@ if (found) {
    throw UnwindException("unw_step() failed with error code: " + std::to_string(unw_status));
   }
  }
-}
+} 

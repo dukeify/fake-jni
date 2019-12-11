@@ -27,6 +27,7 @@
 #include <mutex>
 #include <shared_mutex>
 #include <utility>
+#include <csignal>
 
 //Internal JFieldID macros
 #define _ASSERT_FIELD_JNI_COMPLIANCE \
@@ -1254,9 +1255,10 @@ namespace FakeJni {
   virtual jthrowable getException() const;
   virtual void clearException();
   //Does not return
-  [[noreturn]]
   virtual void fatalError(const char * message) const;
-  virtual void printBacktrace() const;
+  [[noreturn]]
+  virtual void fatalError(const char * message, ucontext_t * context) const;
+  virtual void printBacktrace(ucontext_t * context = nullptr) const;
  };
 
  //Template glue code for native class registration
