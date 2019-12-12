@@ -21,3 +21,5 @@ jobs:
           path: build/examples/examples
       - store_artifacts:
           path: build/tests/tests
+      - store_artifacts:
+          path: include/fake-jni/
