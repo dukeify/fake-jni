@@ -6,7 +6,7 @@ jobs:
     - image: alpine:edge
     steps:
       - checkout
-      - run: apk add git clang cmake build-base ninja autoconf automake libtool texinfo
+      - run: apk add git clang cmake build-base ninja autoconf automake libtool texinfo gettext-dev libexecinfo-dev
       - run: git submodule update --init --recursive
       - run:
           name: make
