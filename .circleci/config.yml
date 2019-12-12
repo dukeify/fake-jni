@@ -3,7 +3,7 @@ version: 2
 jobs:
   build:
     docker:
-    - image: alpine:edge
+      - image: alpine:edge
     steps:
       - checkout
       - run: apk add git clang cmake build-base ninja autoconf automake libtool texinfo gettext-dev libexecinfo-dev
@@ -14,7 +14,7 @@ jobs:
             mkdir build && \
             cd build && \
             CC=clang CXX=clang++ cmake -G Ninja .. && \
-            cmake --build .
+            ninja -j2
       - store_artifacts:
           path: build/libfake-jni.so
       - store_artifacts:
@@ -23,3 +23,30 @@ jobs:
           path: build/tests/tests
       - store_artifacts:
           path: include/fake-jni/
+  example:
+    docker:
+     - image: alpine:edge
+    steps:
+     - run: ./build/examples/examples
+  test:
+    docker:
+     - image: alpine:edge
+    steps:
+     - run: ./build/tests/tests
+
+workflows:
+  version: 2
+  build:
+   jobs:
+    - build
+    - test:
+        requires:
+         - build
+    - example:
+        requires:
+         - build
+    - deploy:
+        requires:
+         - build
+         - example
+         - test
