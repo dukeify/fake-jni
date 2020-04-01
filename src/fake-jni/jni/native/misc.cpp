@@ -27,7 +27,7 @@ namespace FakeJni {
     (uintptr_t)method->fnPtr
    );
 #endif
-   success &= clazz->registerMethod(new JMethodID(methods));
+   success &= clazz->registerMethod(new JMethodID(method));
   }
   return success ? JNI_OK : -1;
  }

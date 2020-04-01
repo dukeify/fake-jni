@@ -45,8 +45,8 @@ workflows:
 #    - example:
 #        requires:
 #         - build
-    - deploy:
-        requires:
-         - build
+#    - deploy:
+#        requires:
+#         - build
 #         - example
 #         - test
