@@ -26,8 +26,8 @@ if(${BUILD_FAKE_JNI_ASAN})
  set(compiler_flags "-fsanitize=address ${compiler_flags}")
 endif()
 
-set(CMAKE_CXX_FLAGS ${compiler_flags})
-set(CMAKE_C_FLAGS ${compiler_flags})
+string(APPEND CMAKE_CXX_FLAGS " ${compiler_flags}")
+string(APPEND CMAKE_C_FLAGS " ${compiler_flags}")
 
 #libffi
 if(NOT DEFINED FFI_CC)
@@ -137,7 +137,6 @@ ExternalProject_Get_Property(unwind INSTALL_DIR)
 set(LIBUNWIND_INSTALL_DIR ${INSTALL_DIR}/lib/) 
 ExternalProject_Get_Property(unwind INSTALL_DIR)
 set(unwind_INSTALL_DIR ${INSTALL_DIR})
-
 add_library(libunwind STATIC IMPORTED GLOBAL)
 file(MAKE_DIRECTORY ${LIBUNWIND_INSTALL_DIR}/include)
 set_target_properties(libunwind PROPERTIES

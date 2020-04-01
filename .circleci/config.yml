@@ -23,30 +23,30 @@ jobs:
           path: build/tests/tests
       - store_artifacts:
           path: include/fake-jni/
-  example:
-    docker:
-     - image: alpine:edge
-    steps:
-     - run: ./build/examples/examples
-  test:
-    docker:
-     - image: alpine:edge
-    steps:
-     - run: ./build/tests/tests
+  #example:
+  #  docker:
+  #   - image: alpine:edge
+  #  steps:
+  #   - run: ./build/examples/examples
+  #test:
+  #  docker:
+  #   - image: alpine:edge
+  #  steps:
+  #   - run: ./build/tests/tests
 
 workflows:
   version: 2
   build:
    jobs:
     - build
-    - test:
-        requires:
-         - build
-    - example:
-        requires:
-         - build
+#    - test:
+#        requires:
+#         - build
+#    - example:
+#        requires:
+#         - build
     - deploy:
         requires:
          - build
-         - example
-         - test
+#         - example
+#         - test

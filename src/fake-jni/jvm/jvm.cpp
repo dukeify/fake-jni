@@ -135,7 +135,7 @@ case _signal: {\
     snprintf(message, sizeof(message), error, ssig);
     vm->fatalError(message, (ucontext_t *)uc);
    } else {
-    switch(sig){
+    switch(sig) {
      _SIG_CASE(SIGABRT, old_abrt_sa)
      _SIG_CASE(SIGSEGV, old_segv_sa)
      _SIG_CASE(SIGILL, old_ill_sa)
@@ -455,16 +455,17 @@ if (found) {
    const JClass * encapsulatingClass = nullptr;
    const JMethodID * main = nullptr;
    for (auto& clazz : classes) {
-    if (!main) {
-     for (auto& mid : clazz->getMethods()) {
-      if (strcmp(mid->getName(), "main") == 0) {
-       if (strcmp(mid->getSignature(), "([java/lang/String;)V") == 0) {
-        encapsulatingClass = clazz;
-        main = mid;
-        break;
-       }
+    for (auto& mid : clazz->getMethods()) {
+     if (strcmp(mid->getName(), "main") == 0) {
+      if (strcmp(mid->getSignature(), "([java/lang/String;)V") == 0) {
+       encapsulatingClass = clazz;
+       main = mid;
+       break;
       }
      }
+    }
+    if (main) {
+     break;
     }
    }
    if (!main) {

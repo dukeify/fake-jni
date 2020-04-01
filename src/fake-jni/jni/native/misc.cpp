@@ -17,7 +17,16 @@ namespace FakeJni {
   bool success = true;
   const JClass * clazz = *jclass;
   for (int i = 0; i < numMethods; i++) {
-   methods += i;
+   const auto method = &methods[i];
+#ifdef FAKE_JNI_DEBUG
+   printf(
+    "DEBUG: JVMNativeInterface_::registerNatives: Registering native method:\n\t0x%lx [%s, %s, 0x%lx]\n",
+    (uintptr_t)method,
+    method->name,
+    method->signature,
+    (uintptr_t)method->fnPtr
+   );
+#endif
    success &= clazz->registerMethod(new JMethodID(methods));
   }
   return success ? JNI_OK : -1;
