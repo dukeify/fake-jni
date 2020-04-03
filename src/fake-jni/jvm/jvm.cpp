@@ -448,6 +448,7 @@ if (found) {
   if (running) {
    throw std::runtime_error("FATAL: Tried to start JVM instance twice!");
   }
+
   context.destructorHooks.emplace_back([&]() { running = false; });
 //  currentVm = this;
   running = true;

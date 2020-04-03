@@ -173,6 +173,18 @@ union jvalue {
  }
 
  template<typename T>
+ jvalue(T t) noexcept {
+  assign(t);
+ }
+
+ template<typename T>
+ [[gnu::always_inline]]
+ void operator=(T t) noexcept {
+  assign(t);
+ }
+
+ template<typename T>
+ [[gnu::always_inline]]
  operator T() const {
   using component_t = typename CX::ComponentTypeResolver<T>::type;
   constexpr const auto isPrimitive = CX::MatchAny<T, jboolean, jbyte, jchar, jshort, jint, jlong, jfloat, jdouble, jobject>::value;
@@ -180,6 +192,23 @@ union jvalue {
   static_assert(isPrimitive || (__is_class(component_t) && CX::IsPointer<T>::value));
   return CX::union_cast<T>(*this);
  }
+
+private:
+ template<typename T>
+ [[gnu::always_inline]]
+ void assign(T t) noexcept {
+  static_assert(CX::MatchAny<T, jboolean, jbyte, jchar, jshort, jint, jlong, jfloat, jdouble, jobject>::value);
+  *CX::union_cast<T*>(this) = t;
+ }
+};
+
+struct jvalue_option {
+ const bool present;
+ const jvalue value;
+
+ jvalue_option() noexcept : present(false), value{} {}
+
+ jvalue_option(jvalue value) noexcept : present(true), value(value) {}
 };
 
 enum jobjectRefType {

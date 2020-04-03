@@ -19,11 +19,15 @@ if(${BUILD_FAKE_JNI_DEBUG})
  ")
 else()
  set(CMAKE_BUILD_TYPE Release)
- set(compiler_flags "-O3")
+ set(compiler_flags "-O0")
 endif()
 
 if(${BUILD_FAKE_JNI_ASAN})
- set(compiler_flags "-fsanitize=address ${compiler_flags}")
+ string(APPEND compiler_flags "-fsanitize=address")
+endif()
+
+if(${BUILD_FAKE_JNI_UBSAN})
+ string(APPEND compiler_flags " -fsanitize=undefined")
 endif()
 
 string(APPEND CMAKE_CXX_FLAGS " ${compiler_flags}")
