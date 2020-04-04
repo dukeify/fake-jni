@@ -93,11 +93,11 @@ for (unsigned int i = 0; i < argc; i++) {\
 
 #define _DEFINE_CLASS_NAME_1(str) \
 static constexpr const char name[] = str;\
-static const JClass descriptor;\
-inline static const JClass * getDescriptor() noexcept {\
+static const FakeJni::JClass descriptor;\
+inline static const FakeJni::JClass * getDescriptor() noexcept {\
  return &descriptor;\
 }\
-virtual const JClass & getClass() const noexcept override {\
+virtual const FakeJni::JClass & getClass() const noexcept override {\
  return descriptor;\
 }
 
