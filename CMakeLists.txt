@@ -76,47 +76,6 @@ add_custom_command(
  COMMENT "Cleaning libffi directory..."
 )
 
-#liblzma (for libunwind)
-if(NOT DEFINED LZMA_CC)
- set(LZMA_CC ${CMAKE_C_COMPILER})
-endif()
-
-if(NOT DEFINED LZMA_CXX)
- set(LZMA_CXX ${CMAKE_CXX_COMPILER})
-endif()
-
-if(NOT DEFINED LZMA_CONFIGURE_FLAGS)
- set(LZMA_CONFIGURE_FLAGS "")
-endif()
-
-ExternalProject_Add(lzma
- SOURCE_DIR ${PROJECT_SOURCE_DIR}/xz
- UPDATE_COMMAND ""
- CONFIGURE_COMMAND <SOURCE_DIR>/autogen.sh && <SOURCE_DIR>/configure ${LZMA_CONFIGURE_FLAGS} --disable-shared --prefix=<INSTALL_DIR> --host=${CMAKE_CXX_COMPILER_TARGET} CC=${LZMA_CC} CFLAGS=${CMAKE_C_FLAGS} CXX=${LZMA_CXX} CXXFLAGS=${CMAKE_CXX_FLAGS}
- BUILD_IN_SOURCE 1
- BUILD_BYPRODUCTS <INSTALL_DIR>/lib/liblzma.a
-)
-ExternalProject_Get_Property(lzma INSTALL_DIR)
-set(LIBLZMA_INSTALL_DIR ${INSTALL_DIR}/lib/)
-set(lzma_INSTALL_DIR ${INSTALL_DIR}) 
-
-add_library(liblzma STATIC IMPORTED GLOBAL)
-file(MAKE_DIRECTORY ${LIBLZMA_INSTALL_DIR}/include)
-set_target_properties(liblzma PROPERTIES
- IMPORTED_LOCATION ${INSTALL_DIR}/lib/liblzma.a
- INTERFACE_INCLUDE_DIRECTORIES ${LIBLZMA_INSTALL_DIR}/include
-)
-
-#clean up liblzma's non-compliant build artifacts
-ExternalProject_Get_Property(lzma SOURCE_DIR)
-add_custom_command(
- TARGET lzma PRE_BUILD
- COMMAND git clean -x -d -f
- COMMAND git reset --hard
- WORKING_DIRECTORY ${SOURCE_DIR}
- COMMENT "Cleaning xz directory..."
-)
-
 #libunwind
 if(NOT DEFINED UNWIND_CC)
  set(UNWIND_CC ${CMAKE_C_COMPILER})
@@ -133,7 +92,7 @@ endif()
 ExternalProject_Add(unwind
  SOURCE_DIR ${PROJECT_SOURCE_DIR}/libunwind
  UPDATE_COMMAND ""
- CONFIGURE_COMMAND <SOURCE_DIR>/autogen.sh && <SOURCE_DIR>/configure ${UNWIND_CONFIGURE_FLAGS} --disable-shared --prefix=<INSTALL_DIR> --host=${CMAKE_CXX_COMPILER_TARGET} CC=${UNWIND_CC} CFLAGS=${CMAKE_C_FLAGS} CXX=${UNWIND_CXX} CXXFLAGS=${CMAKE_CXX_FLAGS}
+ CONFIGURE_COMMAND <SOURCE_DIR>/autogen.sh && <SOURCE_DIR>/configure ${UNWIND_CONFIGURE_FLAGS} --disable-minidebuginfo --disable-shared --prefix=<INSTALL_DIR> --host=${CMAKE_CXX_COMPILER_TARGET} CC=${UNWIND_CC} CFLAGS=${CMAKE_C_FLAGS} CXX=${UNWIND_CXX} CXXFLAGS=${CMAKE_CXX_FLAGS}
  BUILD_IN_SOURCE 1
  BUILD_BYPRODUCTS <INSTALL_DIR>/lib/libunwind.a
 )
@@ -162,13 +121,12 @@ add_custom_command(
 file(GLOB_RECURSE FAKE_JNI_SRC "src/**.cpp")
 add_library(fake-jni SHARED ${FAKE_JNI_SRC})
 
-target_link_libraries(fake-jni dl libffi liblzma libunwind)
-add_dependencies(fake-jni ffi lzma unwind)
+target_link_libraries(fake-jni dl libffi libunwind)
+add_dependencies(fake-jni ffi unwind)
 target_include_directories(fake-jni PUBLIC
  include
  ${cx_SOURCE_DIR}
  ${ffi_INSTALL_DIR}/include
- ${lzma_INSTALL_DIR}/include
  ${unwind_INSTALL_DIR}/include
 )
 target_compile_options(fake-jni PUBLIC
