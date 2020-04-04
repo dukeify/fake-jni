@@ -1,9 +1,14 @@
 cmake_minimum_required(VERSION 3.8)
+project(fake-jni VERSION 0.1.0)
+
 include(ExternalProject)
 
 set(CMAKE_CXX_STANDARD 17)
 
-project(fake-jni VERSION 0.1.0)
+if(NOT ${CMAKE_CXX_COMPILER_ID} STREQUAL "Clang")
+    message(FATAL_ERROR "You are using an unsupported compiler, please build with clang.")
+endif()
+
 add_subdirectory(CX)
 
 set(BUILD_FAKE_JNI_DEBUG OFF CACHE BOOL "Enables fake-jni debug building")
