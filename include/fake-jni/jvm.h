@@ -1578,12 +1578,14 @@ namespace FakeJni {
 
  template<typename R, typename A>
  R JMethodID::directInvoke(const JavaVM * vm, void * clazzOrInst, A& args) const {
-  const auto noReturnValue = std::string("FATAL: '") + name + signature + "' does not return a value!";
+#define DIRECT_INVOKE_NO_RETURN_VALUE throw std::runtime_error(std::string("FATAL: '") + name + signature + "' does not return a value!");
   using arg_t = typename CX::ComponentTypeResolver<A>::type;
+  static_assert(CX::MatchAny<arg_t, CX::va_list_t, jvalue>::value);
+  using func_arg_t = typename CX::select_if_true<CX::IsSame<arg_t, CX::va_list_t>::value, A&, A>::type;
   //perform invocation
   switch (type) {
    case MEMBER_FUNC: {
-    const auto proxy = (jvalue_option (*)(void *const, member_func_t, A&))getFunctionProxy<A>();
+    const auto proxy = (jvalue_option (*)(void *const, member_func_t, func_arg_t))getFunctionProxy<A>();
     const auto option = proxy(
      CX::union_cast<JObject *>(clazzOrInst),
      CX::union_cast<member_func_t>(CX::member_ptr_align_t{fnPtr, adj}),
@@ -1593,17 +1595,17 @@ namespace FakeJni {
      if (option.present) {
       return (R)option.value;
      }
-     throw std::runtime_error(noReturnValue);
+     DIRECT_INVOKE_NO_RETURN_VALUE
     }
    }
    case STATIC_FUNC: {
-    const auto proxy = (jvalue_option (*)(static_func_t, A))getFunctionProxy<A>();
+    const auto proxy = (jvalue_option (*)(static_func_t, func_arg_t))getFunctionProxy<A>();
     const auto option = proxy(CX::union_cast<static_func_t>(fnPtr), args);
     if constexpr(!CX::IsSame<R, void>::value) {
      if (option.present) {
       return (R)option.value;
      }
-     throw std::runtime_error(noReturnValue);
+     DIRECT_INVOKE_NO_RETURN_VALUE
     }
    }
    case REGISTER_NATIVES_FUNC: {
@@ -1650,17 +1652,17 @@ namespace FakeJni {
     }
    }
    case STL_FUNC: {
-    const auto proxy = ((jvalue_option (*)(functor_align_t, A))getFunctionProxy<A>());
+    const auto proxy = ((jvalue_option (*)(functor_align_t, func_arg_t))getFunctionProxy<A>());
     const auto option = proxy(CX::union_cast<functor_align_t>(FunctorData{fnPtr, stlFunc}), args);
     if constexpr(!CX::IsSame<R, void>::value) {
      if (option.present) {
       return (R)option.value;
      }
-     throw std::runtime_error(noReturnValue);
+     DIRECT_INVOKE_NO_RETURN_VALUE
     }
    }
    case ARBITRARY_STL_FUNC: {
-    const auto proxy = (jvalue_option (*)(functor_align_t, const char *, JNIEnv *, void *, A))getFunctionProxy<A>();
+    const auto proxy = (jvalue_option (*)(functor_align_t, const char *, JNIEnv *, void *, func_arg_t))getFunctionProxy<A>();
     auto vm_ref = const_cast<JavaVM *>(vm);
     JNIEnv * env;
     vm_ref->GetEnv((void **)&env, JNI_VERSION_1_8);
@@ -1675,13 +1677,14 @@ namespace FakeJni {
      if (option.present) {
       return (R)option.value;
      }
-     throw std::runtime_error(noReturnValue);
+     DIRECT_INVOKE_NO_RETURN_VALUE
     }
    }
    case COMPOSED_FUNC: {
     return ((JMethodID *)fnPtr)->directInvoke<R, A>(vm, clazzOrInst, args);
    }
   }
+#undef DIRECT_INVOKE_NO_RETURN_VALUE
  }
 
  //Jvm template members

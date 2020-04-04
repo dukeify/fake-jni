@@ -275,7 +275,7 @@ namespace FakeJni {
 
    template<typename...>
    [[gnu::always_inline]]
-   inline static jvalue_option invokeA(align_t func, const char * signature, void * env, void * classOrInst, jvalue * const values) {
+   inline static jvalue_option invokeA(align_t func, const char * signature, JNIEnv * env, void * classOrInst, jvalue * const values) {
     const auto f = CX::union_cast<func_t>(func);
     if constexpr(CX::IsSame<R, void>::value) {
      f(env, classOrInst, values);
@@ -286,7 +286,7 @@ namespace FakeJni {
 
    template<typename...>
    [[gnu::always_inline]]
-   inline static jvalue_option invokeV(align_t func, const char * signature, void * env, void * classOrInst, CX::va_list_t& list) {
+   inline static jvalue_option invokeV(align_t func, const char * signature, JNIEnv * env, void * classOrInst, CX::va_list_t& list) {
     struct Parser {
      JniFunctionParser<CX::va_list_t&> parser;
      bool argsParsed = false;
