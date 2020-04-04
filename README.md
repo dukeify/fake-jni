@@ -35,9 +35,6 @@ target_link_libraries(my_project fake-jni)
 | `FFI_CC` | `={DESIRED_C_COMPILER}` | `${CMAKE_C_COMPILER}` | Set the C compiler for `libffi` |
 | `FFI_CXX` | `={DESIRED_CXX_COMPILER}` | `${CMAKE_CXX_COMPILER}` | Set the C++ compiler for `libffi` |
 | `FFI_CONFIGURE_FLAGS` | `={CONFIGURE_FLAGS}` | `` | Set the configure flags for `libffi` |
-| `LZMA_CC` | `={DESIRED_C_COMPILER}` | `${CMAKE_C_COMPILER}` | Set the C compiler for `liblzma` |
-| `LZMA_CXX` | `={DESIRED_CXX_COMPILER}` | `${CMAKE_CXX_COMPILER}` | Set the C++ compiler for `liblzma` |
-| `LZMA_CONFIGURE_FLAGS` | `={CONFIGURE_FLAGS}` | `` | Set the configure flags for `libxz` |
 | `UNWIND_CC` | `={DESIRED_C_COMPILER}` | `${CMAKE_C_COMPILER}` | Set the C compiler for `libunwind` |
 | `UNWIND_CXX` | `={DESIRED_CXX_COMPILER}` | `${CMAKE_CXX_COMPILER}` | Set the C++ compiler for `libunwind` | 
 | `UNWIND_CONFIGURE_FLAGS` | `={CONFIGURE_FLAGS}` | `` | Set the configure flags for `libunwind` |
@@ -66,8 +63,6 @@ To compile for another host you must set the following environment variables:
 Optionally, you may also set the following variables:
  - `FFI_CC`
  - `FFI_CXX`
- - `LZMA_CC` 
- - `LZMA_CXX`
  - `UNWIND_CC`
  - `UNWIND_CXX`
 

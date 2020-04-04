@@ -7,6 +7,3 @@
 [submodule "libunwind"]
 	path = libunwind
 	url = https://github.com/libunwind/libunwind.git
-[submodule "xz"]
-	path = xz
-	url = https://git.tukaani.org/xz.git
