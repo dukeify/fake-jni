@@ -151,7 +151,7 @@ set(BUILD_FAKE_JNI_TESTS ON CACHE BOOL "Enables fake-jni tests")
 set(BUILD_FAKE_JNI_EXAMPLES ON CACHE BOOL "Enables fake-jni examples")
 
 if (${BUILD_FAKE_JNI_TESTS})
- add_subdirectory(tests)
+ add_subdirectory(test)
 endif()
 
 if (${BUILD_FAKE_JNI_EXAMPLES})
