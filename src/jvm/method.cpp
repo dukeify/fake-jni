@@ -30,22 +30,32 @@ for (unsigned int i = 0; i < argc; i++) {\
  deallocators[i] = typeResolvers.get<2>();\
 }
 
+
+template<typename Arg, typename ListType>
+struct _NativeInvocationManagerAllocate {};
+
+template<typename Arg>
+struct _NativeInvocationManagerAllocate<Arg, CX::va_list_t&> {
+    static void* allocate(CX::va_list_t& list) {
+        return new Arg;
+    }
+};
+
+template<typename Arg>
+struct _NativeInvocationManagerAllocate<Arg, jvalue *> {
+    static void* allocate(jvalue * const values) {
+      const auto data = new Arg;
+      *data = FakeJni::_CX::getAArg<Arg>(values);
+      return (void *)data;
+    }
+};
+
 //TODO find a better name for this glue template
 template<typename Arg>
 struct NativeInvocationManager {
  template<typename ListType>
- static void * allocate(ListType);
-
- template<>
- static void * allocate<CX::va_list_t&>(CX::va_list_t& list) {
-  return new Arg;
- }
-
- template<>
- static void * allocate<jvalue *>(jvalue * const values) {
-  const auto data = new Arg;
-  *data = FakeJni::_CX::getAArg<Arg>(values);
-  return (void *)data;
+ static void * allocate(ListType v) {
+     return _NativeInvocationManagerAllocate<Arg, ListType>::allocate(v);
  }
 
  static void deallocate(void * const data) {
