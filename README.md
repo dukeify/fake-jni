@@ -1,5 +1,10 @@
 # fake-jni
 
+## DEPRECATION WARNING
+This fork was the original prototype and is currently unmaintained. Any issues or PRs posted for this version will be 
+closed without question. There is a production-ready version coming soon, stay posted for a new upstream with full unit 
+and integration test coverage and cross-platform + cross-architecture support. 
+
 ## Cloning
 ```sh
 git clone --depth 1 --recursive https://github.com/meme/fake-jni.git
