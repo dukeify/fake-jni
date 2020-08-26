@@ -1,4 +1,4 @@
-image: alpine-edge
+image: alpine/edge
 arch: x86_64
 packages:
  - git
@@ -6,27 +6,28 @@ packages:
  - cmake
  - build-base
  - ninja
+ - automake
  - autoconf
  - libtool
  - texinfo
  - gettext-dev
  - libexecinfo-dev
  - gtest
-
+ - gtest-dev
 sources:
- - https://github.com/dukeify/fake-jni/tree/sr_ht_ci
-
+ - https://github.com/dukeify/fake-jni#sr_ht_ci
 environment:
  CC: clang
  CXX: clang++
-
 tasks:
- - setup: |
-  mkdir build
-  cd build
-  cmake ../ -GNinja -DBUILD_FAKE_JNI_DEBUG=ON
- - compile: |
-  ninja -j0
- - test: |
-  ./build/test/jni-test
- 
+  - setup: |
+      cd fake-jni
+      mkdir build
+      cd build
+      cmake ../ -GNinja -DBUILD_FAKE_JNI_DEBUG=ON
+  - compile: |
+      cd fake-jni/build
+      ninja -j0
+  - test: |
+      cd fake-jni
+      ./build/test/jni-test
