@@ -1,0 +1,25 @@
+name: CI
+
+on:
+ push:
+  branches: [ sr_ht_ci ]
+
+jobs:
+ build:
+  runs-on: alpine-edge
+  steps:
+   - uses: actions/checkout@v2
+     with:
+      submodules: recursive
+   - name: Build environment configuration
+     run: |
+      sudo apk add git clang cmake build-base ninja autoconf automake libtool libtool texinfo gettext-dev libexecinfo-dev gtest
+   - name: Compile
+     run: |
+      mkdir build && \
+      cd build &&\
+      env CC=clang CXX=clang++ BUILD_FAKE_JNI_DEBUG=ON cmake -G ninja .. && \
+      ninja -j0
+   - name: Run tests
+     run: |
+      ./build/test/jni-test
